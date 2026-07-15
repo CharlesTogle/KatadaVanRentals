@@ -22,12 +22,12 @@ export default function Login() {
 
   return (
     <div
-      className="grid min-h-[100dvh] bg-[#f7f9ff] text-[#071f52] lg:grid-cols-[0.95fr_1.05fr]"
+      className="grid h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#f7f9ff] text-[#071f52] lg:grid-cols-[0.95fr_1.05fr]"
       style={{
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
-      <section className="relative hidden overflow-hidden bg-[#071f52] p-10 text-white lg:flex lg:flex-col lg:justify-between">
+      <section className="relative hidden overflow-hidden bg-[#071f52] p-8 text-white lg:flex lg:flex-col lg:justify-between xl:p-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(255,217,35,0.34),transparent_28%),radial-gradient(circle_at_85%_75%,rgba(233,41,53,0.38),transparent_30%)]" />
         <a href="/" className="relative z-10 flex w-fit items-center gap-3 rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-white/16">
           <ArrowLeft size={16} aria-hidden="true" />
@@ -35,10 +35,10 @@ export default function Login() {
         </a>
 
         <div className="relative z-10">
-          <div className="mb-8 overflow-hidden rounded-[32px] border-[10px] border-white/12 shadow-[0_28px_80px_rgba(0,0,0,0.28)]">
+          <div className="mb-6 overflow-hidden rounded-[32px] border-[10px] border-white/12 shadow-[0_28px_80px_rgba(0,0,0,0.28)]">
             <img src="/vehicle-sample.jpg" alt="Katada van interior with reclining seats" className="aspect-[5/4] w-full object-cover" />
           </div>
-          <h1 className="max-w-[620px] text-5xl font-black leading-[0.98] tracking-[-0.055em]">
+          <h1 className="max-w-[620px] text-4xl font-black leading-[0.98] tracking-[-0.055em] xl:text-5xl">
             Your booked trips stay in one place.
           </h1>
           <p className="mt-5 max-w-[480px] text-base font-medium leading-7 text-white/70">
@@ -47,7 +47,7 @@ export default function Login() {
         </div>
       </section>
 
-      <section className="flex items-center justify-center px-4 py-10 sm:px-6">
+      <section className="flex min-h-0 items-center justify-center overflow-y-auto px-4 py-6 sm:px-6">
         <Card className="w-full max-w-[460px] rounded-[30px] border-[#071f52]/10 bg-white shadow-[0_24px_70px_rgba(7,31,82,0.16)]">
           <CardHeader className="space-y-2 px-7 pb-4 pt-7 sm:px-8 sm:pt-8">
             <a href="/" className="mb-5 flex w-fit items-center gap-3">
@@ -67,12 +67,12 @@ export default function Login() {
           </CardHeader>
 
           <CardContent className="px-7 pb-7 sm:px-8 sm:pb-8">
-          <form onSubmit={handleLogin} className="space-y-4">
-            {error && (
-              <div className="rounded-2xl border border-[#e92935]/30 bg-[#e92935]/8 px-4 py-3 text-sm font-bold text-[#b91c1c]">
-                {error}
-              </div>
-            )}
+            <form onSubmit={handleLogin} className="space-y-4">
+              {error && (
+                <div className="rounded-2xl border border-[#e92935]/30 bg-[#e92935]/8 px-4 py-3 text-sm font-bold text-[#b91c1c]">
+                  {error}
+                </div>
+              )}
 
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-bold text-[#071f52]">
@@ -116,7 +116,7 @@ export default function Login() {
             <Button type="submit" disabled={loading} className="w-full bg-[#e92935] text-white hover:bg-[#c91f2a] focus-visible:ring-[#ffd923]" size="lg">
               {loading ? 'Signing in...' : 'Sign in'}
             </Button>
-          </form>
+            </form>
 
           <p className="mt-6 text-center text-sm font-medium text-[#071f52]/62">
             Don&apos;t have an account?{' '}
