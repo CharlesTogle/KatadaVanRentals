@@ -1,4 +1,4 @@
-import { useAuth } from '../contexts/AuthContext'
+import { useAuth } from '../contexts/useAuth'
 
 export default function Profile() {
   const { user, signOut } = useAuth()
@@ -10,7 +10,7 @@ export default function Profile() {
       <div className="mt-6 space-y-3">
         <div>
           <span className="text-sm text-gray-500">Name</span>
-          <p className="text-gray-900">{user?.user_metadata?.full_name ?? '—'}</p>
+          <p className="text-gray-900">{user?.user_metadata?.full_name ?? '-'}</p>
         </div>
         <div>
           <span className="text-sm text-gray-500">Email</span>
