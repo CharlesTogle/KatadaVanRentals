@@ -546,3 +546,210 @@ Controls how driver's license/ID/proof of billing capture works.
 - **Help videos**: 0/39 produced — all marked "Coming soon"
 - **Platform typo**: "Sevices" instead of "Services" throughout
 - **Pricing data**: Revenue reports show ₱0 because payments are marked unpaid (manual verification flow)
+
+---
+
+## Rental Models (New Feature)
+
+### Overview
+
+Three rental types the booking system needs to support:
+
+| Type | Van | Driver | Fuel | Toll | Extras |
+|------|-----|--------|------|------|--------|
+| **All In** | ✅ | ✅ | Auto-computed (post-trip reconciliation) | Auto-computed (post-trip reconciliation) | — |
+| **All Out** | ✅ | ✅ | ❌ (customer handles) | ❌ (customer handles) | — |
+| **Self Drive** | ✅ | ❌ | ❌ (customer handles) | ❌ (customer handles) | Delivery fee, Recovery fee, Mandatory down payment |
+
+---
+
+### All In — Full Service
+
+Customer provides pickup and drop-off locations. System auto-computes:
+
+#### Price Formula
+```
+Total = Van Base Price (per day)
+      + Driver Fee (per day)
+      + Diesel Estimate (distance × consumption rate × fuel price)
+      + Toll Estimate (route-based)
+      + Post-Trip Reconciliation (actual toll + actual diesel collected after)
+```
+
+#### Distance Computation
+- Input: pickup address → drop-off address (and any waypoints)
+- **API**: Google Maps Distance Matrix API or OpenRouteService
+  - Returns road distance in km (not straight-line)
+  - Google: ~$0.005–0.01 per request
+  - OpenRouteService: free tier 2,000 req/day
+- Computed route distance drives both the diesel and toll estimates
+
+#### Toll Computation
+- Based on the route returned by the distance API
+- **API options**:
+  - **TollGuru** — dedicated toll API, covers Philippines (NLEX, SLEX, Skyway, TPLEX, STAR, etc.). Has a free tier. Returns toll costs per segment, fuel cost estimates, total trip cost
+  - **Google Maps Routes API** — `routes.travelAdvisory.tollInfo` returns toll prices (PHP supported). Requires Routes API (separate from Distance Matrix), ~$0.005 per request
+  - **Manual fallback**: admin enters known toll amounts for common routes
+- System stores toll estimate, post-trip admin enters actual toll receipts
+
+#### Fuel / Diesel Pricing
+- **Manual admin input** — fuel price per liter (e.g., ₱57.50/L for diesel)
+  - Admin updates this when prices change (weekly or as needed)
+  - Option: cron job to scrape DOE.gov.ph weekly fuel price advisories (no reliable free API for PH fuel prices)
+- **Consumption rate**: admin-configurable km/L per vehicle (e.g., 8 km/L for Commuter Deluxe)
+- Diesel estimate = `(total_km / km_per_liter) × price_per_liter`
+
+#### Post-Trip Reconciliation
+- After booking completes, admin enters:
+  - Actual toll fees paid (with receipt upload)
+  - Actual diesel top-up (liters or peso amount)
+- System computes difference: `actual - estimate`
+- If actual > estimate → customer owes balance
+- If actual < estimate → refund/credit
+- Generates final invoice with breakdown
+
+---
+
+### All Out — Van + Driver Only
+
+Simplest package. Customer pays van + driver, handles their own fuel and toll.
+
+#### Price Formula
+```
+Total = Van Base Price (per day)
+      + Driver Fee (per day)
+```
+
+No fuel/toll computation needed. No post-trip reconciliation.
+
+---
+
+### Self Drive — Van Only
+
+Customer drives the van themselves. No driver.
+
+#### Price Formula
+```
+Total = Van Base Price (per day)
+      + Delivery Fee (optional, per-trip)
+      + Recovery Fee (optional, per-trip)
+```
+
+#### Required Documents
+- Driver's License (mandatory upload)
+- Proof of Billing (mandatory upload)
+- Valid ID (government-issued)
+
+#### Down Payment / Reservation
+- Admin-configurable percentage (e.g., 10% or 20%)
+- Mandatory — booking not confirmed until down payment received
+- Deducted from total upon settlement
+
+#### Delivery Fee
+- Admin enters flat fee or per-km rate for delivering van to customer location
+- One-time charge added to booking total
+
+#### Recovery Fee
+- Admin enters flat fee or per-km rate for picking up van after rental
+- One-time charge added to booking total
+
+---
+
+### Admin-Configurable Rates (Settings Page)
+
+New settings tab or section in Business/Payments:
+
+| Setting | Type | Description |
+|---------|------|-------------|
+| `fuel_price_per_liter` | number | Current diesel price per liter (admin updates manually, e.g. ₱57.50) |
+| `fuel_price_last_updated` | date | When fuel price was last changed |
+| `km_per_liter_default` | number | Default fuel consumption (per vehicle, overridable per vehicle in fleet) |
+| `peso_per_km` | number | Distance rate for delivery/recovery (if per-km pricing used) |
+| `reservation_percent` | number | Down payment % for Self Drive bookings (e.g. 10, 15, 20) |
+| `toll_api_provider` | select | Active toll API (TollGuru / Google Routes / Manual) |
+| `toll_api_key` | text | API key for active toll provider |
+| `distance_api_provider` | select | Active distance API (Google Maps / OpenRouteService) |
+| `distance_api_key` | text | API key for active distance provider |
+
+Per-vehicle overrides (in fleet settings):
+| Setting | Description |
+|---------|-------------|
+| `km_per_liter` | Vehicle-specific fuel consumption rate |
+
+---
+
+### Walk-In Bookings (Admin Side)
+
+Bookings created by admin for walk-in or phone customers:
+- Admin fills all fields: customer info, rental type, pickup/drop-off, dates, vehicle
+- For All In: admin enters pickup + drop-off → system calls distance API + toll API → auto-populates estimates
+- Admin can override any computed value
+- No customer login/account required (guest booking)
+- Same lifecycle as regular bookings (For Review → Confirmed → On Trip → Completed)
+
+---
+
+### SMTP / Email Automation
+
+On booking creation, system sends automated email to customer:
+
+**All In booking email includes**:
+- Booking reference number
+- Rental type: All In
+- Pickup date/time, Drop-off date/time
+- Pickup location, Drop-off location
+- Vehicle details
+- Price breakdown: Van, Driver, Diesel (estimate), Toll (estimate), Total
+- Note: "Actual toll and diesel will be reconciled after the trip"
+
+**All Out booking email includes**:
+- Booking reference number
+- Rental type: All Out
+- Vehicle details, Driver info
+- Price breakdown: Van, Driver, Total
+- Note: "Fuel and toll are not included"
+
+**Self Drive booking email includes**:
+- Booking reference number
+- Rental type: Self Drive
+- Vehicle details
+- Price breakdown: Van, Delivery Fee, Recovery Fee, Total
+- Remaining balance (after down payment)
+- Document requirements reminder (Driver's License, Proof of Billing)
+
+---
+
+### API Integration Strategy
+
+#### Distance Matrix API
+```
+Provider: OpenRouteService (free tier: 2,000 req/day)
+Backup: Google Distance Matrix API (paid)
+Input:  pickup_lat, pickup_lng, dropoff_lat, dropoff_lng
+Output: distance_km, duration_minutes
+```
+- Geocode pickup/drop-off addresses to lat/lng first
+- Store `distance_km` and `duration_minutes` on booking record
+- Display on booking detail and invoice
+
+#### Toll API
+```
+Provider: TollGuru (free tier available, PH toll roads supported)
+Backup: Google Routes API tollInfo
+Input:  pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, vehicle_type
+Output: total_toll_cost, toll_segments[].{name, cost, distance}
+```
+- Store `toll_estimate` and `toll_segments` JSON on booking record
+- Admin can manually enter actual toll after trip
+- If API unavailable or route has no toll roads → toll = 0
+
+#### Fuel Price (Manual + Optional Scrape)
+- Admin manually sets `fuel_price_per_liter` in settings
+- Optional: cron job reads DOE advisory page (https://www.doe.gov.ph/retail-pump-prices) for weekly updates
+- No reliable free API for Philippine fuel prices — manual update is the practical path
+
+#### SMTP (Email Delivery)
+- Use existing Laravel mail system (CarRentSaaS is Laravel)
+- SMTP config in `.env`: `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`
+- Admin can set from Settings → Email tab (`business_email`, `mail_from_name`)
+- Queue emails for reliability
