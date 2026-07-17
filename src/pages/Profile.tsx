@@ -1,67 +1,180 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/useAuth'
+import { supabase } from '@/lib/supabase'
+import { friendlyError } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Camera, Phone, Eye, EyeOff } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { isValidPassword } from '@/lib/validation'
 
 const countries = [
   'Philippines', 'United States', 'Canada', 'Australia', 'United Kingdom',
   'Singapore', 'Japan', 'South Korea', 'Hong Kong', 'Other',
 ]
 
+const emptyProfile = {
+  first_name: '',
+  last_name: '',
+  email: '',
+  mobile: '+63 ',
+  address: '',
+  city: '',
+  province: '',
+  zip_code: '',
+  country: 'Philippines',
+  profile_image_path: null as string | null,
+}
+
 export default function Profile() {
   const { user } = useAuth()
-
-  const [profile, setProfile] = useState({
-    first_name: user?.user_metadata?.full_name?.split(' ')[0] || '',
-    last_name: user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
-    email: user?.email || '',
-    mobile: '+63 ',
-    address: '',
-    city: '',
-    province: '',
-    zip: '',
-    country: 'Philippines',
-  })
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [profile, setProfile] = useState(emptyProfile)
   const [password, setPassword] = useState({ current: '', new: '', confirm: '' })
   const [show, setShow] = useState({ current: false, new: false, confirm: false })
   const [saving, setSaving] = useState(false)
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [message, setMessage] = useState('')
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success')
+  const [uploading, setUploading] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setProfile({
+            first_name: data.first_name || user.user_metadata?.full_name?.split(' ')[0] || '',
+            last_name: data.last_name || user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
+            email: data.email || user.email || '',
+            mobile: data.mobile || '+63 ',
+            address: data.address || '',
+            city: data.city || '',
+            province: data.province || '',
+            zip_code: data.zip_code || '',
+            country: data.country || 'Philippines',
+            profile_image_path: data.profile_image_path || null,
+          })
+        }
+        setLoading(false)
+      })
+  }, [user])
+
+  const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `profile-photos/${user.id}.${ext}`
+
+    const { error } = await supabase.storage
+      .from('business-assets')
+      .upload(path, file, { upsert: true })
+
+    if (!error) {
+      const { data: { publicUrl } } = supabase.storage.from('business-assets').getPublicUrl(path)
+      setProfile({ ...profile, profile_image_path: publicUrl })
+    }
+    setUploading(false)
+  }
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!user) return
     setSaving(true)
-    // ponytail: save to Supabase customer profile
-    await new Promise((r) => setTimeout(r, 800))
+    setMessage('')
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        mobile: profile.mobile,
+        address: profile.address,
+        city: profile.city,
+        province: profile.province,
+        zip_code: profile.zip_code,
+        country: profile.country,
+        profile_image_path: profile.profile_image_path,
+      })
+      .eq('id', user.id)
+
+    if (error) {
+      setMessage(friendlyError(error))
+      setMessageType('error')
+    } else {
+      setMessage('Profile saved.')
+      setMessageType('success')
+    }
     setSaving(false)
   }
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    // ponytail: update Supabase auth password
-    await new Promise((r) => setTimeout(r, 800))
-    setPassword({ current: '', new: '', confirm: '' })
+    setPasswordSaving(true)
+    setMessage('')
+
+    const { error } = await supabase.auth.updateUser({ password: password.new })
+
+    if (error) {
+      setMessage(friendlyError(error))
+      setMessageType('error')
+    } else {
+      setPassword({ current: '', new: '', confirm: '' })
+      setMessage('Password updated.')
+      setMessageType('success')
+    }
+    setPasswordSaving(false)
   }
+
+  const name = profile.first_name || profile.last_name
+    ? `${profile.first_name} ${profile.last_name}`.trim()
+    : user?.email || 'Customer'
+
+  if (loading) return <ProfileSkeleton />
 
   return (
     <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8">
       <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52] sm:text-3xl">My Profile</h1>
       <p className="mt-1 text-sm font-medium text-[#071f52]/58">Manage your personal information and password.</p>
 
+      {message && (
+        <div className={cn(
+          'mt-4 rounded-2xl border px-4 py-3 text-sm font-bold',
+          messageType === 'success'
+            ? 'border-[#16a34a]/30 bg-[#16a34a]/10 text-[#15803d]'
+            : 'border-[#e92935]/30 bg-[#e92935]/8 text-[#b91c1c]',
+        )}>
+          {message}
+        </div>
+      )}
+
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1fr]">
         <div className="rounded-2xl border border-[#071f52]/10 bg-white p-6 shadow-[0_8px_24px_rgba(7,31,82,0.06)]">
           <div className="mb-6 flex items-center gap-4">
-            <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#071f52] text-2xl font-black text-white">
-              {(profile.first_name?.[0] || user?.email?.[0] || '?').toUpperCase()}
-              <button type="button" className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#ffd923] text-[#071f52] shadow-sm">
+            <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#071f52] text-2xl font-black text-white">
+              {profile.profile_image_path ? (
+                <img src={profile.profile_image_path} alt={name} className="h-full w-full object-cover" />
+              ) : (
+                (profile.first_name?.[0] || user?.email?.[0] || '?').toUpperCase()
+              )}
+              <button
+                type="button"
+                disabled={uploading}
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full bg-[#ffd923] text-[#071f52] shadow-sm"
+              >
                 <Camera size={12} />
               </button>
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUploadPhoto} className="hidden" />
             </div>
             <div>
-              <p className="text-base font-bold text-[#071f52]">
-                {profile.first_name || profile.last_name
-                  ? `${profile.first_name} ${profile.last_name}`.trim()
-                  : user?.email || 'Customer'}
-              </p>
-              <p className="text-sm font-medium text-[#071f52]/48">{profile.email}</p>
+              <p className="text-base font-bold text-[#071f52]">{name}</p>
+              <p className="text-sm font-medium text-[#071f52]/48">{profile.email || user?.email}</p>
             </div>
           </div>
 
@@ -88,7 +201,7 @@ export default function Profile() {
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-[#071f52]">Email</label>
               <input
-                value={profile.email}
+                value={profile.email || user?.email || ''}
                 readOnly
                 className="block w-full rounded-2xl border border-[#071f52]/14 bg-gray-100 px-4 py-2.5 text-sm font-semibold text-[#071f52]/48"
               />
@@ -100,7 +213,10 @@ export default function Profile() {
                 <Phone size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#071f52]/38" />
                 <input
                   value={profile.mobile}
-                  onChange={(e) => setProfile({ ...profile, mobile: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setProfile({ ...profile, mobile: val.startsWith('+63 ') ? val : '+63 ' })
+                  }}
                   placeholder="+63 917 XXX XXXX"
                   className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] py-2.5 pl-9 pr-4 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
                 />
@@ -142,8 +258,8 @@ export default function Profile() {
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#071f52]">ZIP Code <span className="text-[#e92935]">*</span></label>
                 <input
-                  value={profile.zip}
-                  onChange={(e) => setProfile({ ...profile, zip: e.target.value })}
+                  value={profile.zip_code}
+                  onChange={(e) => setProfile({ ...profile, zip_code: e.target.value })}
                   placeholder="1309"
                   className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
                 />
@@ -183,10 +299,20 @@ export default function Profile() {
                     onChange={(e) => setPassword({ ...password, [field]: e.target.value })}
                     placeholder={
                       field === 'current' ? 'Enter current password'
-                      : field === 'new' ? 'Min. 8 characters'
+                      : field === 'new' ? 'Min. 6 characters'
                       : 'Re-enter new password'
                     }
-                    className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 pr-10 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+                    className={cn(
+                      'block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 pr-10 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:border-[#071f52] focus:ring-[#ffd923]/60',
+                      field !== 'current' && password[field] &&
+                        (field === 'confirm'
+                          ? password[field] === password.new
+                            ? 'border-[#16a34a] focus:border-[#16a34a] focus:ring-[#16a34a]/30'
+                            : 'border-[#e92935] focus:border-[#e92935] focus:ring-[#e92935]/30'
+                          : isValidPassword(password[field])
+                            ? 'border-[#16a34a] focus:border-[#16a34a] focus:ring-[#16a34a]/30'
+                            : 'border-[#e92935] focus:border-[#e92935] focus:ring-[#e92935]/30'),
+                    )}
                   />
                   <button
                     type="button"
@@ -201,13 +327,59 @@ export default function Profile() {
 
             <Button
               type="submit"
-              disabled={!password.current || !password.new || !password.confirm}
+              disabled={!password.current || !password.new || !password.confirm || passwordSaving}
               size="lg"
               className="w-full bg-[#071f52] text-white hover:bg-[#112458]"
             >
-              Update Password
+              {passwordSaving ? 'Updating...' : 'Update Password'}
             </Button>
           </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProfileSkeleton() {
+  return (
+    <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8 animate-pulse">
+      <div className="mb-2 h-8 w-40 rounded-xl bg-[#071f52]/10" />
+      <div className="mb-6 h-4 w-72 rounded-xl bg-[#071f52]/8" />
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+        <div className="rounded-2xl border border-[#071f52]/10 bg-white p-6">
+          <div className="mb-6 flex items-center gap-4">
+            <div className="h-16 w-16 rounded-full bg-[#071f52]/10" />
+            <div className="space-y-2">
+              <div className="h-4 w-32 rounded-lg bg-[#071f52]/10" />
+              <div className="h-3 w-48 rounded-lg bg-[#071f52]/8" />
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="h-14 rounded-2xl bg-[#071f52]/6" />
+              <div className="h-14 rounded-2xl bg-[#071f52]/6" />
+            </div>
+            <div className="h-14 rounded-2xl bg-[#071f52]/6" />
+            <div className="h-14 rounded-2xl bg-[#071f52]/6" />
+            <div className="h-14 rounded-2xl bg-[#071f52]/6" />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="h-14 rounded-2xl bg-[#071f52]/6" />
+              <div className="h-14 rounded-2xl bg-[#071f52]/6" />
+            </div>
+            <div className="h-12 rounded-2xl bg-[#071f52]/10" />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#071f52]/10 bg-white p-6">
+          <div className="mb-2 h-5 w-36 rounded-lg bg-[#071f52]/10" />
+          <div className="mb-5 h-3 w-64 rounded-lg bg-[#071f52]/8" />
+          <div className="space-y-4">
+            <div className="h-14 rounded-2xl bg-[#071f52]/6" />
+            <div className="h-14 rounded-2xl bg-[#071f52]/6" />
+            <div className="h-14 rounded-2xl bg-[#071f52]/6" />
+            <div className="h-12 rounded-2xl bg-[#071f52]/10" />
+          </div>
         </div>
       </div>
     </div>
