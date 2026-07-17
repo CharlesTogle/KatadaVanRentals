@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/useAuth'
+import { CustomerHeader } from '@/components/CustomerHeader'
 import {
   CalendarCheck,
+  ChevronDown,
   Clock3,
   Luggage,
   MapPin,
@@ -55,7 +58,69 @@ function FadeSection({ children, className }: { children: ReactNode; className?:
   )
 }
 
+const faqs = [
+  {
+    question: 'What types of rentals does Katada offer?',
+    answer: 'Three models: All In (van, driver, fuel estimate, and toll estimate included), All Out (van and driver only — you handle fuel and toll), and Self Drive (van only — you drive, with optional delivery and recovery fees).',
+  },
+  {
+    question: 'How does pricing work?',
+    answer: 'Every booking shows a price breakdown before you confirm. All In quotes include van, driver, diesel estimate, and toll estimate. Self Drive requires a down payment. Admin provides the final quote after reviewing your route.',
+  },
+  {
+    question: 'What documents do I need?',
+    answer: 'Self Drive bookings require a Driver\'s License, a valid government ID, and Proof of Billing. These are not required for All In or All Out rentals where Katada provides a driver.',
+  },
+  {
+    question: 'How do I make a booking?',
+    answer: 'Create an account, browse the fleet, pick dates and a rental type, fill in your route details, upload any required documents, and submit. Admin reviews your request and confirms the price.',
+  },
+  {
+    question: 'Can I cancel or modify a booking?',
+    answer: 'Cancellations depend on the booking status. Bookings in For Review, Awaiting Documents, or Accepted stages can be cancelled. Once a trip has started, cancellations are not available. Contact us for modifications.',
+  },
+  {
+    question: 'How do payments work?',
+    answer: 'Payments are manual — bank transfer (BDO) or G-Cash. After submitting your booking, you will receive payment instructions. Upload your receipt and admin verifies it. Remaining balance is due at pickup.',
+  },
+  {
+    question: 'Is there a delivery fee for Self Drive?',
+    answer: 'Yes, if you need the van delivered to your location or recovered after the trip, a delivery and recovery fee applies. The amount depends on distance and is shown in your quote before you confirm.',
+  },
+]
+
+function FaqItem({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="overflow-hidden rounded-[24px] border border-[#071f52]/10 bg-white shadow-[0_8px_24px_rgba(7,31,82,0.05)]">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
+      >
+        <span className="text-base font-bold text-[#071f52]">{question}</span>
+        <ChevronDown
+          size={20}
+          className={cn(
+            'shrink-0 text-[#071f52]/40 transition-transform duration-200',
+            open && 'rotate-180',
+          )}
+        />
+      </button>
+      {open && (
+        <div className="px-6 pb-5">
+          <p className="text-sm leading-6 text-[#071f52]/64">{answer}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const navLinks = [
+  { label: 'Our Fleet', href: '/our-fleet' },
+  { label: 'Contact', href: '/contact' },
+  { label: 'FAQ', href: '#faq' },
   { label: 'Fleet', href: '#fleet' },
   { label: 'Services', href: '#services' },
   { label: 'Why Katada', href: '#why' },
@@ -86,8 +151,8 @@ const fleet = [
 ]
 
 const services = [
-  { title: 'Airport transfers', body: 'Pickup and drop-off for Laguindingan, hotels, and homes.', icon: Luggage },
-  { title: 'Out-of-town trips', body: 'Comfortable vans for Iligan, Bukidnon, Camiguin, and beyond.', icon: MapPin },
+  { title: 'Airport transfers', body: 'Pickup and drop-off for NAIA, hotels, and homes.', icon: Luggage },
+  { title: 'Out-of-town trips', body: 'Comfortable vans for Baguio, Tagaytay, Subic, and beyond.', icon: MapPin },
   { title: 'Events and groups', body: 'Shuttle service for weddings, retreats, reunions, and company days.', icon: Users },
   { title: 'Driver included', body: 'Licensed drivers who know the routes and keep the trip steady.', icon: ShieldCheck },
   { title: 'Flexible schedules', body: 'Early call times, late arrivals, and multi-stop itineraries covered.', icon: Clock3 },
@@ -96,67 +161,72 @@ const services = [
 const proof = [
   { value: '24/7', label: 'trip support' },
   { value: '10-14', label: 'seat options' },
-  { value: 'CDO', label: 'home base' },
+  { value: 'Pasay', label: 'home base' },
 ]
 
 export default function Landing() {
+  const { user } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
     <div className="min-h-[100dvh] bg-[#f7f9ff] text-[#071f52]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      <nav className="sticky top-0 z-50 border-b border-[#071f52]/10 bg-[#f7f9ff]/90 backdrop-blur-md">
-        <div className="mx-auto flex h-[72px] max-w-[1180px] items-center justify-between gap-5 px-4 sm:px-6">
-          <a href="/" className="flex min-w-0 items-center gap-3">
-            <img src="/logo.jpg" alt="Katada Transportation Services" className="h-11 w-11 rounded-2xl object-cover ring-1 ring-[#071f52]/10" />
-            <span className="max-w-[165px] text-sm font-extrabold leading-tight tracking-[-0.02em] text-[#071f52] sm:max-w-none sm:text-base">
-              Katada Transportation
-            </span>
-          </a>
-
-          <div className="hidden items-center gap-7 md:flex">
-            {navLinks.map((link) => (
-              <a key={link.href} href={link.href} className="text-sm font-bold text-[#071f52]/70 transition-colors hover:text-[#e92935]">
-                {link.label}
-              </a>
-            ))}
-          </div>
-
-          <div className="hidden items-center gap-3 md:flex">
-            <a href="/login" className="text-sm font-bold text-[#071f52]/70 transition-colors hover:text-[#071f52]">
-              Sign in
+      {user ? (
+        <CustomerHeader />
+      ) : (
+        <nav className="sticky top-0 z-50 border-b border-[#071f52]/10 bg-[#f7f9ff]/90 backdrop-blur-md">
+          <div className="mx-auto flex h-[72px] max-w-[1180px] items-center justify-between gap-5 px-4 sm:px-6">
+            <a href="/" className="flex min-w-0 items-center gap-3">
+              <img src="/logo.jpg" alt="Katada Transportation Services" className="h-11 w-11 rounded-2xl object-cover ring-1 ring-[#071f52]/10" />
+              <span className="max-w-[165px] text-sm font-extrabold leading-tight tracking-[-0.02em] text-[#071f52] sm:max-w-none sm:text-base">
+                Katada Transportation
+              </span>
             </a>
-            <Button className="bg-[#e92935] text-white shadow-[0_14px_30px_rgba(233,41,53,0.22)] hover:bg-[#c91f2a] focus-visible:ring-[#ffd923]" asChild>
-              <a href="/register">Book now</a>
-            </Button>
-          </div>
 
-          <button
-            type="button"
-            aria-label="Toggle menu"
-            aria-expanded={mobileOpen}
-            className="rounded-full p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 md:hidden"
-            onClick={() => setMobileOpen(!mobileOpen)}
-          >
-            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
-        </div>
+            <div className="hidden items-center gap-7 md:flex">
+              {navLinks.map((link) => (
+                <a key={link.href} href={link.href} className="text-sm font-bold text-[#071f52]/70 transition-colors hover:text-[#e92935]">
+                  {link.label}
+                </a>
+              ))}
+            </div>
 
-        {mobileOpen && (
-          <div className="border-t border-[#071f52]/10 bg-[#f7f9ff] px-4 pb-5 pt-2 md:hidden">
-            {navLinks.map((link) => (
-              <a key={link.href} href={link.href} className="block border-b border-[#071f52]/10 py-3 text-sm font-bold text-[#071f52]" onClick={() => setMobileOpen(false)}>
-                {link.label}
+            <div className="hidden items-center gap-3 md:flex">
+              <a href="/login" className="text-sm font-bold text-[#071f52]/70 transition-colors hover:text-[#071f52]">
+                Sign in
               </a>
-            ))}
-            <a href="/login" className="block py-3 text-sm font-bold text-[#071f52]" onClick={() => setMobileOpen(false)}>
-              Sign in
-            </a>
-            <Button className="mt-2 w-full bg-[#e92935] text-white hover:bg-[#c91f2a]" asChild>
-              <a href="/register" onClick={() => setMobileOpen(false)}>Book now</a>
-            </Button>
+              <Button className="bg-[#e92935] text-white shadow-[0_14px_30px_rgba(233,41,53,0.22)] hover:bg-[#c91f2a] focus-visible:ring-[#ffd923]" asChild>
+                <a href="/register">Book now</a>
+              </Button>
+            </div>
+
+            <button
+              type="button"
+              aria-label="Toggle menu"
+              aria-expanded={mobileOpen}
+              className="rounded-full p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 md:hidden"
+              onClick={() => setMobileOpen(!mobileOpen)}
+            >
+              {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
           </div>
-        )}
-      </nav>
+
+          {mobileOpen && (
+            <div className="border-t border-[#071f52]/10 bg-[#f7f9ff] px-4 pb-5 pt-2 md:hidden">
+              {navLinks.map((link) => (
+                <a key={link.href} href={link.href} className="block border-b border-[#071f52]/10 py-3 text-sm font-bold text-[#071f52]" onClick={() => setMobileOpen(false)}>
+                  {link.label}
+                </a>
+              ))}
+              <a href="/login" className="block py-3 text-sm font-bold text-[#071f52]" onClick={() => setMobileOpen(false)}>
+                Sign in
+              </a>
+              <Button className="mt-2 w-full bg-[#e92935] text-white hover:bg-[#c91f2a]" asChild>
+                <a href="/register" onClick={() => setMobileOpen(false)}>Book now</a>
+              </Button>
+            </div>
+          )}
+        </nav>
+      )}
 
       <main>
         <section className="relative overflow-hidden">
@@ -164,7 +234,7 @@ export default function Landing() {
           <div className="mx-auto grid min-h-[calc(100dvh-72px)] max-w-[1180px] items-center gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:py-14">
             <div className="max-w-[620px]">
               <div className="mb-5 inline-flex rounded-full border border-[#071f52]/10 bg-white px-4 py-2 text-sm font-bold text-[#071f52] shadow-[0_12px_34px_rgba(7,31,82,0.08)]">
-                Cagayan de Oro transportation service
+                Pasay City transportation service
               </div>
               <h1 className="text-[2.9rem] font-black leading-[0.98] tracking-[-0.055em] text-[#071f52] sm:text-[4rem] lg:text-[5.35rem]">
                 Vans that keep the whole trip calm.
@@ -270,12 +340,12 @@ export default function Landing() {
                     <article
                       key={service.title}
                       className={cn(
-                        'rounded-[28px] border border-white/12 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-transform duration-300 hover:-translate-y-1',
+                        'rounded-[28px] border border-white/12 p-6 transition-transform duration-300 hover:-translate-y-1',
                         index === 0 && 'bg-[#ffd923] text-[#071f52] md:col-span-3',
-                        index === 1 && 'bg-white/10 md:col-span-3',
+                        index === 1 && 'bg-white/15 md:col-span-3',
                         index === 2 && 'bg-[#e92935] md:col-span-2',
-                        index === 3 && 'bg-white/10 md:col-span-2',
-                        index === 4 && 'bg-white/10 md:col-span-2'
+                        index === 3 && 'bg-white/15 md:col-span-2',
+                        index === 4 && 'bg-white/15 md:col-span-2'
                       )}
                     >
                       <Icon size={26} strokeWidth={1.8} aria-hidden="true" />
@@ -339,6 +409,22 @@ export default function Landing() {
           </section>
         </FadeSection>
       </main>
+
+      <FadeSection>
+        <section id="faq" className="mx-auto max-w-[1180px] px-4 pb-16 sm:px-6 md:pb-24">
+          <h2 className="text-4xl font-black tracking-[-0.04em] text-[#071f52] sm:text-5xl">
+            Frequently asked questions
+          </h2>
+          <p className="mt-3 text-base font-medium leading-7 text-[#071f52]/68">
+            Quick answers about our rentals, pricing, and booking process.
+          </p>
+          <div className="mt-8 space-y-3">
+            {faqs.map((faq, i) => (
+              <FaqItem key={i} {...faq} />
+            ))}
+          </div>
+        </section>
+      </FadeSection>
 
       <footer className="border-t border-[#071f52]/10 bg-[#f7f9ff] text-[#071f52]">
         <div className="mx-auto flex max-w-[1180px] flex-col gap-5 px-4 py-8 text-sm font-semibold sm:px-6 md:flex-row md:items-center md:justify-between">
