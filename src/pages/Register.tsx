@@ -1,12 +1,17 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { friendlyError } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, CalendarCheck } from 'lucide-react'
+import { ArrowLeft, CalendarCheck, Eye, EyeOff } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { isValidEmail, isValidPassword } from '@/lib/validation'
+import { AUTH_MESSAGES } from '@/constants/auth'
 
 export default function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -23,9 +28,9 @@ export default function Register() {
     })
 
     if (error) {
-      setError(error.message)
+      setError(friendlyError(error))
     } else {
-      setError('Check your email for a confirmation link.')
+      setError(AUTH_MESSAGES.success.confirmation_link_sent)
     }
 
     setLoading(false)
@@ -33,7 +38,7 @@ export default function Register() {
 
   return (
     <div
-      className="grid h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#f7f9ff] text-[#071f52] lg:grid-cols-[0.95fr_1.05fr]"
+      className="grid h-[100dvh] bg-[#f7f9ff] text-[#071f52] lg:grid-cols-[0.95fr_1.05fr]"
       style={{
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
@@ -47,7 +52,7 @@ export default function Register() {
 
         <div className="relative z-10">
           <div className="mb-6 overflow-hidden rounded-[32px] border-[10px] border-white/12 shadow-[0_28px_80px_rgba(0,0,0,0.28)]">
-            <img src="/van-1.jpg" alt="Clean Katada van cabin seating" className="aspect-[5/4] w-full object-cover" />
+            <img src="/van-1.jpg" alt="Clean Katada van cabin seating" className="max-h-[42vh] w-full object-cover" />
           </div>
           <h1 className="max-w-[600px] text-4xl font-black leading-[0.98] tracking-[-0.055em] xl:text-5xl">
             Book faster when the road calls.
@@ -83,7 +88,7 @@ export default function Register() {
                 <div className={cn(
                   'rounded-2xl border px-4 py-3 text-sm font-bold',
                   error.includes('confirmation')
-                    ? 'border-[#071f52]/18 bg-[#ffd923]/28 text-[#071f52]'
+                    ? 'border-[#16a34a]/30 bg-[#16a34a]/10 text-[#15803d]'
                     : 'border-[#e92935]/30 bg-[#e92935]/8 text-[#b91c1c]'
                 )}>
                   {error}
@@ -116,7 +121,12 @@ export default function Register() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+                className={cn(
+                  'block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:border-[#071f52] focus:ring-[#ffd923]/60',
+                  email && (isValidEmail(email)
+                    ? 'border-[#16a34a] focus:border-[#16a34a] focus:ring-[#16a34a]/30'
+                    : 'border-[#e92935] focus:border-[#e92935] focus:ring-[#e92935]/30'),
+                )}
               />
             </div>
 
@@ -124,15 +134,30 @@ export default function Register() {
               <label htmlFor="password" className="text-sm font-bold text-[#071f52]">
                 Password
               </label>
-              <input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 6 characters"
-                className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                  className={cn(
+                    'block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 pr-10 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:border-[#071f52] focus:ring-[#ffd923]/60',
+                    password && (isValidPassword(password)
+                      ? 'border-[#16a34a] focus:border-[#16a34a] focus:ring-[#16a34a]/30'
+                      : 'border-[#e92935] focus:border-[#e92935] focus:ring-[#e92935]/30'),
+                  )}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#071f52]/38 hover:text-[#071f52]"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             <Button type="submit" disabled={loading} className="w-full bg-[#e92935] text-white hover:bg-[#c91f2a] focus-visible:ring-[#ffd923]" size="lg">
@@ -153,6 +178,3 @@ export default function Register() {
   )
 }
 
-function cn(...inputs: (string | undefined | false | null)[]) {
-  return inputs.filter(Boolean).join(' ')
-}
