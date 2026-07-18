@@ -1,7 +1,7 @@
 # Katada Rentals — Admin Panel Documentation
 
 > **Platform**: CarRentSaaS by Maglacas Digital
-> **Tenant**: Katada Transportation Sevices
+> **Tenant**: Katada Transportation Services
 > **Admin**: Winson Katada (tadsuu@gmail.com)
 > **Plan**: Kasosyo Free (lifetime) — 1 vehicle, 10 bookings/mo, 1 team member, 1 GB storage
 > **Domain**: katada.carrentsaas.com
@@ -455,7 +455,7 @@ Controls how driver's license/ID/proof of billing capture works.
 |-------|------|----------|-------------|
 | `email_mode` | hidden | No | |
 | `business_email` | email | No | hello@yourbusiness.com |
-| `mail_from_name` | text | No | Katada Transportation Sevices |
+| `mail_from_name` | text | No | Katada Transportation Services |
 
 ### Help & Guides (`/admin/settings/help`)
 
@@ -544,7 +544,7 @@ Controls how driver's license/ID/proof of billing capture works.
 - **No "My Bookings" view for customers** — booking status is only visible to admin
 - **All customer routes 404**: `/bookings`, `/documents`, `/profile`, `/my-bookings`, `/dashboard` (non-admin)
 - **Help videos**: 0/39 produced — all marked "Coming soon"
-- **Platform typo**: "Sevices" instead of "Services" throughout
+- **Platform typo (fixed)**: "Sevices" was corrected to "Services" throughout
 - **Pricing data**: Revenue reports show ₱0 because payments are marked unpaid (manual verification flow)
 
 ---

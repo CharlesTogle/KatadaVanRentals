@@ -1,2 +1,25 @@
 @import "tailwindcss";
 @import "@fontsource/plus-jakarta-sans/index.css";
+
+@theme {
+  --color-brand-navy: #071f52;
+  --color-brand-red: #e92935;
+  --color-brand-yellow: #ffd923;
+  --color-brand-light: #f7f9ff;
+}
+
+@utility card {
+  border-radius: 1rem;
+  border: 1px solid color-mix(in oklab, var(--color-brand-navy) 10%, transparent);
+  background: white;
+  padding: 1.25rem;
+  box-shadow: 0 8px 24px rgba(7, 31, 82, 0.06);
+}
+
+@utility card-overflow {
+  border-radius: 1rem;
+  border: 1px solid color-mix(in oklab, var(--color-brand-navy) 10%, transparent);
+  background: white;
+  box-shadow: 0 8px 24px rgba(7, 31, 82, 0.06);
+  overflow: hidden;
+}

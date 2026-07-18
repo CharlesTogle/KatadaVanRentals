@@ -1,6 +1,9 @@
-import { useContext } from 'react'
-import { AuthContext } from './auth'
+import { useAuthStore } from '@/store/auth-store'
 
 export function useAuth() {
-  return useContext(AuthContext)
+  const user = useAuthStore((s) => s.user)
+  const session = useAuthStore((s) => s.session)
+  const loading = useAuthStore((s) => s.loading)
+  const signOut = useAuthStore((s) => s.signOut)
+  return { user, session, loading, signOut }
 }
