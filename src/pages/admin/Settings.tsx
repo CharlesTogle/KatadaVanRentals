@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
-import { friendlyError } from '@/lib/errors'
+import { showError } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useSearchParams } from 'react-router-dom'
 
 const tabs = [
   'Profile', 'Password', 'Business',
@@ -16,7 +17,16 @@ const countries = ['Philippines', 'United States', 'Canada', 'Australia', 'Unite
 
 export default function AdminSettings({ tab: initialTab }: { tab?: string }) {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState(initialTab || 'Profile')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const page = searchParams.get('page')
+  const [activeTab, setActiveTab] = useState(
+    page ? tabs.find(t => t.toLowerCase() === page) ?? initialTab ?? 'Profile' : initialTab || 'Profile',
+  )
+
+  const goToTab = (tab: string) => {
+    setActiveTab(tab)
+    setSearchParams({ page: tab.toLowerCase() }, { replace: true })
+  }
   const [profile, setProfile] = useState({ first_name: '', last_name: '', email: '', mobile: '+63 ' })
   const [password, setPassword] = useState({ current: '', new: '', confirm: '' })
   const [business, setBusiness] = useState({ business_name: '', support_email: '', support_phone: '', business_address: '', city: '', province: '', zip_code: '', country: 'Philippines', tin_number: '', vat_percent: '0' })
@@ -37,18 +47,14 @@ export default function AdminSettings({ tab: initialTab }: { tab?: string }) {
       },
     })
     if (error) {
-      showMessage(error.message || 'Failed to send message.', 'error')
+      showMessage(showError(error) || 'Message could not be sent. Try again later.', 'error')
     } else {
-      showMessage('Message sent to developer.', 'success')
+      showMessage('Message sent successfully.', 'success')
       setContactSubject('')
       setContactBody('')
     }
     setSaving(false)
   }
-
-  useEffect(() => {
-    setActiveTab(initialTab || 'Profile')
-  }, [initialTab])
 
   useEffect(() => {
     if (!user) return
@@ -98,7 +104,7 @@ export default function AdminSettings({ tab: initialTab }: { tab?: string }) {
       last_name: profile.last_name,
       mobile: profile.mobile,
     }).eq('id', user.id)
-    if (error) showMessage(friendlyError(error), 'error')
+    if (error) showMessage(showError(error), 'error')
     else showMessage('Profile saved.', 'success')
     setSaving(false)
   }
@@ -107,7 +113,7 @@ export default function AdminSettings({ tab: initialTab }: { tab?: string }) {
     e.preventDefault()
     setSaving(true)
     const { error } = await supabase.auth.updateUser({ password: password.new })
-    if (error) showMessage(friendlyError(error), 'error')
+    if (error) showMessage(showError(error), 'error')
     else { setPassword({ current: '', new: '', confirm: '' }); showMessage('Password updated.', 'success') }
     setSaving(false)
   }
@@ -128,7 +134,7 @@ export default function AdminSettings({ tab: initialTab }: { tab?: string }) {
       tin_number: business.tin_number,
       vat_percent: parseFloat(business.vat_percent) || 0,
     })
-    if (error) showMessage(friendlyError(error), 'error')
+    if (error) showMessage(showError(error), 'error')
     else showMessage('Business settings saved.', 'success')
     setSaving(false)
   }
@@ -153,7 +159,7 @@ export default function AdminSettings({ tab: initialTab }: { tab?: string }) {
             <button
               key={t}
               type="button"
-              onClick={() => setActiveTab(t)}
+              onClick={() => goToTab(t)}
               className={cn(
                 'block w-full rounded-xl px-4 py-2.5 text-left text-sm font-bold transition-colors',
                 activeTab === t

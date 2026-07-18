@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { friendlyError } from '@/lib/errors'
+import { showError } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, CalendarCheck, Eye, EyeOff } from 'lucide-react'
@@ -28,7 +28,7 @@ export default function Register() {
     })
 
     if (error) {
-      setError(friendlyError(error))
+      setError(showError(error))
     } else {
       setError(AUTH_MESSAGES.success.confirmation_link_sent)
     }

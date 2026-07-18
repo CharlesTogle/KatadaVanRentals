@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
-import { friendlyError } from '@/lib/errors'
+import { showError } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Info, ShieldCheck, CreditCard, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -187,7 +187,7 @@ export default function BookingForm() {
       .single()
 
     if (bookingError) {
-      setError(friendlyError(bookingError))
+      setError(showError(bookingError))
       setSubmitting(false)
       return
     }

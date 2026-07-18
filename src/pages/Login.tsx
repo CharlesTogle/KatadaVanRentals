@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { friendlyError } from '@/lib/errors'
+import { showError } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -24,7 +24,7 @@ export default function Login() {
 
     const { error, data } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
-      setError(friendlyError(error))
+      setError(showError(error))
       setLoading(false)
     } else {
       supabase

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
-import { friendlyError } from '@/lib/errors'
+import { showError } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Camera, Phone, Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -104,7 +104,7 @@ export default function Profile() {
       .eq('id', user.id)
 
     if (error) {
-      setMessage(friendlyError(error))
+      setMessage(showError(error))
       setMessageType('error')
     } else {
       setMessage('Profile saved.')
@@ -121,7 +121,7 @@ export default function Profile() {
     const { error } = await supabase.auth.updateUser({ password: password.new })
 
     if (error) {
-      setMessage(friendlyError(error))
+      setMessage(showError(error))
       setMessageType('error')
     } else {
       setPassword({ current: '', new: '', confirm: '' })
