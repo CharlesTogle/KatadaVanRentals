@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { showError } from '@/lib/errors'
+import type { PostgrestError } from '@supabase/supabase-js'
 
 describe('showError', () => {
   it('returns empty string for null', () => {
@@ -7,11 +8,11 @@ describe('showError', () => {
   })
 
   it('maps known postgrest error codes', () => {
-    expect(showError({ code: '23505', message: 'duplicate key', details: '', hint: '' }))
+    expect(showError({ code: '23505', message: 'duplicate key', details: '', hint: '' } as PostgrestError))
       .toContain('already exists')
-    expect(showError({ code: '23502', message: 'not null', details: '', hint: '' }))
+    expect(showError({ code: '23502', message: 'not null', details: '', hint: '' } as PostgrestError))
       .toContain('required field')
-    expect(showError({ code: '23503', message: 'FK', details: '', hint: '' }))
+    expect(showError({ code: '23503', message: 'FK', details: '', hint: '' } as PostgrestError))
       .toContain('Referenced record')
   })
 
