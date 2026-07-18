@@ -24,3 +24,8 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+AGENTS.md
+CLAUDE.md
+*-standards.md
+*audit*.md
