@@ -63,7 +63,11 @@ begin
 end;
 $$;
 
-drop trigger if exists recalculate_booking_prices on public.bookings;
+do $$ begin
+  if exists (select from pg_trigger where tgname = 'recalculate_booking_prices' and tgrelid = 'public.bookings'::regclass) then
+    drop trigger recalculate_booking_prices on public.bookings;
+  end if;
+end $$;
 create trigger recalculate_booking_prices
   before insert on public.bookings
   for each row execute function public.recalculate_booking_prices();
