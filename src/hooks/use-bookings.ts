@@ -16,6 +16,13 @@ export function useAdminBookings(params: { status?: string; search?: string }) {
   })
 }
 
+export function useMyBookings(status?: string) {
+  return useQuery({
+    queryKey: ['customer', 'bookings', status],
+    queryFn: () => bookingService.getMyBookings(status),
+  })
+}
+
 export function useAdminDashboard() {
   return useQuery({
     queryKey: ['admin', 'dashboard'],
@@ -32,6 +39,35 @@ export function useInsertBooking() {
     mutationFn: (data: Parameters<typeof bookingService.getAdminBookings>[0]) => bookingService.getAdminBookings(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'bookings'] })
+    },
+  })
+}
+
+export function useCancelOwnBooking() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => bookingService.cancelOwnBooking(id, reason),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['customer', 'bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['booking', variables.id] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] })
+    },
+  })
+}
+
+export function useUpdateBookingStatus() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: Parameters<typeof bookingService.updateBookingStatus>[1] }) =>
+      bookingService.updateBookingStatus(id, status),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['customer', 'bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['booking', data.id] })
     },
   })
 }

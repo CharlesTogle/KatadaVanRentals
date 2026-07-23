@@ -1,10 +1,12 @@
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
+import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
 import { useBookingStore } from '@/store/booking-store'
 import { useVehicleById } from '@/hooks/use-vehicles'
 import { useProfile } from '@/hooks/use-profile'
 import { supabase } from '@/lib/supabase'
 import { showError } from '@/lib/errors'
+import { useCustomerDocuments } from '@/hooks/use-documents'
+import { hasRequiredSelfDriveDocuments } from '@/lib/booking-utils'
 import { ArrowLeft, Info, ShieldCheck, CreditCard } from 'lucide-react'
 import { BookingSection, MapPinIcon } from '@/components/booking/booking-section'
 import { RentalDetailsFields } from '@/components/booking/rental-details-fields'
@@ -23,6 +25,10 @@ function generateBookingNumber(): string {
   const d = String(now.getDate()).padStart(2, '0')
   const rand = crypto.randomUUID().slice(0, 4).toUpperCase()
   return `CR-${y}${m}${d}-${rand}`
+}
+
+function formatRentalLabel(rentalType: 'self-drive' | 'with-driver') {
+  return rentalType === 'self-drive' ? 'Self Drive' : 'All Out'
 }
 
 export default function BookingForm() {
@@ -49,6 +55,7 @@ export default function BookingForm() {
 
   const vehicleQuery = useVehicleById(vehicleId)
   const profileQuery = useProfile(user?.id)
+  const documentsQuery = useCustomerDocuments(user?.id)
 
   useEffect(() => {
     if (profileQuery.data) {
@@ -78,6 +85,8 @@ export default function BookingForm() {
 
   const vehicle = vehicleQuery.data ?? null
   const loading = vehicleQuery.isLoading || (!!user && profileQuery.isLoading)
+  const selfDriveDocumentsReady = hasRequiredSelfDriveDocuments(documentsQuery.data || [])
+  const selfDriveBlocked = rentalType === 'self-drive' && !selfDriveDocumentsReady
 
   if (!vehicleId || (!loading && !vehicle)) {
     return (
@@ -104,6 +113,10 @@ export default function BookingForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user || !vehicle) return
+    if (selfDriveBlocked) {
+      setError('Self Drive requires your driver\'s license, valid ID, and proof of billing before submission.')
+      return
+    }
     setSubmitting(true)
     setError('')
 
@@ -161,8 +174,41 @@ export default function BookingForm() {
       })
     }
 
+    try {
+      await supabase.functions.invoke('send-email', {
+        body: {
+          to: profileQuery.data?.email || user.email,
+          subject: `Booking received: ${booking.booking_number}`,
+          text: [
+            `Hi ${(profileQuery.data?.first_name || user.user_metadata?.full_name || 'Customer')},`,
+            '',
+            'Your booking has been received and is now under review.',
+            '',
+            `Booking Number: ${booking.booking_number}`,
+            `Vehicle: ${vehicle.name}`,
+            `Rental Type: ${formatRentalLabel(rentalType)}`,
+            `Pickup: ${startDate?.toLocaleString() || 'TBD'}`,
+            `Drop-off: ${endDate?.toLocaleString() || 'TBD'}`,
+            `Duration: ${days || 1} day(s)`,
+            `Pickup Location: ${locations.pickup || 'TBD'}`,
+            `Drop-off Location: ${locations.dropoff || 'TBD'}`,
+            `Destination: ${locations.destination || 'TBD'}`,
+            `Total: PHP ${Number(booking.total_amount || 0).toLocaleString()}`,
+            `Deposit: PHP ${Number(booking.deposit_amount || 0).toLocaleString()}`,
+            `Remaining Balance: PHP ${Number(booking.remaining_amount || 0).toLocaleString()}`,
+            '',
+            'We will contact you once the booking has been reviewed.',
+            '',
+            'Katada Van Rentals',
+          ].join('\n'),
+        },
+      })
+    } catch {
+      // ponytail: booking success matters more than mail delivery here
+    }
+
     useBookingStore.getState().reset()
-    navigate('/dashboard?tab=my-bookings')
+    navigate('/bookings')
   }
 
   return (
@@ -198,6 +244,12 @@ export default function BookingForm() {
                   <PaymentFields />
                 </BookingSection>
               )}
+              {selfDriveBlocked && (
+                <div className="rounded-2xl border border-[#e92935]/20 bg-[#e92935]/8 px-4 py-3 text-sm font-semibold text-[#87131c]">
+                  Self Drive is locked until your driver's license, valid ID, and proof of billing are uploaded.
+                  <Link to="/documents" className="ml-1 font-bold underline">Upload documents</Link>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#071f52]">Additional Notes (optional)</label>
                 <textarea value={notes} onChange={(e) => useBookingStore.getState().setNotes(e.target.value)} rows={3}
@@ -212,6 +264,7 @@ export default function BookingForm() {
                 basePricePerDay={vehicle!.base_price_per_day}
                 driverRatePerDay={vehicle!.driver_rate_per_day}
                 submitting={submitting}
+                disabled={selfDriveBlocked || documentsQuery.isLoading}
               />
             </div>
           </div>

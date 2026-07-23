@@ -1,18 +1,25 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
 import { Button } from '@/components/ui/button'
+import { useMyBookings } from '@/hooks/use-bookings'
+import { STATUS_COLORS } from '@/config/constants'
+import { cn } from '@/lib/utils'
+import { formatBookingStatus } from '@/lib/booking-utils'
 import { Plus, CalendarDays, CheckCircle2, Clock, XCircle } from 'lucide-react'
 
 export default function CustomerDashboard() {
   const { user } = useAuth()
   const name = user?.user_metadata?.full_name?.split(' ')[0] || user?.email || 'there'
+  const { data: bookings = [] } = useMyBookings()
 
   const kpis = [
-    { label: 'Active Rentals', value: '0', icon: Clock, color: 'text-[#e92935]' },
-    { label: 'Confirmed', value: '0', icon: CheckCircle2, color: 'text-[#16a34a]' },
-    { label: 'Pending Review', value: '0', icon: CalendarDays, color: 'text-[#ffd923]' },
-    { label: 'Canceled', value: '0', icon: XCircle, color: 'text-[#071f52]/38' },
+    { label: 'Active Rentals', value: bookings.filter((booking: any) => booking.status === 'on_trip').length, icon: Clock, color: 'text-[#e92935]' },
+    { label: 'Confirmed', value: bookings.filter((booking: any) => booking.status === 'confirmed').length, icon: CheckCircle2, color: 'text-[#16a34a]' },
+    { label: 'Pending Review', value: bookings.filter((booking: any) => booking.status === 'for_review').length, icon: CalendarDays, color: 'text-[#ffd923]' },
+    { label: 'Canceled', value: bookings.filter((booking: any) => booking.status === 'canceled').length, icon: XCircle, color: 'text-[#071f52]/38' },
   ]
+
+  const recentBookings = bookings.slice(0, 3)
 
   return (
     <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8">
@@ -47,12 +54,33 @@ export default function CustomerDashboard() {
 
       <div className="mt-8">
         <h2 className="text-lg font-black tracking-[-0.02em] text-[#071f52]">Recent Bookings</h2>
-        <div className="mt-3 rounded-2xl border border-[#071f52]/10 bg-white p-8 text-center shadow-[0_8px_24px_rgba(7,31,82,0.06)]">
+        <div className="mt-3 rounded-2xl border border-[#071f52]/10 bg-white p-8 shadow-[0_8px_24px_rgba(7,31,82,0.06)]">
+          {!recentBookings.length ? (
+            <>
           <CalendarDays size={36} className="mx-auto text-[#071f52]/20" />
           <p className="mt-3 text-sm font-medium text-[#071f52]/48">No bookings yet. Ready to hit the road?</p>
           <Button asChild size="lg" className="mt-5 gap-2 bg-[#071f52] text-white hover:bg-[#112458]">
             <Link to="/our-fleet">Browse Fleet</Link>
           </Button>
+            </>
+          ) : (
+            <div className="space-y-3">
+              {recentBookings.map((booking: any) => (
+                <Link key={booking.id} to={`/dashboard/bookings/${booking.id}`} className="flex items-center justify-between rounded-2xl border border-[#071f52]/8 px-4 py-3 transition-colors hover:bg-[#f7f9ff]">
+                  <div>
+                    <p className="text-sm font-bold text-[#071f52]">{booking.booking_number}</p>
+                    <p className="text-xs text-[#071f52]/58">{booking.vehicles?.name || 'Vehicle pending'} · ₱{Number(booking.total_amount || 0).toLocaleString()}.00</p>
+                  </div>
+                  <span className={cn('rounded-full px-3 py-1 text-[11px] font-bold', STATUS_COLORS[booking.status])}>
+                    {formatBookingStatus(booking.status)}
+                  </span>
+                </Link>
+              ))}
+              <Button asChild variant="outline" className="mt-2 w-full">
+                <Link to="/bookings">View all bookings</Link>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

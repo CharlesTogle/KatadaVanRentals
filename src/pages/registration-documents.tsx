@@ -2,6 +2,9 @@ import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
+import { useCustomerDocuments, useSaveCustomerDocument } from '@/hooks/use-documents'
+import { showError } from '@/lib/errors'
+import { toast } from '@/lib/toast'
 import { Button } from '@/components/ui/button'
 import { Upload, FileText, ShieldCheck, CheckCircle2, ArrowLeft } from 'lucide-react'
 
@@ -12,12 +15,17 @@ const requiredDocs = [
 ]
 
 export default function RegistrationDocuments() {
-  const [uploads, setUploads] = useState<Record<string, string>>({})
   const [uploading, setUploading] = useState<Record<string, boolean>>({})
   const [activeKey, setActiveKey] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { data: documents = [] } = useCustomerDocuments(user?.id)
+  const saveDocument = useSaveCustomerDocument(user?.id)
+
+  const uploads = Object.fromEntries(
+    documents.map((document) => [document.document_type, document.original_filename || 'Uploaded document']),
+  )
 
   const handleUploadClick = (key: string) => {
     setActiveKey(key)
@@ -35,8 +43,21 @@ export default function RegistrationDocuments() {
       .from('customer-documents')
       .upload(path, file, { upsert: true })
 
-    if (!uploadError) {
-      setUploads((prev) => ({ ...prev, [activeKey]: file.name }))
+    if (uploadError) {
+      toast.error(showError(uploadError))
+    } else {
+      try {
+        await saveDocument.mutateAsync({
+          customer_id: user.id,
+          document_type: activeKey as 'driver_license' | 'valid_id' | 'proof_of_billing',
+          file_path: path,
+          original_filename: file.name,
+          mime_type: file.type || 'application/octet-stream',
+          size_bytes: file.size,
+        })
+      } catch (error) {
+        toast.error(showError(error as Error))
+      }
     }
 
     setUploading((prev) => ({ ...prev, [activeKey]: false }))

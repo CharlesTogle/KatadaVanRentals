@@ -1,6 +1,10 @@
 import { useState, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
+import { useCustomerDocuments, useSaveCustomerDocument } from '@/hooks/use-documents'
+import { showError } from '@/lib/errors'
+import { toast } from '@/lib/toast'
 import { Upload, CheckCircle2 } from 'lucide-react'
 
 const requiredDocs = [
@@ -10,11 +14,16 @@ const requiredDocs = [
 ]
 
 export default function Documents() {
-  const [uploads, setUploads] = useState<Record<string, string>>({})
   const [uploading, setUploading] = useState<Record<string, boolean>>({})
   const [activeKey, setActiveKey] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { user } = useAuth()
+  const { data: documents = [], isLoading } = useCustomerDocuments(user?.id)
+  const saveDocument = useSaveCustomerDocument(user?.id)
+
+  const uploads = Object.fromEntries(
+    documents.map((document) => [document.document_type, document.original_filename || 'Uploaded document']),
+  )
 
   const handleUploadClick = (key: string) => {
     setActiveKey(key)
@@ -32,8 +41,21 @@ export default function Documents() {
       .from('customer-documents')
       .upload(path, file, { upsert: true })
 
-    if (!uploadError) {
-      setUploads((prev) => ({ ...prev, [activeKey]: file.name }))
+    if (uploadError) {
+      toast.error(showError(uploadError))
+    } else {
+      try {
+        await saveDocument.mutateAsync({
+          customer_id: user.id,
+          document_type: activeKey as 'driver_license' | 'valid_id' | 'proof_of_billing',
+          file_path: path,
+          original_filename: file.name,
+          mime_type: file.type || 'application/octet-stream',
+          size_bytes: file.size,
+        })
+      } catch (error) {
+        toast.error(showError(error as Error))
+      }
     }
 
     setUploading((prev) => ({ ...prev, [activeKey]: false }))
@@ -56,6 +78,11 @@ export default function Documents() {
       />
 
       <div className="mt-6 space-y-3">
+        {isLoading && (
+          <div className="rounded-2xl border border-[#071f52]/10 bg-white p-4 text-sm font-semibold text-[#071f52]/48">
+            Loading your uploaded documents...
+          </div>
+        )}
         {requiredDocs.map((doc) => (
           <div
             key={doc.key}
@@ -68,9 +95,9 @@ export default function Documents() {
                   {uploads[doc.key] ? `Uploaded: ${uploads[doc.key]}` : 'Not uploaded'}
                 </p>
               </div>
-              {uploads[doc.key] ? (
-                <CheckCircle2 size={20} className="shrink-0 text-[#16a34a]" />
-              ) : (
+               {uploads[doc.key] ? (
+                 <CheckCircle2 size={20} className="shrink-0 text-[#16a34a]" />
+               ) : (
                 <button
                   type="button"
                   onClick={() => handleUploadClick(doc.key)}
@@ -92,6 +119,9 @@ export default function Documents() {
 
       <p className="mt-4 text-xs font-medium leading-5 text-[#071f52]/48">
         Each document is saved automatically as soon as you add it. You can upload them one at a time.
+      </p>
+      <p className="mt-2 text-xs font-medium leading-5 text-[#071f52]/48">
+        Ready for Self Drive? Go back to <Link to="/our-fleet" className="font-bold text-[#071f52] underline">the fleet</Link> after all three show as uploaded.
       </p>
     </div>
   )

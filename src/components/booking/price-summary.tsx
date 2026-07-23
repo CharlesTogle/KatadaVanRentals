@@ -6,9 +6,10 @@ interface PriceSummaryProps {
   basePricePerDay: number
   driverRatePerDay: number
   submitting: boolean
+  disabled?: boolean
 }
 
-export function PriceSummary({ vehicleName, basePricePerDay, driverRatePerDay, submitting }: PriceSummaryProps) {
+export function PriceSummary({ vehicleName, basePricePerDay, driverRatePerDay, submitting, disabled = false }: PriceSummaryProps) {
   const [searchParams] = useSearchParams()
   const rentalType = (searchParams.get('type') || 'self-drive') as 'self-drive' | 'with-driver'
   const startParam = searchParams.get('start') || ''
@@ -61,7 +62,7 @@ export function PriceSummary({ vehicleName, basePricePerDay, driverRatePerDay, s
         )}
       </div>
 
-      <Button type="submit" disabled={submitting}
+      <Button type="submit" disabled={submitting || disabled}
         className="mt-5 w-full bg-[#e92935] text-white shadow-[0_8px_20px_rgba(233,41,53,0.2)] hover:bg-[#c91f2a]"
         size="lg"
       >

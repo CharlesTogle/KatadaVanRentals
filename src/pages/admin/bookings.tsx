@@ -1,6 +1,9 @@
 import { useState } from 'react'
-import { useAdminBookings } from '@/hooks/use-bookings'
+import { useAdminBookings, useUpdateBookingStatus } from '@/hooks/use-bookings'
 import { cn } from '@/lib/utils'
+import { toast } from '@/lib/toast'
+import { showError } from '@/lib/errors'
+import { formatBookingStatus, getAdminBookingActions } from '@/lib/booking-utils'
 import { Search } from 'lucide-react'
 import { STATUS_COLORS } from '@/config/constants'
 
@@ -21,6 +24,16 @@ export default function AdminBookings() {
   const [search, setSearch] = useState('')
 
   const { data: bookings = [], isLoading } = useAdminBookings({ status: status || undefined, search: search || undefined })
+  const updateStatus = useUpdateBookingStatus()
+
+  const handleStatusAction = async (bookingId: string, nextStatus: 'confirmed' | 'rejected' | 'canceled' | 'on_trip' | 'completed') => {
+    try {
+      await updateStatus.mutateAsync({ id: bookingId, status: nextStatus })
+      toast.success(`Booking moved to ${formatBookingStatus(nextStatus)}.`)
+    } catch (error) {
+      toast.error(showError(error as Error))
+    }
+  }
 
   return (
     <div className="px-6 py-8" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
@@ -74,6 +87,7 @@ export default function AdminBookings() {
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">VEHICLE</th>
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">TOTAL</th>
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">STATUS</th>
+                <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#071f52]/6">
@@ -99,8 +113,23 @@ export default function AdminBookings() {
                   </td>
                   <td className="px-5 py-3">
                     <span className={cn('rounded-full px-3 py-1 text-[11px] font-bold', STATUS_COLORS[b.status])}>
-                      {b.status.replace(/_/g, ' ')}
+                      {formatBookingStatus(b.status)}
                     </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      {getAdminBookingActions(b.status).length ? getAdminBookingActions(b.status).map((action) => (
+                        <button
+                          key={action.nextStatus}
+                          type="button"
+                          onClick={() => handleStatusAction(b.id, action.nextStatus)}
+                          disabled={updateStatus.isPending}
+                          className="rounded-full border border-[#071f52]/12 bg-white px-3 py-1 text-[11px] font-bold text-[#071f52] transition-colors hover:bg-[#071f52] hover:text-white disabled:opacity-50"
+                        >
+                          {action.label}
+                        </button>
+                      )) : <span className="text-xs font-semibold text-[#071f52]/38">No actions</span>}
+                    </div>
                   </td>
                 </tr>
               ))}

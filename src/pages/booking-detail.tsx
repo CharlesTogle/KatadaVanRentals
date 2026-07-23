@@ -1,8 +1,9 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
-import { useBooking } from '@/hooks/use-bookings'
+import { useBooking, useCancelOwnBooking } from '@/hooks/use-bookings'
 import { useVehicleById } from '@/hooks/use-vehicles'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +14,9 @@ import {
 import { BOOKING_MESSAGES } from '@/constants/booking'
 import { STATUS_COLORS } from '@/config/constants'
 import { BookingSection } from '@/components/booking/booking-section'
+import { canCustomerCancelBooking } from '@/lib/booking-utils'
+import { toast } from '@/lib/toast'
+import { showError } from '@/lib/errors'
 
 const timeline = ['for_review', 'confirmed', 'on_trip', 'completed']
 
@@ -23,10 +27,24 @@ export default function BookingDetail() {
 
   const { data: booking, isLoading: loading } = useBooking(id)
   const { data: vehicle } = useVehicleById(booking?.vehicle_id)
+  const cancelBooking = useCancelOwnBooking()
 
   const [rating, setRating] = useState(0)
   const [feedback, setFeedback] = useState('')
   const [submitted, setSubmitted] = useState(false)
+
+  const handleCancelBooking = async () => {
+    if (!booking) return
+    const reason = window.prompt('Why are you canceling this booking?', 'Customer requested cancellation')
+    if (reason === null) return
+
+    try {
+      await cancelBooking.mutateAsync({ id: booking.id, reason: reason.trim() || 'Customer requested cancellation' })
+      toast.success('Booking canceled.')
+    } catch (error) {
+      toast.error(showError(error as Error))
+    }
+  }
 
   const handleSubmitFeedback = async () => {
     if (!booking || !user) return
@@ -72,7 +90,7 @@ export default function BookingDetail() {
   return (
     <div className="min-h-[100dvh] bg-[#f7f9ff]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <div className="mx-auto max-w-[900px] px-4 py-6 sm:px-6 sm:py-8">
-        <button onClick={() => navigate('/dashboard?tab=my-bookings')} className="mb-4 flex items-center gap-2 text-sm font-bold text-[#071f52]/60 transition-colors hover:text-[#e92935]">
+        <button onClick={() => navigate('/bookings')} className="mb-4 flex items-center gap-2 text-sm font-bold text-[#071f52]/60 transition-colors hover:text-[#e92935]">
           <ArrowLeft size={16} /> Back to bookings
         </button>
 
@@ -185,10 +203,15 @@ export default function BookingDetail() {
 
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1 gap-2 text-sm" asChild>
-                <a href="#"><FileText size={14} /> Invoice</a>
+                <Link to="/bookings"><FileText size={14} /> Invoice</Link>
               </Button>
-              {(booking.status === 'confirmed' || booking.status === 'for_review') ? (
-                <Button variant="outline" className="flex-1 gap-2 text-sm text-[#e92935] border-[#e92935]/30 hover:bg-[#e92935]/8">
+              {canCustomerCancelBooking(booking.status) ? (
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-2 text-sm text-[#e92935] border-[#e92935]/30 hover:bg-[#e92935]/8"
+                  onClick={handleCancelBooking}
+                  disabled={cancelBooking.isPending}
+                >
                   Cancel Booking
                 </Button>
               ) : null}

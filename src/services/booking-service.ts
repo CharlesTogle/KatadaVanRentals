@@ -1,10 +1,24 @@
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/types/booking'
+import type { BookingStatus } from '@/types/booking'
 
 export async function getBookingById(id: string): Promise<Booking> {
   const { data, error } = await supabase.from('bookings').select('*').eq('id', id).single()
   if (error) throw error
   return data as Booking
+}
+
+export async function getMyBookings(status?: string) {
+  let query = supabase
+    .from('bookings')
+    .select('id, booking_number, vehicle_id, start_at, end_at, duration_days, total_amount, paid_amount, remaining_amount, status, created_at, rental_model, vehicles!vehicle_id(name,slug,image_paths)')
+    .order('created_at', { ascending: false })
+
+  if (status) query = query.eq('status', status)
+
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
 }
 
 export async function getAdminBookings(params: { status?: string; search?: string }) {
@@ -28,4 +42,31 @@ export async function getAdminDashboardData() {
     supabase.from('vehicles').select('id,name,slug').eq('is_available', true),
   ])
   return { bRes, pRes, rbRes, vRes }
+}
+
+export async function cancelOwnBooking(id: string, reason: string) {
+  const { error } = await supabase.rpc('cancel_own_booking', {
+    target_booking_id: id,
+    cancellation_type: 'customer_request',
+    cancellation_reason: reason,
+  })
+
+  if (error) throw error
+}
+
+export async function updateBookingStatus(id: string, status: BookingStatus) {
+  const changes: Partial<Booking> & { updated_at?: string } = { status }
+
+  if (status === 'canceled') changes.canceled_at = new Date().toISOString()
+  if (status === 'completed') changes.completed_at = new Date().toISOString()
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .update(changes)
+    .eq('id', id)
+    .select('*')
+    .single()
+
+  if (error) throw error
+  return data as Booking
 }
