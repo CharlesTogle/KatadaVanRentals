@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as vehicleService from '@/services/vehicle-service'
+import type { CreateVehicleInput, UpdateVehicleInput } from '@/types/vehicle'
 
 export function useVehicles() {
   return useQuery({
@@ -28,5 +29,52 @@ export function useAdminVehicles() {
   return useQuery({
     queryKey: ['admin', 'fleet'],
     queryFn: vehicleService.getAdminVehicles,
+  })
+}
+
+export function useBrands() {
+  return useQuery({
+    queryKey: ['brands'],
+    queryFn: vehicleService.getBrands,
+    staleTime: Infinity,
+  })
+}
+
+export function useVehicleTypes() {
+  return useQuery({
+    queryKey: ['vehicleTypes'],
+    queryFn: vehicleService.getVehicleTypes,
+    staleTime: Infinity,
+  })
+}
+
+export function useCreateVehicle() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateVehicleInput) => vehicleService.createVehicle(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'fleet'] })
+    },
+  })
+}
+
+export function useUpdateVehicle() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateVehicleInput }) =>
+      vehicleService.updateVehicle(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'fleet'] })
+    },
+  })
+}
+
+export function useDeleteVehicle() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => vehicleService.deleteVehicle(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'fleet'] })
+    },
   })
 }
