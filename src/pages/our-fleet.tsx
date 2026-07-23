@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '@/contexts/useAuth'
 import { useVehicles } from '@/hooks/use-vehicles'
 import { CustomerHeader } from '@/components/customer-header'
 import { Button } from '@/components/ui/button'
@@ -8,7 +7,6 @@ import { Badge } from '@/components/ui/badge'
 import { Search, MapPin, Calendar, ArrowRight } from 'lucide-react'
 
 export default function OurFleet() {
-  const { user } = useAuth()
   const [pickup, setPickup] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -17,8 +15,8 @@ export default function OurFleet() {
 
   return (
     <div className="min-h-[100dvh] bg-[#f7f9ff]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      {user && <CustomerHeader />}
-      <div className={`mx-auto max-w-[1180px] px-4 sm:px-6 ${user ? 'py-6 sm:py-8' : 'py-10 sm:py-14'}`}>
+      <CustomerHeader />
+      <div className="mx-auto max-w-[1180px] px-4 sm:px-6 py-6 sm:py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-black tracking-[-0.04em] text-[#071f52] sm:text-5xl">Browse Vehicles</h1>
           <p className="mt-3 text-base font-medium leading-7 text-[#071f52]/68">Find the perfect vehicle for your trip</p>

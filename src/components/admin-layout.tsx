@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
-import { ChevronDown, LogOut, LayoutDashboard, CalendarCheck, Users, Truck, BarChart3, Settings, Menu, X } from 'lucide-react'
+import { ChevronDown, LogOut, LayoutDashboard, CalendarCheck, Users, Truck, BarChart3, Settings, Menu, X, Home } from 'lucide-react'
 
 const navGroups = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -17,18 +17,18 @@ const navGroups = [
   {
     label: 'Settings', icon: Settings, children: [
       { to: '/admin/settings', label: 'Profile' },
-      { to: '/admin/settings/password', label: 'Password' },
-      { to: '/admin/settings/business', label: 'Business' },
-      { to: '/admin/settings/team', label: 'Team' },
-      { to: '/admin/settings/payments', label: 'Payments' },
-      { to: '/admin/settings/documents', label: 'Customer Documents' },
-      { to: '/admin/settings/integrations', label: 'Integrations' },
-      { to: '/admin/settings/pickup', label: 'Pickup & Drop-off' },
-      { to: '/admin/settings/email-log', label: 'Email Log' },
-      { to: '/admin/settings/content', label: 'Content' },
-      { to: '/admin/settings/domain', label: 'Domain' },
-      { to: '/admin/settings/email', label: 'Email' },
-      { to: '/admin/settings/help', label: 'Help & Guides' },
+      { to: '/admin/settings?page=password', label: 'Password' },
+      { to: '/admin/settings?page=business', label: 'Business' },
+      { to: '/admin/settings?page=team', label: 'Team' },
+      { to: '/admin/settings?page=payments', label: 'Payments' },
+      { to: '/admin/settings?page=documents', label: 'Customer Documents' },
+      { to: '/admin/settings?page=integrations', label: 'Integrations' },
+      { to: '/admin/settings?page=pickup', label: 'Pickup & Drop-off' },
+      { to: '/admin/settings?page=email-log', label: 'Email Log' },
+      { to: '/admin/settings?page=content', label: 'Content' },
+      { to: '/admin/settings?page=domain', label: 'Domain' },
+      { to: '/admin/settings?page=email', label: 'Email' },
+      { to: '/admin/settings?page=help', label: 'Help & Guides' },
     ],
   },
 ]
@@ -73,7 +73,7 @@ export default function AdminLayout() {
         />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-40 w-64 shrink-0 border-r border-[#071f52]/10 bg-white flex flex-col transition-transform duration-300 md:static md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-40 h-screen w-64 shrink-0 border-r border-[#071f52]/10 bg-white flex flex-col transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <div className="px-5 pt-6 pb-4 md:block hidden">
           <a href="/" className="flex items-center gap-3">
             <img src="/logo.jpg" alt="Katada" className="h-9 w-9 rounded-xl object-cover ring-1 ring-[#071f52]/10" />
@@ -145,6 +145,15 @@ export default function AdminLayout() {
             <p className="text-xs font-bold text-[#071f52]">Admin Panel</p>
           </div>
 
+          <NavLink
+            to="/"
+            onClick={() => setSidebarOpen(false)}
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-[#071f52]/64 transition-colors hover:bg-[#071f52]/8 hover:text-[#071f52]"
+          >
+            <Home size={18} />
+            Home
+          </NavLink>
+
           <div className="flex items-center gap-3 rounded-xl px-3 py-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#071f52] text-xs font-black text-white">
               {name.charAt(0).toUpperCase()}
@@ -160,7 +169,7 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto pt-16 md:pt-0">
+      <main className="flex-1 overflow-auto pt-16 md:pt-0 md:pl-64">
         <Outlet />
       </main>
     </div>

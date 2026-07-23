@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useAuth } from '@/contexts/useAuth'
 import { useVehicleBySlug } from '@/hooks/use-vehicles'
 import { CustomerHeader } from '@/components/customer-header'
 import { Button } from '@/components/ui/button'
@@ -17,7 +16,6 @@ const specIconMap: Record<string, React.ElementType> = {
 
 export default function VehicleDetail() {
   const { slug } = useParams<{ slug: string }>()
-  const { user } = useAuth()
   const [rentalType, setRentalType] = useState<'self-drive' | 'with-driver'>('self-drive')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -28,7 +26,7 @@ export default function VehicleDetail() {
   if (isLoading) {
     return (
       <div className="min-h-[100dvh] bg-[#f7f9ff]">
-        {user && <CustomerHeader />}
+        <CustomerHeader />
         <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8 animate-pulse">
           <div className="mb-6 h-4 w-24 rounded-lg bg-[#071f52]/10" />
           <div className="grid gap-8 lg:grid-cols-[1fr_0.45fr]">
@@ -78,7 +76,7 @@ export default function VehicleDetail() {
 
   return (
     <div className="min-h-[100dvh] bg-[#f7f9ff]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      {user && <CustomerHeader />}
+      <CustomerHeader />
       <div className="mx-auto max-w-[1180px] px-4 sm:px-6 py-6 sm:py-8">
         <Link to="/our-fleet" className="mb-6 flex w-fit items-center gap-2 text-sm font-bold text-[#071f52]/60 transition-colors hover:text-[#e92935]">
           <ArrowLeft size={16} />

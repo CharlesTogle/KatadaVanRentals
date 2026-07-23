@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
 import { CustomerHeader } from '@/components/customer-header'
 import { Button } from '@/components/ui/button'
@@ -14,7 +13,6 @@ const sources = [
 ]
 
 export default function Contact() {
-  const { user } = useAuth()
   const business = useBusinessInfo()
   const [form, setForm] = useState({ name: '', phone: '', email: '', message: '', source: '' })
   const [submitted, setSubmitted] = useState(false)
@@ -34,8 +32,8 @@ export default function Contact() {
 
   return (
     <div className="min-h-[100dvh] bg-[#f7f9ff]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      {user && <CustomerHeader />}
-      <div className={`mx-auto max-w-[1180px] px-4 sm:px-6 ${user ? 'py-6 sm:py-8' : 'py-10 sm:py-14'}`}>
+      <CustomerHeader />
+      <div className="mx-auto max-w-[1180px] px-4 sm:px-6 py-6 sm:py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-black tracking-[-0.04em] text-[#071f52] sm:text-5xl">Contact Us</h1>
           <p className="mt-3 text-base font-medium leading-7 text-[#071f52]/68">

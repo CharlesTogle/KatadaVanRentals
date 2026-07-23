@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
-import { Bell, LogOut, Menu, X } from 'lucide-react'
+import { useProfile } from '@/hooks/use-profile'
+import { Bell, LogIn, LogOut, Menu, X } from 'lucide-react'
 
 const links = [
   { to: '/dashboard', label: 'Dashboard', end: true },
@@ -9,12 +10,20 @@ const links = [
   { to: '/profile', label: 'Profile' },
 ]
 
+const adminLinks = [
+  { to: '/dashboard', label: 'Dashboard', end: true },
+]
+
 export function CustomerHeader() {
   const { user, signOut } = useAuth()
+  const { data: profile } = useProfile(user?.id)
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
   const name = user?.user_metadata?.full_name || user?.email || 'Customer'
+  const role = profile?.role
+  const isAdmin = role === 'admin' || role === 'manager' || role === 'staff'
+  const navLinks = isAdmin ? adminLinks : links
 
   const handleSignOut = async () => {
     await signOut()
@@ -30,16 +39,18 @@ export function CustomerHeader() {
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex">
-          <Link to="/our-fleet" className="text-sm font-bold text-[#071f52]/70 transition-colors hover:text-[#e92935]">
-            Our Fleet
-          </Link>
+          {!isAdmin && (
+            <Link to="/our-fleet" className="text-sm font-bold text-[#071f52]/70 transition-colors hover:text-[#e92935]">
+              Our Fleet
+            </Link>
+          )}
           <Link to="/contact" className="text-sm font-bold text-[#071f52]/70 transition-colors hover:text-[#e92935]">
             Contact
           </Link>
           <Link to="/#faq" className="text-sm font-bold text-[#071f52]/70 transition-colors hover:text-[#e92935]">
             FAQ
           </Link>
-          {links.map(({ to, label, end }) => (
+          {user && navLinks.map(({ to, label, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -56,55 +67,63 @@ export function CustomerHeader() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link to="/dashboard/notifications" className="relative rounded-full p-2 text-[#071f52]/58 transition-colors hover:bg-[#071f52]/8 hover:text-[#071f52]">
-            <Bell size={20} />
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#e92935] text-[9px] font-black text-white">0</span>
-          </Link>
+          {user ? (
+            <>
+              <Link to="/dashboard/notifications" className="relative rounded-full p-2 text-[#071f52]/58 transition-colors hover:bg-[#071f52]/8 hover:text-[#071f52]">
+                <Bell size={20} />
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#e92935] text-[9px] font-black text-white">0</span>
+              </Link>
 
-          <div className="relative">
-            <button
-              onClick={() => setAvatarOpen(!avatarOpen)}
-              className="flex items-center gap-2 rounded-full border border-[#071f52]/10 bg-[#f7f9ff] px-3 py-1.5 text-sm font-bold text-[#071f52] transition-colors hover:bg-[#071f52]/8"
-            >
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#071f52] text-xs font-black text-white">
-                {name.charAt(0).toUpperCase()}
+              <div className="relative">
+                <button
+                  onClick={() => setAvatarOpen(!avatarOpen)}
+                  className="flex items-center gap-2 rounded-full border border-[#071f52]/10 bg-[#f7f9ff] px-3 py-1.5 text-sm font-bold text-[#071f52] transition-colors hover:bg-[#071f52]/8"
+                >
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#071f52] text-xs font-black text-white">
+                    {name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="hidden sm:inline">{name}</span>
+                </button>
+
+                {avatarOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setAvatarOpen(false)} />
+                    <div className="absolute right-0 top-full z-20 mt-2 w-[240px] overflow-hidden rounded-2xl border border-[#071f52]/10 bg-white shadow-[0_16px_48px_rgba(7,31,82,0.18)]">
+                      <div className="border-b border-[#071f52]/10 px-4 py-3">
+                        <p className="text-sm font-bold text-[#071f52]">{name}</p>
+                        <p className="text-xs font-medium text-[#071f52]/48">{user?.email}</p>
+                      </div>
+                      <div className="p-2">
+                        {navLinks.map(({ to, label, end }) => (
+                          <NavLink
+                            key={to} to={to} end={end}
+                            onClick={() => setAvatarOpen(false)}
+                            className={({ isActive }) =>
+                              `block rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
+                                isActive ? 'bg-[#f7f9ff] text-[#071f52]' : 'text-[#071f52]/70 hover:bg-[#f7f9ff] hover:text-[#071f52]'
+                              }`
+                            }
+                          >
+                            {label}
+                          </NavLink>
+                        ))}
+                        <hr className="my-1 border-[#071f52]/10" />
+                        <button onClick={handleSignOut}
+                          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-[#e92935] transition-colors hover:bg-[#e92935]/8"
+                        >
+                          <LogOut size={16} /> Logout
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-              <span className="hidden sm:inline">{name}</span>
-            </button>
-
-            {avatarOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setAvatarOpen(false)} />
-                <div className="absolute right-0 top-full z-20 mt-2 w-[240px] overflow-hidden rounded-2xl border border-[#071f52]/10 bg-white shadow-[0_16px_48px_rgba(7,31,82,0.18)]">
-                  <div className="border-b border-[#071f52]/10 px-4 py-3">
-                    <p className="text-sm font-bold text-[#071f52]">{name}</p>
-                    <p className="text-xs font-medium text-[#071f52]/48">{user?.email}</p>
-                  </div>
-                  <div className="p-2">
-                    {links.map(({ to, label, end }) => (
-                      <NavLink
-                        key={to} to={to} end={end}
-                        onClick={() => setAvatarOpen(false)}
-                        className={({ isActive }) =>
-                          `block rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
-                            isActive ? 'bg-[#f7f9ff] text-[#071f52]' : 'text-[#071f52]/70 hover:bg-[#f7f9ff] hover:text-[#071f52]'
-                          }`
-                        }
-                      >
-                        {label}
-                      </NavLink>
-                    ))}
-                    <hr className="my-1 border-[#071f52]/10" />
-                    <button onClick={handleSignOut}
-                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-[#e92935] transition-colors hover:bg-[#e92935]/8"
-                    >
-                      <LogOut size={16} /> Logout
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+            </>
+          ) : (
+            <Link to="/login" className="inline-flex items-center gap-1.5 rounded-full bg-[#071f52] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#112458]">
+              <LogIn size={16} /> Sign In
+            </Link>
+          )}
 
           <button
             type="button"
@@ -120,10 +139,10 @@ export function CustomerHeader() {
       {menuOpen && (
         <nav className="border-t border-[#071f52]/10 bg-white px-4 pb-4 pt-2 md:hidden">
           {[
-            { to: '/our-fleet', label: 'Our Fleet' },
+            ...(!isAdmin ? [{ to: '/our-fleet', label: 'Our Fleet' }] : []),
             { to: '/contact', label: 'Contact' },
             { to: '/#faq', label: 'FAQ' },
-            ...links,
+            ...(user ? navLinks : []),
           ].map(({ to, label }) => (
             <Link key={to} to={to} onClick={() => setMenuOpen(false)}
               className="block border-b border-[#071f52]/10 py-3 text-sm font-bold text-[#071f52]/70 last:border-0"
@@ -131,11 +150,19 @@ export function CustomerHeader() {
               {label}
             </Link>
           ))}
-          <button onClick={handleSignOut}
-            className="mt-2 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-[#e92935]"
-          >
-            <LogOut size={16} /> Logout
-          </button>
+          {user ? (
+            <button onClick={handleSignOut}
+              className="mt-2 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-[#e92935]"
+            >
+              <LogOut size={16} /> Logout
+            </button>
+          ) : (
+            <Link to="/login" onClick={() => setMenuOpen(false)}
+              className="mt-2 flex w-full items-center gap-2 rounded-xl bg-[#071f52] px-3 py-2 text-sm font-bold text-white"
+            >
+              <LogIn size={16} /> Sign In
+            </Link>
+          )}
         </nav>
       )}
     </header>

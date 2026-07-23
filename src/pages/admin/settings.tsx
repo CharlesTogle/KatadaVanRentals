@@ -57,7 +57,7 @@ export default function AdminSettings({ tab: initialTab }: { tab?: string }) {
       )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[220px_1fr]">
-        <div className="space-y-0.5">
+        <div className="hidden lg:block space-y-0.5">
           {tabs.map((t) => (
             <button
               key={t}
