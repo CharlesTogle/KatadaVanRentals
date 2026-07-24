@@ -94,6 +94,9 @@ test.describe('Booking flows', () => {
           name: 'Toyota Commuter',
           base_price_per_day: 4500,
           driver_rate_per_day: 800,
+          transmission: 'Manual',
+          passenger_count: 10,
+          image_paths: [],
         }),
       })
     })
@@ -112,7 +115,7 @@ test.describe('Booking flows', () => {
 
     await mockLogin(page, customerSession, 'customer', '/dashboard/book/vehicle-1?type=self-drive&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
 
-    await expect(page.getByText(/Self Drive is locked until/i)).toBeVisible()
+    await expect(page.getByText(/Profile documents required for Self-Drive/i)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Submit Booking' })).toBeDisabled()
   })
 
