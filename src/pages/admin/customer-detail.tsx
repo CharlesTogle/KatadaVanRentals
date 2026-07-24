@@ -1,19 +1,17 @@
+import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { getProfile } from '@/services/profile-service'
-import { getCustomerDocuments } from '@/services/document-service'
-import { supabase } from '@/lib/supabase'
+import { getCustomerDocuments, getCustomerDocumentSignedUrl } from '@/services/document-service'
+import { showError } from '@/lib/errors'
+import { toast } from '@/lib/toast'
+import { ImageViewer } from '@/components/ui/image-viewer'
 import { ArrowLeft, FileText } from 'lucide-react'
 import type { CustomerDocument } from '@/types/document'
 
 function formatDate(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString()
-}
-
-function documentUrl(doc: CustomerDocument) {
-  const { data } = supabase.storage.from('customer-documents').getPublicUrl(doc.file_path)
-  return data.publicUrl
 }
 
 const DOC_LABELS: Record<string, string> = {
@@ -32,6 +30,8 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function CustomerDetail() {
   const { customerId } = useParams<{ customerId: string }>()
+  const [viewing, setViewing] = useState<{ src: string; alt: string } | null>(null)
+  const [openingId, setOpeningId] = useState<string | null>(null)
 
   const { data: profile, isLoading: profileLoading, error: profileError } = useQuery({
     queryKey: ['admin', 'customer', customerId],
@@ -44,6 +44,28 @@ export default function CustomerDetail() {
     queryFn: () => getCustomerDocuments(customerId!),
     enabled: !!customerId,
   })
+
+  const handleView = async (doc: CustomerDocument) => {
+    setOpeningId(doc.id)
+
+    try {
+      const signedUrl = await getCustomerDocumentSignedUrl(doc.file_path)
+
+      if (doc.mime_type === 'application/pdf') {
+        window.open(signedUrl, '_blank', 'noopener,noreferrer')
+        return
+      }
+
+      setViewing({
+        src: signedUrl,
+        alt: DOC_LABELS[doc.document_type] || 'Document',
+      })
+    } catch (error) {
+      toast.error(showError(error as Error))
+    } finally {
+      setOpeningId(null)
+    }
+  }
 
   if (profileLoading) {
     return (
@@ -70,6 +92,7 @@ export default function CustomerDetail() {
   }
 
   return (
+    <>
     <div className="px-6 py-8" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <Link to="/admin/customers" className="inline-flex items-center gap-2 text-sm font-semibold text-[#071f52]/60 hover:text-[#071f52] mb-6">
         <ArrowLeft className="h-4 w-4" /> Back to Customers
@@ -130,16 +153,16 @@ export default function CustomerDetail() {
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_STYLES[doc.status] || STATUS_STYLES.missing}`}>
                     {doc.status}
                   </span>
-                  {doc.file_path && doc.status !== 'missing' && (
-                    <a
-                      href={documentUrl(doc)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-bold text-[#071f52] underline hover:text-[#e92935]"
-                    >
-                      View
-                    </a>
-                  )}
+                    {doc.file_path && doc.status !== 'missing' && (
+                      <button
+                        type="button"
+                        onClick={() => handleView(doc)}
+                        disabled={openingId === doc.id}
+                        className="text-xs font-bold text-[#071f52] underline hover:text-[#e92935] disabled:opacity-50"
+                      >
+                        {openingId === doc.id ? 'Opening...' : 'View'}
+                      </button>
+                    )}
                 </div>
               </div>
             ))}
@@ -147,6 +170,14 @@ export default function CustomerDetail() {
         )}
       </div>
     </div>
+
+    <ImageViewer
+      open={!!viewing}
+      onClose={() => setViewing(null)}
+      src={viewing?.src || ''}
+      alt={viewing?.alt || ''}
+    />
+    </>
   )
 }
 

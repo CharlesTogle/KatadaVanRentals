@@ -38,7 +38,7 @@ export default function RegistrationDocuments() {
     setUploading((prev) => ({ ...prev, [activeKey]: true }))
 
     const ext = file.name.split('.').pop()
-    const path = `customer-documents/${user.id}/${activeKey}.${ext}`
+    const path = `${user.id}/${activeKey}.${ext}`
     const { error: uploadError } = await supabase.storage
       .from('customer-documents')
       .upload(path, file, { upsert: true })

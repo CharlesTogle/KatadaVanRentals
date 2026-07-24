@@ -19,3 +19,14 @@ export function useSaveCustomerDocument(userId: string | undefined) {
     },
   })
 }
+
+export function useDeleteCustomerDocument(userId: string | undefined) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: documentService.deleteCustomerDocument,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customer', 'documents', userId] })
+    },
+  })
+}

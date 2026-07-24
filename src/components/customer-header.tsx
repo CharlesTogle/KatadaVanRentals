@@ -7,6 +7,7 @@ import { Bell, LogIn, LogOut, Menu, X } from 'lucide-react'
 const links = [
   { to: '/dashboard', label: 'Dashboard', end: true },
   { to: '/bookings', label: 'My Bookings' },
+  { to: '/documents', label: 'Documents' },
   { to: '/profile', label: 'Profile' },
 ]
 
