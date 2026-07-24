@@ -80,7 +80,7 @@ vi.mock('@/lib/supabase', () => ({
     },
     storage: {
       from: () => ({
-        upload: vi.fn(),
+        upload: vi.fn().mockResolvedValue({ error: null }),
         getPublicUrl: vi.fn(() => ({ data: { publicUrl: 'https://example.com/receipt.pdf' } })),
       }),
     },
@@ -113,7 +113,7 @@ describe('BookingForm', () => {
 
     renderBookingForm('/dashboard/book/vehicle-1?type=self-drive&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
 
-    expect(screen.getByText(/Self Drive is locked until/i)).toBeInTheDocument()
+    expect(screen.getByText(/Profile documents required for Self-Drive/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Submit Booking' })).toBeDisabled()
   })
 
@@ -140,6 +140,11 @@ describe('BookingForm', () => {
 
     renderBookingForm('/dashboard/book/vehicle-1?type=self-drive&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
 
+    const file = new File(['receipt'], 'receipt.pdf', { type: 'application/pdf' })
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+
+    fireEvent.change(input, { target: { files: [file] } })
+
     fireEvent.click(screen.getByRole('button', { name: 'Submit Booking' }))
 
     await waitFor(() => {
@@ -156,5 +161,22 @@ describe('BookingForm', () => {
       }),
     })
     expect(navigate).toHaveBeenCalledWith('/bookings')
+  })
+
+  it('shows customer profile fields as disabled', () => {
+    useCustomerDocuments.mockReturnValue({
+      data: [
+        { document_type: 'driver_license', status: 'submitted', file_path: 'driver' },
+        { document_type: 'valid_id', status: 'verified', file_path: 'valid' },
+        { document_type: 'proof_of_billing', status: 'submitted', file_path: 'billing' },
+      ],
+      isLoading: false,
+    })
+
+    renderBookingForm('/dashboard/book/vehicle-1?type=with-driver&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
+
+    expect(screen.getByLabelText(/Email Address/i)).toBeDisabled()
+    expect(screen.getByLabelText(/Mobile Number/i)).toBeDisabled()
+    expect(screen.getByLabelText(/Complete Address/i)).toBeDisabled()
   })
 })

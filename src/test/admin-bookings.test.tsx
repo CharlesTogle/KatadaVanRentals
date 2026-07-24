@@ -4,11 +4,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import AdminBookings from '@/pages/admin/bookings'
 
 const useAdminBookings = vi.fn()
-const mutateAsync = vi.fn()
+const deleteMutateAsync = vi.fn()
 
 vi.mock('@/hooks/use-bookings', () => ({
   useAdminBookings: (...args: unknown[]) => useAdminBookings(...args),
-  useUpdateBookingStatus: () => ({ mutateAsync, isPending: false }),
+  useDeleteBooking: () => ({ mutateAsync: deleteMutateAsync, isPending: false }),
 }))
 
 vi.mock('@/lib/toast', () => ({
@@ -18,6 +18,7 @@ vi.mock('@/lib/toast', () => ({
 describe('AdminBookings', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal('confirm', vi.fn(() => true))
     useAdminBookings.mockReturnValue({
       data: [
         {
@@ -31,20 +32,44 @@ describe('AdminBookings', () => {
       ],
       isLoading: false,
     })
-    mutateAsync.mockResolvedValue(undefined)
+    deleteMutateAsync.mockResolvedValue(undefined)
   })
 
-  it('renders admin actions for live bookings and updates status on click', async () => {
+  it('opens the kebab menu and deletes a booking', async () => {
     render(
       <MemoryRouter>
         <AdminBookings />
       </MemoryRouter>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open actions for CR-260723-ABCD' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     await waitFor(() => {
-      expect(mutateAsync).toHaveBeenCalledWith({ id: 'booking-1', status: 'confirmed' })
+      expect(deleteMutateAsync).toHaveBeenCalledWith({ id: 'booking-1' })
     })
+  })
+
+  it('opens the kebab menu with a view details link to the detail page', () => {
+    render(
+      <MemoryRouter>
+        <AdminBookings />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open actions for CR-260723-ABCD' }))
+
+    const link = screen.getByRole('link', { name: 'View Details' })
+    expect(link).toHaveAttribute('href', '/admin/bookings/CR-260723-ABCD')
+  })
+
+  it('renders create booking CTA linking to the create page', () => {
+    render(
+      <MemoryRouter>
+        <AdminBookings />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Create booking' })).toHaveAttribute('href', '/admin/bookings/create')
   })
 })

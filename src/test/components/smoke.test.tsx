@@ -35,6 +35,6 @@ describe('BookingFormSkeleton', () => {
   it('renders skeleton placeholder blocks', () => {
     const { container } = render(<BookingFormSkeleton />)
     const blocks = container.querySelectorAll('.rounded-2xl')
-    expect(blocks.length).toBe(6) // 5 form sections + 1 price summary
+    expect(blocks.length).toBe(8)
   })
 })

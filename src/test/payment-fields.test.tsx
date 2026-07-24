@@ -21,7 +21,7 @@ describe('PaymentFields', () => {
   it('prefills the first payment method when none is selected', async () => {
     render(
       <MemoryRouter initialEntries={['/dashboard/book/vehicle-1?type=self-drive']}>
-        <PaymentFields />
+        <PaymentFields depositAmount={8400} />
       </MemoryRouter>,
     )
 
@@ -35,7 +35,7 @@ describe('PaymentFields', () => {
   it('stores the selected receipt file name', async () => {
     render(
       <MemoryRouter initialEntries={['/dashboard/book/vehicle-1?type=self-drive']}>
-        <PaymentFields />
+        <PaymentFields depositAmount={8400} />
       </MemoryRouter>,
     )
 
@@ -47,5 +47,15 @@ describe('PaymentFields', () => {
     await waitFor(() => {
       expect(screen.getByText('receipt.pdf')).toBeInTheDocument()
     })
+  })
+
+  it('shows the computed deposit amount', () => {
+    render(
+      <MemoryRouter initialEntries={['/dashboard/book/vehicle-1?type=with-driver']}>
+        <PaymentFields depositAmount={8400} />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByDisplayValue('₱ 8,400')).toBeInTheDocument()
   })
 })
