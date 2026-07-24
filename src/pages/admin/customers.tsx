@@ -168,7 +168,11 @@ export default function Customers() {
                     <span className="text-sm text-[#071f52]/64">{formatDate(c.last_login_at)}</span>
                   </td>
                   <td className="px-5 py-3">
-                    <div className="relative flex justify-start">
+                    <div className="flex items-center gap-3">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${c.is_active ? 'bg-[#16a34a]/10 text-[#16a34a]' : 'bg-[#e92935]/10 text-[#c91f2a]'}`}>
+                        {c.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                      <div className="relative flex justify-start">
                       <button
                         type="button"
                         aria-label={`Open actions for ${c.first_name} ${c.last_name}`}
@@ -204,6 +208,7 @@ export default function Customers() {
                           </button>
                         </div>
                       ) : null}
+                      </div>
                     </div>
                   </td>
                 </tr>
