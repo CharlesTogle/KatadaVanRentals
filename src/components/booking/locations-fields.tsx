@@ -16,37 +16,42 @@ export function LocationsFields() {
 
   return (
     <>
-      <p className="text-xs font-medium leading-5 text-[#071f52]/48 mb-3">
+      <p className="mb-3 text-sm font-medium leading-6 text-[#071f52]/48">
         {rentalType === 'with-driver'
-          ? "Pickup & drop-off only, with a professional driver — the fare is based on the driving distance. No driver's license needed."
-          : 'Enter your pickup, drop-off, and destination details.'}
+          ? 'Set your route details and purpose so the team can review the trip properly.'
+          : 'Confirm the pickup, return, and trip destination details for this booking.'}
       </p>
       <div className="space-y-3">
-        <input value={locations.pickup} onChange={(e) => setLocations({ ...locations, pickup: e.target.value })}
-          placeholder="Pickup location"
-          className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
-        />
-        <input value={locations.dropoff} onChange={(e) => setLocations({ ...locations, dropoff: e.target.value })}
-          placeholder="Drop-off location"
-          className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
-        />
-        {rentalType === 'self-drive' && (
-          <>
-            <input value={locations.destination} onChange={(e) => setLocations({ ...locations, destination: e.target.value })}
-              placeholder="Destination (optional)"
-              className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
-            />
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#071f52]">Purpose of Travel</label>
-              <select value={purpose} onChange={(e) => setPurpose(e.target.value)}
-                className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
-              >
-                <option value="">Select purpose…</option>
-                {purposes.map((p) => (<option key={p} value={p}>{p}</option>))}
-              </select>
-            </div>
-          </>
-        )}
+        <div className="space-y-1.5">
+          <label className="text-sm font-bold text-[#071f52]">Pick-up / Delivery Location <span className="text-[#e92935]">*</span></label>
+          <input value={locations.pickup} onChange={(e) => setLocations({ ...locations, pickup: e.target.value })}
+            placeholder="e.g. 123 Rizal St., Brgy. San Antonio, Makati City, Metro Manila"
+            className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-sm font-bold text-[#071f52]">Drop-off / Return Location <span className="text-[#e92935]">*</span></label>
+          <input value={locations.dropoff} onChange={(e) => setLocations({ ...locations, dropoff: e.target.value })}
+            placeholder="e.g. 123 Rizal St., Brgy. San Antonio, Makati City, Metro Manila"
+            className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-sm font-bold text-[#071f52]">Destination <span className="text-[#e92935]">*</span></label>
+          <input value={locations.destination} onChange={(e) => setLocations({ ...locations, destination: e.target.value })}
+            placeholder="e.g. Quezon City, Metro Manila"
+            className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-sm font-bold text-[#071f52]">Purpose of Travel <span className="text-[#e92935]">*</span></label>
+          <select value={purpose} onChange={(e) => setPurpose(e.target.value)}
+            className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+          >
+            <option value="">Select purpose...</option>
+            {purposes.map((p) => (<option key={p} value={p}>{p}</option>))}
+          </select>
+        </div>
       </div>
     </>
   )

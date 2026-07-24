@@ -27,12 +27,12 @@ export default function VehicleDetail() {
     return (
       <div className="min-h-[100dvh] bg-[#f7f9ff]">
         <CustomerHeader />
-        <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8 animate-pulse">
-          <div className="mb-6 h-4 w-24 rounded-lg bg-[#071f52]/10" />
-          <div className="grid gap-8 lg:grid-cols-[1fr_0.45fr]">
-            <div className="aspect-[16/10] rounded-[28px] bg-[#071f52]/10" />
-            <div className="space-y-4">
-              <div className="h-8 w-3/4 rounded-lg bg-[#071f52]/10" />
+          <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8 animate-pulse">
+            <div className="mb-6 h-4 w-24 rounded-lg bg-[#071f52]/10" />
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,0.82fr)_minmax(380px,0.58fr)]">
+              <div className="aspect-[16/10] rounded-[28px] bg-[#071f52]/10" />
+              <div className="space-y-4">
+                <div className="h-8 w-3/4 rounded-lg bg-[#071f52]/10" />
               <div className="h-4 w-full rounded-lg bg-[#071f52]/8" />
               <div className="h-24 rounded-lg bg-[#071f52]/6" />
             </div>
@@ -83,7 +83,7 @@ export default function VehicleDetail() {
           Back to fleet
         </Link>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_0.45fr]">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,0.82fr)_minmax(380px,0.58fr)]">
           <div className="space-y-4">
             <div className="overflow-hidden rounded-[28px] border border-[#071f52]/10 bg-white shadow-[0_12px_40px_rgba(7,31,82,0.08)]">
               <img

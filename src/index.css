@@ -21,5 +21,4 @@
   border: 1px solid color-mix(in oklab, var(--color-brand-navy) 10%, transparent);
   background: white;
   box-shadow: 0 8px 24px rgba(7, 31, 82, 0.06);
-  overflow: hidden;
 }

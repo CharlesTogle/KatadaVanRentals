@@ -135,8 +135,8 @@ export default function Fleet() {
           {vehicles.length ? 'No vehicles match your filters.' : 'No vehicles listed yet.'}
         </div>
       ) : (
-        <div className="mt-6 card-overflow">
-          <table className="w-full text-left">
+        <div className="mt-6 card-overflow overflow-x-auto">
+          <table className="min-w-[800px] w-full text-left">
             <thead>
               <tr className="border-b border-[#071f52]/10 bg-[#f7f9ff]">
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48 w-16">IMAGE</th>

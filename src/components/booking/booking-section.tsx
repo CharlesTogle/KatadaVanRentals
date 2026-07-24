@@ -6,11 +6,11 @@ export function MapPinIcon({ size = 24, className }: { size?: number; className?
 
 type IconComponent = React.ComponentType<{ size?: number; className?: string }>
 
-export function BookingSection({ title, icon: Icon, children, contentClassName }: { title: string; icon: IconComponent; children: React.ReactNode; contentClassName?: string }) {
+export function BookingSection({ title, icon: Icon, children, contentClassName }: { title: string; icon?: IconComponent; children: React.ReactNode; contentClassName?: string }) {
   return (
     <div className="card">
       <div className="mb-4 flex items-center gap-2">
-        <Icon size={16} className="text-[#071f52]" />
+        {Icon ? <Icon size={16} className="text-[#071f52]" /> : null}
         <h2 className="text-base font-black tracking-[-0.02em] text-[#071f52]">{title}</h2>
       </div>
       <div className={cn('space-y-3', contentClassName)}>
