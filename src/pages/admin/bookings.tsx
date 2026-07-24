@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { useAdminBookings, useUpdateBookingStatus } from '@/hooks/use-bookings'
+import { Link } from 'react-router-dom'
+import { useAdminBookings, useDeleteBooking } from '@/hooks/use-bookings'
 import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
-import { formatBookingStatus, getAdminBookingActions } from '@/lib/booking-utils'
-import { Search } from 'lucide-react'
+import { formatBookingStatus } from '@/lib/booking-utils'
+import { MoreHorizontal, Search } from 'lucide-react'
 import { STATUS_COLORS } from '@/config/constants'
 
 const statuses = [
@@ -22,14 +23,20 @@ const statuses = [
 export default function AdminBookings() {
   const [status, setStatus] = useState('')
   const [search, setSearch] = useState('')
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   const { data: bookings = [], isLoading } = useAdminBookings({ status: status || undefined, search: search || undefined })
-  const updateStatus = useUpdateBookingStatus()
+  const deleteBooking = useDeleteBooking()
 
-  const handleStatusAction = async (bookingId: string, nextStatus: 'confirmed' | 'rejected' | 'canceled' | 'on_trip' | 'completed') => {
+  const handleDeleteBooking = async (bookingId: string, bookingNumber: string) => {
+    const confirmed = window.confirm(`Delete booking ${bookingNumber}? This cannot be undone.`)
+    setOpenMenuId(null)
+
+    if (!confirmed) return
+
     try {
-      await updateStatus.mutateAsync({ id: bookingId, status: nextStatus })
-      toast.success(`Booking moved to ${formatBookingStatus(nextStatus)}.`)
+      await deleteBooking.mutateAsync({ id: bookingId })
+      toast.success(`Booking ${bookingNumber} deleted.`)
     } catch (error) {
       toast.error(showError(error as Error))
     }
@@ -39,15 +46,23 @@ export default function AdminBookings() {
     <div className="px-6 py-8" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52]">Bookings</h1>
-        <div className="relative">
-          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#071f52]/38" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search booking or customer..."
-            aria-label="Search bookings"
-            className="w-64 rounded-xl border border-[#071f52]/14 bg-white py-2 pl-9 pr-4 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 focus:border-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
-          />
+        <div className="flex items-center gap-3">
+          <Link
+            to="/admin/bookings/create"
+            className="rounded-xl bg-[#071f52] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#0b2f7d]"
+          >
+            Create booking
+          </Link>
+          <div className="relative">
+            <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#071f52]/38" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search booking or customer..."
+              aria-label="Search bookings"
+              className="w-64 rounded-xl border border-[#071f52]/14 bg-white py-2 pl-9 pr-4 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 focus:border-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+            />
+          </div>
         </div>
       </div>
 
@@ -94,7 +109,9 @@ export default function AdminBookings() {
               {bookings.map((b: any) => (
                 <tr key={b.id} className="hover:bg-[#f7f9ff] transition-colors">
                   <td className="px-5 py-3">
-                    <span className="text-sm font-bold text-[#071f52]">{b.booking_number}</span>
+                    <Link to={`/admin/bookings/${b.booking_number}`} className="text-sm font-bold text-[#071f52] hover:underline">
+                      {b.booking_number}
+                    </Link>
                   </td>
                   <td className="px-5 py-3">
                     <div>
@@ -117,18 +134,36 @@ export default function AdminBookings() {
                     </span>
                   </td>
                   <td className="px-5 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      {getAdminBookingActions(b.status).length ? getAdminBookingActions(b.status).map((action) => (
-                        <button
-                          key={action.nextStatus}
-                          type="button"
-                          onClick={() => handleStatusAction(b.id, action.nextStatus)}
-                          disabled={updateStatus.isPending}
-                          className="rounded-full border border-[#071f52]/12 bg-white px-3 py-1 text-[11px] font-bold text-[#071f52] transition-colors hover:bg-[#071f52] hover:text-white disabled:opacity-50"
-                        >
-                          {action.label}
-                        </button>
-                      )) : <span className="text-xs font-semibold text-[#071f52]/38">No actions</span>}
+                    <div className="relative flex justify-start">
+                      <button
+                        type="button"
+                        aria-label={`Open actions for ${b.booking_number}`}
+                        aria-expanded={openMenuId === b.id}
+                        onClick={() => setOpenMenuId((current) => current === b.id ? null : b.id)}
+                        className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8"
+                      >
+                        <MoreHorizontal size={16} />
+                      </button>
+
+                      {openMenuId === b.id ? (
+                        <div className="absolute right-0 top-11 z-10 min-w-40 rounded-2xl border border-[#071f52]/10 bg-white p-1.5 shadow-xl">
+                          <Link
+                            to={`/admin/bookings/${b.booking_number}`}
+                            onClick={() => setOpenMenuId(null)}
+                            className="block rounded-xl px-3 py-2 text-sm font-semibold text-[#071f52] transition-colors hover:bg-[#f7f9ff]"
+                          >
+                            View Details
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteBooking(b.id, b.booking_number)}
+                            disabled={deleteBooking.isPending}
+                            className="block w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-[#e92935] transition-colors hover:bg-[#fff4f4] disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
