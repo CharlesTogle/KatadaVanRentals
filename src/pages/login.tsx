@@ -27,15 +27,27 @@ export default function Login() {
       setError(showError(error))
       setLoading(false)
     } else {
-      supabase
+      const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, is_active')
         .eq('id', data.user.id)
         .single()
-        .then(({ data: profile }) => {
-          const isAdmin = profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'staff'
-          navigate(searchParams.get('redirect') || (isAdmin ? '/admin' : '/dashboard'), { replace: true })
-        })
+
+      if (profile && !profile.is_active) {
+        await supabase.auth.signOut()
+        setError('Your account has been deactivated. Please contact support.')
+        setLoading(false)
+        return
+      }
+
+      // Write last_login_at (best-effort, non-blocking)
+      supabase
+        .from('profiles')
+        .update({ last_login_at: new Date().toISOString() })
+        .eq('id', data.user.id)
+
+      const isAdmin = profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'staff'
+      navigate(searchParams.get('redirect') || (isAdmin ? '/admin' : '/dashboard'), { replace: true })
     }
   }
 
