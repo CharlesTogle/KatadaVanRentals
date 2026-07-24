@@ -23,6 +23,6 @@ export function useUpdateProfile() {
 export function useAdminCustomers(search?: string) {
   return useQuery({
     queryKey: ['admin', 'customers', search],
-    queryFn: () => profileService.getAdminCustomers(search),
+    queryFn: () => profileService.searchAdminCustomers(search),
   })
 }
