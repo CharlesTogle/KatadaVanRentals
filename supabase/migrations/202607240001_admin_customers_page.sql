@@ -39,13 +39,14 @@ as $$
     coalesce(bs.bookings_count, 0) as bookings_count,
     coalesce(bs.total_spend, 0) as total_spend
   from public.profiles p
-  left lateral (
+  left join (
     select
+      customer_id,
       count(*) as bookings_count,
-      coalesce(sum(b.total_amount), 0) as total_spend
-    from public.bookings b
-    where b.customer_id = p.id
-  ) bs on true
+      coalesce(sum(total_amount), 0) as total_spend
+    from public.bookings
+    group by customer_id
+  ) bs on bs.customer_id = p.id
   where p.role = 'customer'
     and (
       search_query is null
