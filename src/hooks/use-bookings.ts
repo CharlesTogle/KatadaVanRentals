@@ -23,6 +23,14 @@ export function useMyBookings(status?: string) {
   })
 }
 
+export function useAdminBooking(bookingNumber: string | undefined) {
+  return useQuery({
+    queryKey: ['admin', 'booking', bookingNumber],
+    queryFn: () => bookingService.getAdminBookingByNumber(bookingNumber!),
+    enabled: !!bookingNumber,
+  })
+}
+
 export function useAdminDashboard() {
   return useQuery({
     queryKey: ['admin', 'dashboard'],
@@ -68,6 +76,33 @@ export function useUpdateBookingStatus() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['customer', 'bookings'] })
       queryClient.invalidateQueries({ queryKey: ['booking', data.id] })
+    },
+  })
+}
+
+export function useDeleteBooking() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) => bookingService.deleteBooking(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] })
+    },
+  })
+}
+
+export function useAdminBookingAction() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (input: bookingService.AdminBookingActionInput) => bookingService.runAdminBookingAction(input),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'booking'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['customer', 'bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['booking', variables.bookingId] })
     },
   })
 }
