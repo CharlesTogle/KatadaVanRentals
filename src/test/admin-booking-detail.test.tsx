@@ -6,10 +6,29 @@ import { getAdminBookingDetailActions } from '@/lib/booking-utils'
 
 const useAdminBooking = vi.fn()
 const mutateAsync = vi.fn()
+const upload = vi.fn()
+const getPublicUrl = vi.fn(() => ({ data: { publicUrl: 'https://example.com/receipt.pdf' } }))
 
 vi.mock('@/hooks/use-bookings', () => ({
   useAdminBooking: (...args: unknown[]) => useAdminBooking(...args),
   useAdminBookingAction: () => ({ mutateAsync, isPending: false }),
+}))
+
+vi.mock('@/hooks/use-payment-methods', () => ({
+  usePaymentMethods: () => ({
+    data: [{ id: 'pm-1', provider: 'BDO', channel: 'bank_transfer' }],
+  }),
+}))
+
+vi.mock('@/lib/supabase', () => ({
+  supabase: {
+    storage: {
+      from: () => ({
+        upload: (...args: unknown[]) => upload(...args),
+        getPublicUrl,
+      }),
+    },
+  },
 }))
 
 vi.mock('@/lib/toast', () => ({
@@ -59,6 +78,7 @@ describe('AdminBookingDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mutateAsync.mockResolvedValue(undefined)
+    upload.mockResolvedValue({ error: null })
   })
 
   it('renders loading state then booking number without changing hook order', async () => {
@@ -227,6 +247,24 @@ describe('AdminBookingDetail', () => {
     })
   })
 
+  it('rejects a for review booking from the modal', async () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reject' }))
+    fireEvent.change(screen.getByPlaceholderText('Tell the customer why the booking is being rejected'), { target: { value: 'Missing verification' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Reject' })[1])
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({ type: 'reject', bookingId: 'booking-1', reason: 'Missing verification' })
+    })
+  })
+
   it('shows correct actions for confirmed status', async () => {
     useAdminBooking.mockReturnValue({
       data: { booking: { ...mockBooking, status: 'confirmed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
@@ -241,6 +279,91 @@ describe('AdminBookingDetail', () => {
       expect(screen.getByRole('button', { name: 'Extend Rental' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Cancel Booking' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument()
+    })
+  })
+
+  it('starts a confirmed trip from the modal', async () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'confirmed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Release Unit / Start Trip' }))
+    fireEvent.change(screen.getByPlaceholderText('Enter the amount collected'), { target: { value: '7000' } })
+    fireEvent.change(screen.getByDisplayValue('BDO'), { target: { value: 'pm-1' } })
+    fireEvent.change(screen.getByDisplayValue('Cash'), { target: { value: 'bank_transfer' } })
+    fireEvent.change(screen.getByPlaceholderText('Reference number or official receipt'), { target: { value: 'REF-123' } })
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [new File(['receipt'], 'receipt.pdf', { type: 'application/pdf' })] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Start Trip' }))
+
+    await waitFor(() => {
+      expect(upload).toHaveBeenCalled()
+      expect(mutateAsync).toHaveBeenCalledWith({ type: 'start_trip', bookingId: 'booking-1', collectedAmount: 7000, paymentMethodId: 'pm-1', paymentChannel: 'bank_transfer', referenceNumber: 'REF-123', receiptPath: 'https://example.com/receipt.pdf' })
+    })
+  })
+
+  it('extends an on trip booking from the modal', async () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Extend Rental' }))
+    fireEvent.change(document.querySelector('input[type="date"]') as HTMLInputElement, { target: { value: '2026-07-30' } })
+    fireEvent.change(screen.getByPlaceholderText('Enter the extension charge'), { target: { value: '1500' } })
+    fireEvent.change(screen.getByPlaceholderText('Optional note for the extension'), { target: { value: 'Customer requested two extra days' } })
+    fireEvent.click(screen.getByLabelText('Collect payment now'))
+    fireEvent.change(screen.getByDisplayValue('BDO'), { target: { value: 'pm-1' } })
+    fireEvent.change(screen.getByDisplayValue('Cash'), { target: { value: 'bank_transfer' } })
+    fireEvent.change(screen.getByPlaceholderText('Reference number or official receipt'), { target: { value: 'EXT-456' } })
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [new File(['receipt'], 'extend.pdf', { type: 'application/pdf' })] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Extend' }))
+
+    await waitFor(() => {
+      expect(upload).toHaveBeenCalled()
+      expect(mutateAsync).toHaveBeenCalledWith({ type: 'extend', bookingId: 'booking-1', newEndAt: '2026-07-30', extensionAmount: 1500, reason: 'Customer requested two extra days', collectNow: true, paymentMethodId: 'pm-1', paymentChannel: 'bank_transfer', referenceNumber: 'EXT-456', receiptPath: 'https://example.com/receipt.pdf' })
+    })
+  })
+
+  it('cancels a confirmed booking from the modal', async () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'confirmed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel Booking' }))
+    fireEvent.click(screen.getByLabelText('Admin - no refund'))
+    fireEvent.change(screen.getByPlaceholderText('Reason for cancellation...'), { target: { value: 'Customer did not show up' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Cancel' }))
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({ type: 'cancel', bookingId: 'booking-1', cancellationType: 'admin_no_refund', reason: 'Customer did not show up' })
+    })
+  })
+
+  it('deletes a booking from the modal', async () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'completed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Booking' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Forever' }))
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({ type: 'delete', bookingId: 'booking-1' })
     })
   })
 

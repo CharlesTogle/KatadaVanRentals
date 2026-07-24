@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAdminBooking, useAdminBookingAction } from '@/hooks/use-bookings'
+import { usePaymentMethods } from '@/hooks/use-payment-methods'
 import { formatBookingStatus, getAdminBookingDetailActions, type AdminActionType } from '@/lib/booking-utils'
 import { STATUS_COLORS } from '@/config/constants'
 import { cn } from '@/lib/utils'
 import { showError } from '@/lib/errors'
 import { toast } from '@/lib/toast'
+import { supabase } from '@/lib/supabase'
 import { Dialog } from '@/components/ui/dialog'
 import {
   ArrowLeft,
@@ -24,11 +26,24 @@ const TIMELINE_STATUSES = ['for_review', 'awaiting_documents', 'confirmed', 'on_
 
 export default function BookingDetail() {
   const { bookingNumber } = useParams<{ bookingNumber: string }>()
+  const navigate = useNavigate()
   const { data, isLoading, error } = useAdminBooking(bookingNumber)
+  const { data: paymentMethods = [] } = usePaymentMethods()
   const bookingAction = useAdminBookingAction()
   const [activeModal, setActiveModal] = useState<AdminActionType | null>(null)
-  const [modalForm, setModalForm] = useState({ reason: '', amount: '', newDate: '', docs: '' })
+  const [modalForm, setModalForm] = useState({
+    reason: '',
+    amount: '',
+    newDate: '',
+    docs: '',
+    paymentMethodId: '',
+    paymentChannel: 'cash',
+    referenceNumber: '',
+    collectNow: true,
+    receiptFile: null as File | null,
+  })
   const bookingStatus = data?.booking.status
+  const defaultPaymentMethodId = paymentMethods[0]?.id || ''
   const timelineIdx = useMemo(() => bookingStatus ? TIMELINE_STATUSES.indexOf(bookingStatus) : -1, [bookingStatus])
   const actions = useMemo(() => bookingStatus ? getAdminBookingDetailActions(bookingStatus) : [], [bookingStatus])
   const primaryActions = useMemo(() => actions.filter((action) => action.variant !== 'danger'), [actions])
@@ -37,8 +52,24 @@ export default function BookingDetail() {
   useEffect(() => {
     if (activeModal) return
 
-    setModalForm({ reason: '', amount: '', newDate: '', docs: '' })
-  }, [activeModal])
+    setModalForm({
+      reason: '',
+      amount: '',
+      newDate: '',
+      docs: '',
+      paymentMethodId: defaultPaymentMethodId,
+      paymentChannel: 'cash',
+      referenceNumber: '',
+      collectNow: true,
+      receiptFile: null,
+    })
+  }, [activeModal, defaultPaymentMethodId])
+
+  useEffect(() => {
+    if (!defaultPaymentMethodId) return
+
+    setModalForm((current) => current.paymentMethodId ? current : { ...current, paymentMethodId: defaultPaymentMethodId })
+  }, [defaultPaymentMethodId])
 
   if (isLoading) {
     return (
@@ -87,14 +118,70 @@ export default function BookingDetail() {
     .filter(Boolean)
     .join('  ·  ')
 
-  const handleConfirmBooking = async () => {
+  const runAction = async (
+    input: Parameters<typeof bookingAction.mutateAsync>[0],
+    successMessage: string,
+    onSuccess?: () => void,
+  ) => {
     try {
-      await bookingAction.mutateAsync({ type: 'confirm', bookingId: booking.id })
+      await bookingAction.mutateAsync(input)
       setActiveModal(null)
-      toast.success('Booking confirmed.')
+      toast.success(successMessage)
+      onSuccess?.()
     } catch (actionError) {
       toast.error(showError(actionError as Error))
     }
+  }
+
+  const handleConfirmBooking = () => runAction({ type: 'confirm', bookingId: booking.id }, 'Booking confirmed.')
+  const handleRejectBooking = () => runAction({ type: 'reject', bookingId: booking.id, reason: modalForm.reason.trim() }, 'Booking rejected.')
+  const handleAdjustBooking = () => runAction({ type: 'adjust_price', bookingId: booking.id, adjustedTotal: Number(modalForm.amount), reason: modalForm.reason.trim() }, 'Booking price updated.')
+  const handleRequestDocuments = () => runAction({ type: 'request_documents', bookingId: booking.id, requestedDocuments: modalForm.docs.trim() }, 'Document request sent.')
+  const handleCompleteBooking = () => runAction({ type: 'complete', bookingId: booking.id }, 'Booking marked as returned.')
+  const handleDeleteBooking = () => runAction({ type: 'delete', bookingId: booking.id }, 'Booking deleted.', () => navigate('/admin/bookings'))
+
+  const uploadReceipt = async (file: File | null) => {
+    if (!file) return undefined
+
+    const ext = file.name.split('.').pop()
+    const path = `payment-receipts/${booking.id}/${Date.now()}.${ext}`
+    const { error: uploadError } = await supabase.storage.from('payment-receipts').upload(path, file)
+
+    if (uploadError) throw uploadError
+
+    const { data: { publicUrl } } = supabase.storage.from('payment-receipts').getPublicUrl(path)
+    return publicUrl
+  }
+
+  const handleStartTrip = async () => {
+    const receiptPath = await uploadReceipt(modalForm.receiptFile)
+
+    return runAction({
+      type: 'start_trip',
+      bookingId: booking.id,
+      collectedAmount: Number(modalForm.amount),
+      paymentMethodId: modalForm.paymentMethodId || undefined,
+      paymentChannel: modalForm.paymentChannel,
+      referenceNumber: modalForm.referenceNumber.trim() || undefined,
+      receiptPath,
+    }, 'Trip started.')
+  }
+
+  const handleExtendBooking = async () => {
+    const receiptPath = modalForm.collectNow ? await uploadReceipt(modalForm.receiptFile) : undefined
+
+    return runAction({
+      type: 'extend',
+      bookingId: booking.id,
+      newEndAt: modalForm.newDate,
+      extensionAmount: Number(modalForm.amount),
+      reason: modalForm.reason.trim() || undefined,
+      collectNow: modalForm.collectNow,
+      paymentMethodId: modalForm.collectNow ? modalForm.paymentMethodId || undefined : undefined,
+      paymentChannel: modalForm.collectNow ? modalForm.paymentChannel : undefined,
+      referenceNumber: modalForm.collectNow ? modalForm.referenceNumber.trim() || undefined : undefined,
+      receiptPath,
+    }, 'Booking extended.')
   }
 
   return (
@@ -449,14 +536,14 @@ export default function BookingDetail() {
 
       {/* Modals */}
       <ConfirmModal open={activeModal === 'confirm'} onClose={() => setActiveModal(null)} onConfirm={handleConfirmBooking} isPending={bookingAction.isPending} />
-      <RejectModal open={activeModal === 'reject'} onClose={() => setActiveModal(null)} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} />
-      <AdjustBookingModal open={activeModal === 'adjust_booking'} onClose={() => setActiveModal(null)} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} />
-      <RequestDocsModal open={activeModal === 'request_documents'} onClose={() => setActiveModal(null)} docs={modalForm.docs} setDocs={(docs) => setModalForm((current) => ({ ...current, docs }))} />
-      <StartTripModal open={activeModal === 'start_trip'} onClose={() => setActiveModal(null)} amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} />
-      <ExtendRentalModal open={activeModal === 'extend_rental'} onClose={() => setActiveModal(null)} newDate={modalForm.newDate} setNewDate={(newDate) => setModalForm((current) => ({ ...current, newDate }))} amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} />
-      <CompleteModal open={activeModal === 'complete'} onClose={() => setActiveModal(null)} />
-      <CancelModal open={activeModal === 'cancel'} onClose={() => setActiveModal(null)} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} />
-      <DeleteModal open={activeModal === 'delete'} onClose={() => setActiveModal(null)} />
+      <RejectModal open={activeModal === 'reject'} onClose={() => setActiveModal(null)} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} onSubmit={handleRejectBooking} isPending={bookingAction.isPending} />
+      <AdjustBookingModal open={activeModal === 'adjust_booking'} onClose={() => setActiveModal(null)} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} onSubmit={handleAdjustBooking} isPending={bookingAction.isPending} />
+      <RequestDocsModal open={activeModal === 'request_documents'} onClose={() => setActiveModal(null)} docs={modalForm.docs} setDocs={(docs) => setModalForm((current) => ({ ...current, docs }))} onSubmit={handleRequestDocuments} isPending={bookingAction.isPending} />
+      <StartTripModal open={activeModal === 'start_trip'} onClose={() => setActiveModal(null)} amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} paymentMethodId={modalForm.paymentMethodId} setPaymentMethodId={(paymentMethodId) => setModalForm((current) => ({ ...current, paymentMethodId }))} paymentChannel={modalForm.paymentChannel} setPaymentChannel={(paymentChannel) => setModalForm((current) => ({ ...current, paymentChannel }))} referenceNumber={modalForm.referenceNumber} setReferenceNumber={(referenceNumber) => setModalForm((current) => ({ ...current, referenceNumber }))} receiptFile={modalForm.receiptFile} setReceiptFile={(receiptFile) => setModalForm((current) => ({ ...current, receiptFile }))} paymentMethods={paymentMethods} onSubmit={handleStartTrip} isPending={bookingAction.isPending} />
+      <ExtendRentalModal open={activeModal === 'extend_rental'} onClose={() => setActiveModal(null)} newDate={modalForm.newDate} setNewDate={(newDate) => setModalForm((current) => ({ ...current, newDate }))} amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} collectNow={modalForm.collectNow} setCollectNow={(collectNow) => setModalForm((current) => ({ ...current, collectNow }))} paymentMethodId={modalForm.paymentMethodId} setPaymentMethodId={(paymentMethodId) => setModalForm((current) => ({ ...current, paymentMethodId }))} paymentChannel={modalForm.paymentChannel} setPaymentChannel={(paymentChannel) => setModalForm((current) => ({ ...current, paymentChannel }))} referenceNumber={modalForm.referenceNumber} setReferenceNumber={(referenceNumber) => setModalForm((current) => ({ ...current, referenceNumber }))} receiptFile={modalForm.receiptFile} setReceiptFile={(receiptFile) => setModalForm((current) => ({ ...current, receiptFile }))} paymentMethods={paymentMethods} onSubmit={handleExtendBooking} isPending={bookingAction.isPending} />
+      <CompleteModal open={activeModal === 'complete'} onClose={() => setActiveModal(null)} onSubmit={handleCompleteBooking} isPending={bookingAction.isPending} />
+      <CancelModal open={activeModal === 'cancel'} onClose={() => setActiveModal(null)} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} onSubmit={(cancellationType) => runAction({ type: 'cancel', bookingId: booking.id, cancellationType, reason: modalForm.reason.trim() }, 'Booking canceled.')} isPending={bookingAction.isPending} />
+      <DeleteModal open={activeModal === 'delete'} onClose={() => setActiveModal(null)} onSubmit={handleDeleteBooking} isPending={bookingAction.isPending} />
       </div>
     </main>
   )
@@ -474,20 +561,20 @@ function ConfirmModal({ open, onClose, onConfirm, isPending }: { open: boolean; 
   )
 }
 
-function RejectModal({ open, onClose, reason, setReason }: { open: boolean; onClose: () => void; reason: string; setReason: (v: string) => void }) {
+function RejectModal({ open, onClose, reason, setReason, onSubmit, isPending }: { open: boolean; onClose: () => void; reason: string; setReason: (v: string) => void; onSubmit: () => void; isPending: boolean }) {
   return (
     <Dialog open={open} onClose={onClose} title="Reject Booking">
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Reason (required)</label>
       <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="Tell the customer why the booking is being rejected" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
       <div className="flex justify-end gap-2 mt-4">
-        <button onClick={onClose} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6">Cancel</button>
-        <button onClick={onClose} className="rounded-full px-4 py-2 text-xs font-bold bg-[#e92935] text-white hover:bg-[#e92935]/90" disabled={!reason.trim()}>Reject</button>
+        <button onClick={onClose} disabled={isPending} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6 disabled:opacity-50">Cancel</button>
+        <button onClick={onSubmit} disabled={isPending || !reason.trim()} className="rounded-full px-4 py-2 text-xs font-bold bg-[#e92935] text-white hover:bg-[#e92935]/90 disabled:opacity-50">{isPending ? 'Rejecting...' : 'Reject'}</button>
       </div>
     </Dialog>
   )
 }
 
-function AdjustBookingModal({ open, onClose, reason, setReason, amount, setAmount }: { open: boolean; onClose: () => void; reason: string; setReason: (v: string) => void; amount: string; setAmount: (v: string) => void }) {
+function AdjustBookingModal({ open, onClose, reason, setReason, amount, setAmount, onSubmit, isPending }: { open: boolean; onClose: () => void; reason: string; setReason: (v: string) => void; amount: string; setAmount: (v: string) => void; onSubmit: () => void; isPending: boolean }) {
   return (
     <Dialog open={open} onClose={onClose} title="Adjust Booking Price">
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">New Total Amount</label>
@@ -495,50 +582,57 @@ function AdjustBookingModal({ open, onClose, reason, setReason, amount, setAmoun
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Reason (required)</label>
       <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="Explain why the price was adjusted" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
       <div className="flex justify-end gap-2 mt-4">
-        <button onClick={onClose} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6">Cancel</button>
-        <button onClick={onClose} className="rounded-full px-4 py-2 text-xs font-bold bg-[#071f52] text-white hover:bg-[#071f52]/90" disabled={!reason.trim() || !amount}>Save</button>
+        <button onClick={onClose} disabled={isPending} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6 disabled:opacity-50">Cancel</button>
+        <button onClick={onSubmit} disabled={isPending || !reason.trim() || !amount} className="rounded-full px-4 py-2 text-xs font-bold bg-[#071f52] text-white hover:bg-[#071f52]/90 disabled:opacity-50">{isPending ? 'Saving...' : 'Save'}</button>
       </div>
     </Dialog>
   )
 }
 
-function RequestDocsModal({ open, onClose, docs, setDocs }: { open: boolean; onClose: () => void; docs: string; setDocs: (v: string) => void }) {
+function RequestDocsModal({ open, onClose, docs, setDocs, onSubmit, isPending }: { open: boolean; onClose: () => void; docs: string; setDocs: (v: string) => void; onSubmit: () => void; isPending: boolean }) {
   return (
     <Dialog open={open} onClose={onClose} title="Request Documents">
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Documents to request</label>
       <textarea value={docs} onChange={(e) => setDocs(e.target.value)} rows={3} placeholder="e.g. Valid ID, Proof of billing" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
       <div className="flex justify-end gap-2 mt-4">
-        <button onClick={onClose} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6">Cancel</button>
-        <button onClick={onClose} className="rounded-full px-4 py-2 text-xs font-bold bg-[#071f52] text-white hover:bg-[#071f52]/90" disabled={!docs.trim()}>Send Request</button>
+        <button onClick={onClose} disabled={isPending} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6 disabled:opacity-50">Cancel</button>
+        <button onClick={onSubmit} disabled={isPending || !docs.trim()} className="rounded-full px-4 py-2 text-xs font-bold bg-[#071f52] text-white hover:bg-[#071f52]/90 disabled:opacity-50">{isPending ? 'Sending...' : 'Send Request'}</button>
       </div>
     </Dialog>
   )
 }
 
-function StartTripModal({ open, onClose, amount, setAmount }: { open: boolean; onClose: () => void; amount: string; setAmount: (v: string) => void }) {
-  const [method, setMethod] = useState('cash')
-  const [ref, setRef] = useState('')
+function StartTripModal({ open, onClose, amount, setAmount, paymentMethodId, setPaymentMethodId, paymentChannel, setPaymentChannel, referenceNumber, setReferenceNumber, receiptFile, setReceiptFile, paymentMethods, onSubmit, isPending }: { open: boolean; onClose: () => void; amount: string; setAmount: (v: string) => void; paymentMethodId: string; setPaymentMethodId: (v: string) => void; paymentChannel: string; setPaymentChannel: (v: string) => void; referenceNumber: string; setReferenceNumber: (v: string) => void; receiptFile: File | null; setReceiptFile: (file: File | null) => void; paymentMethods: Array<{ id: string; provider: string; channel: string }>; onSubmit: () => void; isPending: boolean }) {
   return (
     <Dialog open={open} onClose={onClose} title="Release Unit / Start Trip">
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Remaining Balance Collected</label>
       <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Enter the amount collected" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none" />
+      <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Payment Account</label>
+      <select value={paymentMethodId} onChange={(e) => setPaymentMethodId(e.target.value)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none">
+        {paymentMethods.map((method) => (
+          <option key={method.id} value={method.id}>{method.provider}</option>
+        ))}
+      </select>
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Payment Method</label>
-      <select value={method} onChange={(e) => setMethod(e.target.value)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none">
+      <select value={paymentChannel} onChange={(e) => setPaymentChannel(e.target.value)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none">
         <option value="cash">Cash</option>
         <option value="bank_transfer">Bank Transfer</option>
         <option value="ewallet">E-Wallet</option>
       </select>
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Reference Number (optional)</label>
-      <input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Reference number or official receipt" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
+      <input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} placeholder="Reference number or official receipt" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none" />
+      <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Upload Receipt (optional)</label>
+      <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
+      {receiptFile ? <p className="mt-2 text-xs font-medium text-[#071f52]/48">{receiptFile.name}</p> : null}
       <div className="flex justify-end gap-2 mt-4">
-        <button onClick={onClose} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6">Cancel</button>
-        <button onClick={onClose} className="rounded-full px-4 py-2 text-xs font-bold bg-[#071f52] text-white hover:bg-[#071f52]/90">Start Trip</button>
+        <button onClick={onClose} disabled={isPending} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6 disabled:opacity-50">Cancel</button>
+        <button onClick={onSubmit} disabled={isPending || !amount} className="rounded-full px-4 py-2 text-xs font-bold bg-[#071f52] text-white hover:bg-[#071f52]/90 disabled:opacity-50">{isPending ? 'Starting...' : 'Start Trip'}</button>
       </div>
     </Dialog>
   )
 }
 
-function ExtendRentalModal({ open, onClose, newDate, setNewDate, amount, setAmount, reason, setReason }: { open: boolean; onClose: () => void; newDate: string; setNewDate: (v: string) => void; amount: string; setAmount: (v: string) => void; reason: string; setReason: (v: string) => void }) {
+function ExtendRentalModal({ open, onClose, newDate, setNewDate, amount, setAmount, reason, setReason, collectNow, setCollectNow, paymentMethodId, setPaymentMethodId, paymentChannel, setPaymentChannel, referenceNumber, setReferenceNumber, receiptFile, setReceiptFile, paymentMethods, onSubmit, isPending }: { open: boolean; onClose: () => void; newDate: string; setNewDate: (v: string) => void; amount: string; setAmount: (v: string) => void; reason: string; setReason: (v: string) => void; collectNow: boolean; setCollectNow: (v: boolean) => void; paymentMethodId: string; setPaymentMethodId: (v: string) => void; paymentChannel: string; setPaymentChannel: (v: string) => void; referenceNumber: string; setReferenceNumber: (v: string) => void; receiptFile: File | null; setReceiptFile: (file: File | null) => void; paymentMethods: Array<{ id: string; provider: string; channel: string }>; onSubmit: () => void; isPending: boolean }) {
   return (
     <Dialog open={open} onClose={onClose} title="Extend Rental">
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">New Return Date</label>
@@ -546,28 +640,60 @@ function ExtendRentalModal({ open, onClose, newDate, setNewDate, amount, setAmou
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Extension Charge</label>
       <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Enter the extension charge" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none" />
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Reason (optional)</label>
-      <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Optional note for the extension" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
+      <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Optional note for the extension" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none" />
+      <fieldset className="mb-3">
+        <legend className="block text-xs font-bold text-[#071f52]/48 mb-2">How is the charge handled?</legend>
+        <label className="mb-2 flex items-center gap-2 text-sm font-medium text-[#071f52]">
+          <input type="radio" name="collect-now" checked={collectNow} onChange={() => setCollectNow(true)} />
+          Collect payment now
+        </label>
+        <label className="flex items-center gap-2 text-sm font-medium text-[#071f52]">
+          <input type="radio" name="collect-now" checked={!collectNow} onChange={() => setCollectNow(false)} />
+          Add to outstanding balance
+        </label>
+      </fieldset>
+      {collectNow ? (
+        <>
+          <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Payment Account</label>
+          <select value={paymentMethodId} onChange={(e) => setPaymentMethodId(e.target.value)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none">
+            {paymentMethods.map((method) => (
+              <option key={method.id} value={method.id}>{method.provider}</option>
+            ))}
+          </select>
+          <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Payment Method</label>
+          <select value={paymentChannel} onChange={(e) => setPaymentChannel(e.target.value)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none">
+            <option value="cash">Cash</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="ewallet">E-Wallet</option>
+          </select>
+          <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Reference Number (optional)</label>
+          <input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} placeholder="Reference number or official receipt" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none" />
+          <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Upload Receipt (optional)</label>
+          <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
+          {receiptFile ? <p className="mt-2 text-xs font-medium text-[#071f52]/48">{receiptFile.name}</p> : null}
+        </>
+      ) : null}
       <div className="flex justify-end gap-2 mt-4">
-        <button onClick={onClose} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6">Cancel</button>
-        <button onClick={onClose} className="rounded-full px-4 py-2 text-xs font-bold bg-[#071f52] text-white hover:bg-[#071f52]/90" disabled={!newDate}>Extend</button>
+        <button onClick={onClose} disabled={isPending} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6 disabled:opacity-50">Cancel</button>
+        <button onClick={onSubmit} disabled={isPending || !newDate || !amount} className="rounded-full px-4 py-2 text-xs font-bold bg-[#071f52] text-white hover:bg-[#071f52]/90 disabled:opacity-50">{isPending ? 'Extending...' : 'Extend'}</button>
       </div>
     </Dialog>
   )
 }
 
-function CompleteModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CompleteModal({ open, onClose, onSubmit, isPending }: { open: boolean; onClose: () => void; onSubmit: () => void; isPending: boolean }) {
   return (
     <Dialog open={open} onClose={onClose} title="Mark as Returned">
       <p className="text-sm text-[#071f52]/70">Mark this booking as completed? The vehicle will be available for new bookings.</p>
       <div className="flex justify-end gap-2 mt-4">
-        <button onClick={onClose} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6">Cancel</button>
-        <button onClick={onClose} className="rounded-full px-4 py-2 text-xs font-bold bg-[#16a34a] text-white hover:bg-[#16a34a]/90">Complete</button>
+        <button onClick={onClose} disabled={isPending} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6 disabled:opacity-50">Cancel</button>
+        <button onClick={onSubmit} disabled={isPending} className="rounded-full px-4 py-2 text-xs font-bold bg-[#16a34a] text-white hover:bg-[#16a34a]/90 disabled:opacity-50">{isPending ? 'Completing...' : 'Complete'}</button>
       </div>
     </Dialog>
   )
 }
 
-function CancelModal({ open, onClose, reason, setReason }: { open: boolean; onClose: () => void; reason: string; setReason: (v: string) => void }) {
+function CancelModal({ open, onClose, reason, setReason, onSubmit, isPending }: { open: boolean; onClose: () => void; reason: string; setReason: (v: string) => void; onSubmit: (cancellationType: string) => void; isPending: boolean }) {
   const [cancelType, setCancelType] = useState('customer_request')
 
   const options = [
@@ -611,21 +737,21 @@ function CancelModal({ open, onClose, reason, setReason }: { open: boolean; onCl
       </div>
 
       <div className="-mx-6 mt-6 flex gap-3 border-t border-[#071f52]/8 px-6 pt-4">
-        <button onClick={onClose} className="flex-1 rounded-2xl border border-[#d7ddea] px-4 py-3 text-sm font-bold text-[#4d5a72] transition-colors hover:bg-[#f7f9fc]">Back</button>
-        <button onClick={onClose} className="flex-1 rounded-2xl bg-[#ef1111] px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-[#d90f0f] disabled:opacity-50" disabled={!reason.trim()}>Confirm Cancel</button>
+        <button onClick={onClose} disabled={isPending} className="flex-1 rounded-2xl border border-[#d7ddea] px-4 py-3 text-sm font-bold text-[#4d5a72] transition-colors hover:bg-[#f7f9fc] disabled:opacity-50">Back</button>
+        <button onClick={() => onSubmit(cancelType)} className="flex-1 rounded-2xl bg-[#ef1111] px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-[#d90f0f] disabled:opacity-50" disabled={isPending || !reason.trim()}>{isPending ? 'Canceling...' : 'Confirm Cancel'}</button>
       </div>
     </Dialog>
   )
 }
 
 
-function DeleteModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function DeleteModal({ open, onClose, onSubmit, isPending }: { open: boolean; onClose: () => void; onSubmit: () => void; isPending: boolean }) {
   return (
     <Dialog open={open} onClose={onClose} title="Delete Booking">
       <p className="text-sm text-[#e92935] font-bold">Warning: This will permanently delete this booking. This action cannot be undone.</p>
       <div className="flex justify-end gap-2 mt-4">
-        <button onClick={onClose} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6">Cancel</button>
-        <button onClick={onClose} className="rounded-full px-4 py-2 text-xs font-bold bg-[#e92935] text-white hover:bg-[#e92935]/90">Delete Forever</button>
+        <button onClick={onClose} disabled={isPending} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6 disabled:opacity-50">Cancel</button>
+        <button onClick={onSubmit} disabled={isPending} className="rounded-full px-4 py-2 text-xs font-bold bg-[#e92935] text-white hover:bg-[#e92935]/90 disabled:opacity-50">{isPending ? 'Deleting...' : 'Delete Forever'}</button>
       </div>
     </Dialog>
   )
