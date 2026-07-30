@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "@fontsource/plus-jakarta-sans/index.css";
 
+html {
+  scroll-behavior: smooth;
+}
+
 @theme {
   --color-brand-navy: #071f52;
   --color-brand-red: #e92935;
@@ -21,4 +25,13 @@
   border: 1px solid color-mix(in oklab, var(--color-brand-navy) 10%, transparent);
   background: white;
   box-shadow: 0 8px 24px rgba(7, 31, 82, 0.06);
+}
+
+.customer-shell .card,
+.customer-shell .card-overflow,
+.customer-shell [class*='rounded-xl']:not([class*='rounded-full']),
+.customer-shell [class*='rounded-2xl']:not([class*='rounded-full']),
+.customer-shell [class*='rounded-[24px]'],
+.customer-shell [class*='rounded-[28px]'] {
+  border-radius: 8px;
 }
