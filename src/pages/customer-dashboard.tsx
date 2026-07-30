@@ -5,7 +5,7 @@ import { useMyBookings } from '@/hooks/use-bookings'
 import { STATUS_COLORS } from '@/config/constants'
 import { cn } from '@/lib/utils'
 import { formatBookingStatus } from '@/lib/booking-utils'
-import { Plus, CalendarDays, CheckCircle2, Clock, XCircle } from 'lucide-react'
+import { ChevronRight, CalendarDays, CheckCircle2, Clock, XCircle } from 'lucide-react'
 
 export default function CustomerDashboard() {
   const { user } = useAuth()
@@ -13,10 +13,10 @@ export default function CustomerDashboard() {
   const { data: bookings = [] } = useMyBookings()
 
   const kpis = [
-    { label: 'Active Rentals', value: bookings.filter((booking: any) => booking.status === 'on_trip').length, icon: Clock, color: 'text-[#e92935]' },
+    { label: 'Active Rentals', value: bookings.filter((booking: any) => booking.status === 'on_trip').length, icon: Clock, color: 'text-[#15803d]' },
     { label: 'Confirmed', value: bookings.filter((booking: any) => booking.status === 'confirmed').length, icon: CheckCircle2, color: 'text-[#16a34a]' },
     { label: 'Pending Review', value: bookings.filter((booking: any) => booking.status === 'for_review').length, icon: CalendarDays, color: 'text-[#ffd923]' },
-    { label: 'Canceled', value: bookings.filter((booking: any) => booking.status === 'canceled').length, icon: XCircle, color: 'text-[#071f52]/38' },
+    { label: 'Canceled', value: bookings.filter((booking: any) => booking.status === 'canceled').length, icon: XCircle, color: 'text-[#e92935]' },
   ]
 
   const recentBookings = bookings.slice(0, 3)
@@ -33,7 +33,7 @@ export default function CustomerDashboard() {
           </p>
         </div>
         <Button asChild size="lg" className="shrink-0 gap-2 bg-[#e92935] text-white shadow-[0_12px_24px_rgba(233,41,53,0.2)] hover:bg-[#c91f2a]">
-          <Link to="/our-fleet"><Plus size={18} /> Book Now</Link>
+          <Link to="/our-fleet"><ChevronRight size={18} /> Book a Van</Link>
         </Button>
       </div>
 
