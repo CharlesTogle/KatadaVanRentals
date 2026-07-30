@@ -4,8 +4,9 @@ import { supabase } from '@/lib/supabase'
 import { showError } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { consumeRateLimit, formatRetryAfter } from '@/lib/auth-rate-limit'
 import { cn } from '@/lib/utils'
-import { isValidEmail, isValidPassword } from '@/lib/validation'
+import { isValidEmail } from '@/lib/validation'
 import { ArrowLeft, Eye, EyeOff, ShieldCheck } from 'lucide-react'
 
 export default function Login() {
@@ -22,7 +23,21 @@ export default function Login() {
     setError('')
     setLoading(true)
 
-    const { error, data } = await supabase.auth.signInWithPassword({ email, password })
+    const trimmedEmail = email.trim()
+    const rateLimit = consumeRateLimit({
+      key: `login:${trimmedEmail.toLowerCase() || 'unknown'}`,
+      maxAttempts: 5,
+      windowMs: 5 * 60 * 1000,
+      cooldownMs: 5 * 60 * 1000,
+    })
+
+    if (!rateLimit.allowed) {
+      setError(`Too many sign-in attempts. Try again in ${formatRetryAfter(rateLimit.retryAfterMs)}.`)
+      setLoading(false)
+      return
+    }
+
+    const { error, data } = await supabase.auth.signInWithPassword({ email: trimmedEmail, password })
     if (error) {
       setError(showError(error))
       setLoading(false)
@@ -58,7 +73,7 @@ export default function Login() {
         fontFamily: "'Plus Jakarta Sans', sans-serif",
       }}
     >
-      <section className="relative hidden overflow-hidden bg-[#071f52] p-8 text-white lg:flex lg:flex-col lg:justify-between xl:p-10">
+      <section className="relative hidden overflow-hidden bg-[#071f52] p-8 text-white lg:flex lg:flex-col lg:gap-10 xl:p-10 xl:gap-12">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(255,217,35,0.34),transparent_28%),radial-gradient(circle_at_85%_75%,rgba(233,41,53,0.38),transparent_30%)]" />
         <a href="/" className="relative z-10 flex w-fit items-center gap-3 rounded-full bg-white/10 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-white/16">
           <ArrowLeft size={16} aria-hidden="true" />
@@ -67,7 +82,7 @@ export default function Login() {
 
         <div className="relative z-10">
           <div className="mb-6 overflow-hidden rounded-[32px] border-[10px] border-white/12 shadow-[0_28px_80px_rgba(0,0,0,0.28)]">
-            <img src="/vehicle-sample.jpg" alt="Katada van interior with reclining seats" className="max-h-[42vh] w-full object-cover" />
+            <img src="/vehicle-sample.jpg" alt="Katada van interior with reclining seats" className="max-h-[50vh] w-full object-cover [object-position:center_30%]" />
           </div>
           <h1 className="max-w-[620px] text-4xl font-black leading-[0.98] tracking-[-0.055em] xl:text-5xl">
             Your booked trips stay in one place.
@@ -116,6 +131,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                autoComplete="email"
                 className={cn(
                   'block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:border-[#071f52] focus:ring-[#ffd923]/60',
                   email && (isValidEmail(email)
@@ -137,12 +153,8 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className={cn(
-                    'block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 pr-10 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:border-[#071f52] focus:ring-[#ffd923]/60',
-                    password && (isValidPassword(password)
-                      ? 'border-[#16a34a] focus:border-[#16a34a] focus:ring-[#16a34a]/30'
-                      : 'border-[#e92935] focus:border-[#e92935] focus:ring-[#e92935]/30'),
-                  )}
+                  autoComplete="current-password"
+                  className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 pr-10 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
                 />
                 <button
                   type="button"
