@@ -41,20 +41,28 @@ vi.mock('@/hooks/use-vehicles', () => ({
 
 vi.mock('@/hooks/use-profile', () => ({
   useProfile: () => ({
-    data: {
-      first_name: 'Alex',
-      last_name: 'Customer',
-      email: 'customer@example.com',
-      mobile: '+63 900 000 0000',
-      address: '123 Test St',
-      city: 'Quezon City',
-      province: 'Metro Manila',
-      zip_code: '1100',
-      country: 'Philippines',
-    },
+    data: mockProfile,
     isLoading: false,
   }),
 }))
+
+const defaultProfile = {
+  first_name: 'Alex',
+  last_name: 'Customer',
+  email: 'customer@example.com',
+  mobile: '+63 900 000 0000',
+  address_line_1: 'Unit 3A',
+  address_line_2: 'Blue Residences',
+  street_address: 'Taft Avenue',
+  barangay: 'Barangay 76',
+  address: '123 Test St',
+  city: 'Quezon City',
+  province: 'Metro Manila',
+  zip_code: '1100',
+  country: 'Philippines',
+}
+
+let mockProfile = defaultProfile
 
 const useCustomerDocuments = vi.fn()
 
@@ -104,8 +112,36 @@ describe('BookingForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useBookingStore.getState().reset()
+    mockProfile = defaultProfile
+    window.localStorage.clear()
     paymentsInsert.mockResolvedValue({ error: null })
     functionsInvoke.mockResolvedValue({ error: null })
+  })
+
+  it('shows every missing profile field including placeholder-only mobile', () => {
+    mockProfile = {
+      ...defaultProfile,
+      mobile: '+63 ',
+      address_line_1: '',
+      street_address: '',
+    }
+    useCustomerDocuments.mockReturnValue({ data: [], isLoading: false })
+
+    renderBookingForm('/dashboard/book/vehicle-1?type=with-driver&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
+
+    expect(screen.getByText('× Mobile number - missing')).toBeInTheDocument()
+    expect(screen.getByText('× Address line 1 - missing')).toBeInTheDocument()
+    expect(screen.getByText('× Street address - missing')).toBeInTheDocument()
+  })
+
+  it('sends the back-to-vehicle action to the fleet page', () => {
+    useCustomerDocuments.mockReturnValue({ data: [], isLoading: false })
+
+    renderBookingForm('/dashboard/book/vehicle-1?type=with-driver&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
+
+    fireEvent.click(screen.getByRole('button', { name: /Back to vehicle/i }))
+
+    expect(navigate).toHaveBeenCalledWith('/our-fleet')
   })
 
   it('blocks self-drive submission when required documents are missing', () => {
@@ -163,7 +199,7 @@ describe('BookingForm', () => {
     expect(navigate).toHaveBeenCalledWith('/bookings')
   })
 
-  it('shows customer profile fields as disabled', () => {
+  it('does not block booking when the profile is complete', () => {
     useCustomerDocuments.mockReturnValue({
       data: [
         { document_type: 'driver_license', status: 'submitted', file_path: 'driver' },
@@ -175,8 +211,31 @@ describe('BookingForm', () => {
 
     renderBookingForm('/dashboard/book/vehicle-1?type=with-driver&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
 
-    expect(screen.getByLabelText(/Email Address/i)).toBeDisabled()
-    expect(screen.getByLabelText(/Mobile Number/i)).toBeDisabled()
-    expect(screen.getByLabelText(/Complete Address/i)).toBeDisabled()
+    expect(screen.queryByText(/Complete your profile before booking/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Submit Booking' })).toBeEnabled()
+  })
+
+  it('hydrates stored dates and keeps them editable on the booking page', async () => {
+    useCustomerDocuments.mockReturnValue({ data: [], isLoading: false })
+    window.localStorage.setItem('booking-date-selection', JSON.stringify({
+      start: '2026-07-25T08:00',
+      end: '2026-07-26T10:30',
+    }))
+
+    renderBookingForm('/dashboard/book/vehicle-1?type=with-driver')
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Pick-up Date/i)).toHaveValue('2026-07-25')
+      expect(screen.getByLabelText(/Pick-up Time/i)).toHaveValue('08:00')
+    })
+
+    const pickupTimeInput = screen.getByLabelText(/Pick-up Time/i)
+    fireEvent.change(pickupTimeInput, { target: { value: '09:15' } })
+
+    expect(pickupTimeInput).toHaveValue('09:15')
+    expect(JSON.parse(window.localStorage.getItem('booking-date-selection') || '{}')).toEqual({
+      start: '2026-07-25T09:15',
+      end: '2026-07-26T10:30',
+    })
   })
 })

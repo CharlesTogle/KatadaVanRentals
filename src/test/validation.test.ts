@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isValidEmail, isValidPassword } from '@/lib/validation'
+import { getPasswordRequirementChecks, isValidEmail, isValidPassword } from '@/lib/validation'
 
 describe('isValidEmail', () => {
   it('accepts valid emails', () => {
@@ -17,13 +17,28 @@ describe('isValidEmail', () => {
 })
 
 describe('isValidPassword', () => {
-  it('accepts passwords of 6+ characters', () => {
-    expect(isValidPassword('123456')).toBe(true)
-    expect(isValidPassword('abcdefgh')).toBe(true)
+  it('accepts passwords that satisfy the full policy', () => {
+    expect(isValidPassword('Password1!')).toBe(true)
   })
 
-  it('rejects short passwords', () => {
+  it('rejects passwords that miss any requirement', () => {
     expect(isValidPassword('')).toBe(false)
     expect(isValidPassword('12345')).toBe(false)
+    expect(isValidPassword('password1!')).toBe(false)
+    expect(isValidPassword('PASSWORD1!')).toBe(false)
+    expect(isValidPassword('Password!!')).toBe(false)
+    expect(isValidPassword('Password1')).toBe(false)
+  })
+})
+
+describe('getPasswordRequirementChecks', () => {
+  it('reports each requirement status', () => {
+    expect(getPasswordRequirementChecks('Password1!')).toEqual([
+      { label: '8 characters', satisfied: true },
+      { label: '1 uppercase letter', satisfied: true },
+      { label: '1 lowercase letter', satisfied: true },
+      { label: '1 number', satisfied: true },
+      { label: '1 special character', satisfied: true },
+    ])
   })
 })
