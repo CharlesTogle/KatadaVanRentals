@@ -8,6 +8,8 @@ import Contact from '@/pages/contact'
 import Terms from '@/pages/terms'
 import Privacy from '@/pages/privacy'
 import VerifyEmail from '@/pages/verify-email'
+import ForgotPassword from '@/pages/forgot-password'
+import ResetPassword from '@/pages/reset-password'
 import RegistrationAddress from '@/pages/registration-address'
 import RegistrationDocuments from '@/pages/registration-documents'
 
@@ -22,6 +24,8 @@ export const publicRoutes = (
     <Route path="/terms" element={<Terms />} />
     <Route path="/privacy" element={<Privacy />} />
     <Route path="/verify-email" element={<VerifyEmail />} />
+    <Route path="/password/email" element={<ForgotPassword />} />
+    <Route path="/password/reset" element={<ResetPassword />} />
     <Route path="/registration/address" element={<RegistrationAddress />} />
     <Route path="/registration/documents" element={<RegistrationDocuments />} />
   </>
