@@ -23,29 +23,29 @@ export function LocationsFields() {
       </p>
       <div className="space-y-3">
         <div className="space-y-1.5">
-          <label className="text-sm font-bold text-[#071f52]">Pick-up / Delivery Location <span className="text-[#e92935]">*</span></label>
-          <input value={locations.pickup} onChange={(e) => setLocations({ ...locations, pickup: e.target.value })}
+          <label htmlFor="booking-pickup-location" className="text-sm font-bold text-[#071f52]">Pick-up / Delivery Location <span className="text-[#e92935]">*</span></label>
+          <input id="booking-pickup-location" value={locations.pickup} onChange={(e) => setLocations({ ...locations, pickup: e.target.value })}
             placeholder="e.g. 123 Rizal St., Brgy. San Antonio, Makati City, Metro Manila"
             className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-sm font-bold text-[#071f52]">Drop-off / Return Location <span className="text-[#e92935]">*</span></label>
-          <input value={locations.dropoff} onChange={(e) => setLocations({ ...locations, dropoff: e.target.value })}
+          <label htmlFor="booking-dropoff-location" className="text-sm font-bold text-[#071f52]">Drop-off / Return Location <span className="text-[#e92935]">*</span></label>
+          <input id="booking-dropoff-location" value={locations.dropoff} onChange={(e) => setLocations({ ...locations, dropoff: e.target.value })}
             placeholder="e.g. 123 Rizal St., Brgy. San Antonio, Makati City, Metro Manila"
             className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-sm font-bold text-[#071f52]">Destination <span className="text-[#e92935]">*</span></label>
-          <input value={locations.destination} onChange={(e) => setLocations({ ...locations, destination: e.target.value })}
+          <label htmlFor="booking-destination" className="text-sm font-bold text-[#071f52]">Destination <span className="text-[#e92935]">*</span></label>
+          <input id="booking-destination" value={locations.destination} onChange={(e) => setLocations({ ...locations, destination: e.target.value })}
             placeholder="e.g. Quezon City, Metro Manila"
             className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-sm font-bold text-[#071f52]">Purpose of Travel <span className="text-[#e92935]">*</span></label>
-          <select value={purpose} onChange={(e) => setPurpose(e.target.value)}
+          <label htmlFor="booking-purpose" className="text-sm font-bold text-[#071f52]">Purpose of Travel <span className="text-[#e92935]">*</span></label>
+          <select id="booking-purpose" value={purpose} onChange={(e) => setPurpose(e.target.value)}
             className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
           >
             <option value="">Select purpose...</option>

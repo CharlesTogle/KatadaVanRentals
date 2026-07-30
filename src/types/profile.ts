@@ -7,6 +7,10 @@ export interface Profile {
   last_name: string | null
   email: string
   mobile: string | null
+  address_line_1: string | null
+  address_line_2: string | null
+  street_address: string | null
+  barangay: string | null
   address: string | null
   city: string | null
   province: string | null

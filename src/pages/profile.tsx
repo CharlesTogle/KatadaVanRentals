@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Camera, Phone, Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { isValidPassword } from '@/lib/validation'
+import { AUTH_MESSAGES } from '@/constants/auth'
+import { composeProfileAddress, parseProfileAddress } from '@/lib/profile-address'
 
 const countries = [
   'Philippines', 'United States', 'Canada', 'Australia', 'United Kingdom',
@@ -18,6 +20,10 @@ const emptyProfile = {
   last_name: '',
   email: '',
   mobile: '+63 ',
+  address_line_1: '',
+  address_line_2: '',
+  street_address: '',
+  barangay: '',
   address: '',
   city: '',
   province: '',
@@ -26,9 +32,18 @@ const emptyProfile = {
   profile_image_path: null as string | null,
 }
 
+function isMissingRequiredValue(value: string, field: 'default' | 'mobile' = 'default') {
+  const trimmedValue = value.trim()
+
+  if (trimmedValue === '') return true
+
+  return field === 'mobile' && trimmedValue === '+63'
+}
+
 export default function Profile() {
   const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const mobileInputRef = useRef<HTMLInputElement>(null)
   const [profile, setProfile] = useState(emptyProfile)
   const [password, setPassword] = useState({ current: '', new: '', confirm: '' })
   const [show, setShow] = useState({ current: false, new: false, confirm: false })
@@ -36,18 +51,44 @@ export default function Profile() {
   const [passwordSaving, setPasswordSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState<'success' | 'error'>('success')
+  const [messageScope, setMessageScope] = useState<'profile' | 'password'>('profile')
   const [uploading, setUploading] = useState(false)
+  const [showProfileValidation, setShowProfileValidation] = useState(false)
 
   const { data: profileData, isLoading } = useProfile(user?.id)
   const updateProfile = useUpdateProfile()
 
+  const getProfileFieldClassName = (invalid: boolean) => cn(
+    'block w-full rounded-2xl border bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] transition-colors focus:bg-white focus:outline-none focus:ring-2',
+    invalid
+      ? 'border-[#e92935] focus:border-[#e92935] focus:ring-[#e92935]/30'
+      : 'border-[#071f52]/14 focus:border-[#071f52] focus:ring-[#ffd923]/60',
+  )
+
+  const invalidProfileFields = {
+    mobile: showProfileValidation && isMissingRequiredValue(profile.mobile, 'mobile'),
+    address_line_1: showProfileValidation && isMissingRequiredValue(profile.address_line_1),
+    street_address: showProfileValidation && isMissingRequiredValue(profile.street_address),
+    barangay: showProfileValidation && isMissingRequiredValue(profile.barangay),
+    city: showProfileValidation && isMissingRequiredValue(profile.city),
+    province: showProfileValidation && isMissingRequiredValue(profile.province),
+    zip_code: showProfileValidation && isMissingRequiredValue(profile.zip_code),
+    country: showProfileValidation && isMissingRequiredValue(profile.country),
+  }
+
   useEffect(() => {
     if (profileData) {
+      const parsedAddress = parseProfileAddress(profileData.address)
+
       setProfile({
         first_name: profileData.first_name || user?.user_metadata?.full_name?.split(' ')[0] || '',
         last_name: profileData.last_name || user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
         email: profileData.email || user?.email || '',
         mobile: profileData.mobile || '+63 ',
+        address_line_1: profileData.address_line_1 || parsedAddress.address_line_1,
+        address_line_2: profileData.address_line_2 || parsedAddress.address_line_2,
+        street_address: profileData.street_address || parsedAddress.street_address,
+        barangay: profileData.barangay || parsedAddress.barangay,
         address: profileData.address || '',
         city: profileData.city || '',
         province: profileData.province || '',
@@ -76,11 +117,26 @@ export default function Profile() {
     setUploading(false)
   }
 
-  const handleSaveProfile = async (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!user) return
-    setSaving(true)
     setMessage('')
+    setShowProfileValidation(true)
+
+    if (mobileInputRef.current) {
+      mobileInputRef.current.setCustomValidity(profile.mobile === '+63 ' ? 'Please fill out this field.' : '')
+    }
+
+    if (!e.currentTarget.reportValidity()) {
+      setMessage('Please fill out the required fields.')
+      setMessageType('error')
+      setMessageScope('profile')
+      return
+    }
+
+    const address = composeProfileAddress(profile)
+
+    setSaving(true)
 
     updateProfile.mutate(
       {
@@ -89,7 +145,11 @@ export default function Profile() {
           first_name: profile.first_name,
           last_name: profile.last_name,
           mobile: profile.mobile,
-          address: profile.address,
+          address_line_1: profile.address_line_1,
+          address_line_2: profile.address_line_2,
+          street_address: profile.street_address,
+          barangay: profile.barangay,
+          address,
           city: profile.city,
           province: profile.province,
           zip_code: profile.zip_code,
@@ -101,11 +161,14 @@ export default function Profile() {
         onSuccess: () => {
           setMessage('Profile saved.')
           setMessageType('success')
+          setMessageScope('profile')
+          setShowProfileValidation(false)
           setSaving(false)
         },
         onError: (err) => {
           setMessage(err instanceof Error ? err.message : 'Profile update failed.')
           setMessageType('error')
+          setMessageScope('profile')
           setSaving(false)
         },
       },
@@ -117,15 +180,33 @@ export default function Profile() {
     setPasswordSaving(true)
     setMessage('')
 
+    if (!isValidPassword(password.new)) {
+      setMessage(AUTH_MESSAGES.errors.weak_password)
+      setMessageType('error')
+      setMessageScope('password')
+      setPasswordSaving(false)
+      return
+    }
+
+    if (password.new !== password.confirm) {
+      setMessage('Passwords do not match.')
+      setMessageType('error')
+      setMessageScope('password')
+      setPasswordSaving(false)
+      return
+    }
+
     const { error } = await supabase.auth.updateUser({ password: password.new })
 
     if (error) {
       setMessage(showError(error))
       setMessageType('error')
+      setMessageScope('password')
     } else {
       setPassword({ current: '', new: '', confirm: '' })
       setMessage('Password updated.')
       setMessageType('success')
+      setMessageScope('password')
     }
     setPasswordSaving(false)
   }
@@ -141,17 +222,6 @@ export default function Profile() {
       <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52] sm:text-3xl">My Profile</h1>
       <p className="mt-1 text-sm font-medium text-[#071f52]/58">Manage your personal information and password.</p>
 
-      {message && (
-        <div className={cn(
-          'mt-4 rounded-2xl border px-4 py-3 text-sm font-bold',
-          messageType === 'success'
-            ? 'border-[#16a34a]/30 bg-[#16a34a]/10 text-[#15803d]'
-            : 'border-[#e92935]/30 bg-[#e92935]/8 text-[#b91c1c]',
-        )}>
-          {message}
-        </div>
-      )}
-
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1fr]">
         <div className="rounded-2xl border border-[#071f52]/10 bg-white p-6 shadow-[0_8px_24px_rgba(7,31,82,0.06)]">
           <div className="mb-6 flex items-center gap-4">
@@ -165,7 +235,8 @@ export default function Profile() {
                 type="button"
                 disabled={uploading}
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full bg-[#ffd923] text-[#071f52] shadow-sm"
+                aria-label="Upload profile photo"
+                className="absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#ffd923] text-[#071f52] shadow-sm"
               >
                 <Camera size={12} />
               </button>
@@ -178,6 +249,10 @@ export default function Profile() {
           </div>
 
           <form onSubmit={handleSaveProfile} className="space-y-4">
+            <p className="px-1 py-1 text-sm font-black text-[#b91c1c]">
+              Fields with (*) are required to make a booking.
+            </p>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#071f52]">First Name</label>
@@ -211,25 +286,69 @@ export default function Profile() {
               <div className="relative">
                 <Phone size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#071f52]/38" />
                 <input
+                  ref={mobileInputRef}
                   value={profile.mobile}
                   onChange={(e) => {
                     const val = e.target.value
+                    e.target.setCustomValidity('')
                     setProfile({ ...profile, mobile: val.startsWith('+63 ') ? val : '+63 ' })
                   }}
+                  aria-invalid={invalidProfileFields.mobile}
+                  required
                   placeholder="+63 917 XXX XXXX"
-                  className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] py-2.5 pl-9 pr-4 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+                  className={cn(
+                    getProfileFieldClassName(invalidProfileFields.mobile),
+                    'py-2.5 pl-9 pr-4 placeholder:text-[#071f52]/38',
+                  )}
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#071f52]">Address <span className="text-[#e92935]">*</span></label>
+              <label className="text-xs font-bold text-[#071f52]">Address Line 1 <span className="text-[#e92935]">*</span></label>
               <input
-                value={profile.address}
-                onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-                placeholder="House / Street / Barangay"
-                className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+                value={profile.address_line_1}
+                onChange={(e) => setProfile({ ...profile, address_line_1: e.target.value })}
+                aria-invalid={invalidProfileFields.address_line_1}
+                required
+                placeholder="Unit / House No. / Building"
+                className={cn(getProfileFieldClassName(invalidProfileFields.address_line_1), 'placeholder:text-[#071f52]/38')}
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[#071f52]">Address Line 2</label>
+              <input
+                value={profile.address_line_2}
+                onChange={(e) => setProfile({ ...profile, address_line_2: e.target.value })}
+                placeholder="Subdivision / Building Wing / Landmark"
+                className={cn(getProfileFieldClassName(false), 'placeholder:text-[#071f52]/38')}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#071f52]">Street Address <span className="text-[#e92935]">*</span></label>
+                <input
+                  value={profile.street_address}
+                  onChange={(e) => setProfile({ ...profile, street_address: e.target.value })}
+                  aria-invalid={invalidProfileFields.street_address}
+                  required
+                  placeholder="Street name"
+                  className={cn(getProfileFieldClassName(invalidProfileFields.street_address), 'placeholder:text-[#071f52]/38')}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#071f52]">Barangay <span className="text-[#e92935]">*</span></label>
+                <input
+                  value={profile.barangay}
+                  onChange={(e) => setProfile({ ...profile, barangay: e.target.value })}
+                  aria-invalid={invalidProfileFields.barangay}
+                  required
+                  placeholder="Barangay"
+                  className={cn(getProfileFieldClassName(invalidProfileFields.barangay), 'placeholder:text-[#071f52]/38')}
+                />
+              </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -238,8 +357,10 @@ export default function Profile() {
                 <input
                   value={profile.city}
                   onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+                  aria-invalid={invalidProfileFields.city}
+                  required
                   placeholder="Pasay City"
-                  className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+                  className={getProfileFieldClassName(invalidProfileFields.city)}
                 />
               </div>
               <div className="space-y-1.5">
@@ -247,8 +368,10 @@ export default function Profile() {
                 <input
                   value={profile.province}
                   onChange={(e) => setProfile({ ...profile, province: e.target.value })}
+                  aria-invalid={invalidProfileFields.province}
+                  required
                   placeholder="Metro Manila"
-                  className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+                  className={getProfileFieldClassName(invalidProfileFields.province)}
                 />
               </div>
             </div>
@@ -259,8 +382,10 @@ export default function Profile() {
                 <input
                   value={profile.zip_code}
                   onChange={(e) => setProfile({ ...profile, zip_code: e.target.value })}
+                  aria-invalid={invalidProfileFields.zip_code}
+                  required
                   placeholder="1309"
-                  className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+                  className={getProfileFieldClassName(invalidProfileFields.zip_code)}
                 />
               </div>
               <div className="space-y-1.5">
@@ -268,7 +393,9 @@ export default function Profile() {
                 <select
                   value={profile.country}
                   onChange={(e) => setProfile({ ...profile, country: e.target.value })}
-                  className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+                  aria-invalid={invalidProfileFields.country}
+                  required
+                  className={getProfileFieldClassName(invalidProfileFields.country)}
                 >
                   {countries.map((c) => (<option key={c}>{c}</option>))}
                 </select>
@@ -278,6 +405,17 @@ export default function Profile() {
             <Button type="submit" disabled={saving} size="lg" className="w-full bg-[#071f52] text-white hover:bg-[#112458]">
               {saving ? 'Saving...' : 'Save Profile'}
             </Button>
+
+            {message && messageScope === 'profile' ? (
+              <div className={cn(
+                'rounded-2xl border px-4 py-3 text-sm font-bold',
+                messageType === 'success'
+                  ? 'border-[#16a34a]/30 bg-[#16a34a]/10 text-[#15803d]'
+                  : 'border-[#e92935]/30 bg-[#e92935]/8 text-[#b91c1c]',
+              )}>
+                {message}
+              </div>
+            ) : null}
           </form>
         </div>
 
@@ -332,6 +470,17 @@ export default function Profile() {
             >
               {passwordSaving ? 'Updating...' : 'Update Password'}
             </Button>
+
+            {message && messageScope === 'password' ? (
+              <div className={cn(
+                'rounded-2xl border px-4 py-3 text-sm font-bold',
+                messageType === 'success'
+                  ? 'border-[#16a34a]/30 bg-[#16a34a]/10 text-[#15803d]'
+                  : 'border-[#e92935]/30 bg-[#e92935]/8 text-[#b91c1c]',
+              )}>
+                {message}
+              </div>
+            ) : null}
           </form>
         </div>
       </div>

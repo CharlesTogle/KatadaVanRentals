@@ -12,7 +12,7 @@ export function useProfile(userId: string | undefined) {
 export function useUpdateProfile() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<{ first_name: string; last_name: string; mobile: string; address: string; city: string; province: string; zip_code: string; country: string; profile_image_path: string | null }> }) =>
+    mutationFn: ({ id, data }: { id: string; data: Partial<{ first_name: string; last_name: string; mobile: string; address_line_1: string; address_line_2: string; street_address: string; barangay: string; address: string; city: string; province: string; zip_code: string; country: string; profile_image_path: string | null }> }) =>
       profileService.updateProfile(id, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['profile', variables.id] })

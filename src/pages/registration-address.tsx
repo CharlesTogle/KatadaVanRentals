@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { MapPin, ArrowLeft } from 'lucide-react'
+import { composeProfileAddress } from '@/lib/profile-address'
 
 const countries = [
   'Philippines', 'United States', 'Canada', 'Australia', 'United Kingdom',
@@ -11,7 +12,16 @@ const countries = [
 ]
 
 export default function RegistrationAddress() {
-  const [address, setAddress] = useState({ address: '', city: '', province: '', zip: '', country: 'Philippines' })
+  const [address, setAddress] = useState({
+    address_line_1: '',
+    address_line_2: '',
+    street_address: '',
+    barangay: '',
+    city: '',
+    province: '',
+    zip: '',
+    country: 'Philippines',
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
@@ -26,7 +36,11 @@ export default function RegistrationAddress() {
     const { error: updateError } = await supabase
       .from('profiles')
       .update({
-        address: address.address,
+        address_line_1: address.address_line_1,
+        address_line_2: address.address_line_2,
+        street_address: address.street_address,
+        barangay: address.barangay,
+        address: composeProfileAddress(address),
         city: address.city,
         province: address.province,
         zip_code: address.zip,
@@ -70,12 +84,40 @@ export default function RegistrationAddress() {
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-bold text-[#071f52]">Complete Address <span className="text-[#e92935]">*</span></label>
-              <input required value={address.address}
-                onChange={(e) => setAddress({ ...address, address: e.target.value })}
-                placeholder="House / Street / Barangay"
+              <label className="text-sm font-bold text-[#071f52]">Address Line 1 <span className="text-[#e92935]">*</span></label>
+              <input required value={address.address_line_1}
+                onChange={(e) => setAddress({ ...address, address_line_1: e.target.value })}
+                placeholder="Unit / House No. / Building"
                 className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
               />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-[#071f52]">Address Line 2</label>
+              <input value={address.address_line_2}
+                onChange={(e) => setAddress({ ...address, address_line_2: e.target.value })}
+                placeholder="Subdivision / Building Wing / Landmark"
+                className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-[#071f52]">Street Address <span className="text-[#e92935]">*</span></label>
+                <input required value={address.street_address}
+                  onChange={(e) => setAddress({ ...address, street_address: e.target.value })}
+                  placeholder="Street name"
+                  className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-[#071f52]">Barangay <span className="text-[#e92935]">*</span></label>
+                <input required value={address.barangay}
+                  onChange={(e) => setAddress({ ...address, barangay: e.target.value })}
+                  placeholder="Barangay"
+                  className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+                />
+              </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
