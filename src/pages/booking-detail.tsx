@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
@@ -15,6 +14,7 @@ import { BOOKING_MESSAGES } from '@/constants/booking'
 import { STATUS_COLORS } from '@/config/constants'
 import { BookingSection } from '@/components/booking/booking-section'
 import { canCustomerCancelBooking } from '@/lib/booking-utils'
+import { downloadBookingInvoicePdf } from '@/lib/invoice-pdf'
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
 
@@ -32,6 +32,7 @@ export default function BookingDetail() {
   const [rating, setRating] = useState(0)
   const [feedback, setFeedback] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
 
   const handleCancelBooking = async () => {
     if (!booking) return
@@ -56,6 +57,20 @@ export default function BookingDetail() {
       feedback: feedback || null,
     })
     if (!error) setSubmitted(true)
+  }
+
+  const handleDownloadInvoice = async () => {
+    if (!booking) return
+
+    setIsDownloadingInvoice(true)
+
+    try {
+      await downloadBookingInvoicePdf(booking.id)
+    } catch (error) {
+      toast.error(showError(error as Error))
+    } finally {
+      setIsDownloadingInvoice(false)
+    }
   }
 
   if (loading) {
@@ -202,8 +217,8 @@ export default function BookingDetail() {
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1 gap-2 text-sm" asChild>
-                <Link to="/bookings"><FileText size={14} /> Invoice</Link>
+              <Button variant="outline" className="flex-1 gap-2 text-sm" onClick={handleDownloadInvoice} disabled={isDownloadingInvoice}>
+                <FileText size={14} /> {isDownloadingInvoice ? 'Preparing...' : 'Invoice'}
               </Button>
               {canCustomerCancelBooking(booking.status) ? (
                 <Button

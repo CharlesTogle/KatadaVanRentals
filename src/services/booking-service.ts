@@ -76,6 +76,104 @@ export interface AdminBookingDetail {
   invoice: { id: string; invoice_number: string; status: string; total_amount: number; file_path: string | null; issued_at: string } | null
 }
 
+export interface BookingInvoiceData {
+  booking: Booking
+  customer: {
+    first_name: string | null
+    last_name: string | null
+    email: string | null
+    mobile: string | null
+    address: string | null
+    city: string | null
+    province: string | null
+    zip_code: string | null
+    country: string | null
+  } | null
+  vehicle: {
+    name: string | null
+    year: number | null
+  } | null
+  payments: Array<{
+    id: string
+    channel: string
+    amount: number
+    reference_number: string | null
+    paid_at: string | null
+    created_at: string
+  }>
+  business: {
+    business_name: string
+    support_email: string
+    support_phone: string
+    business_address: string
+    city: string
+    province: string
+    vat_percent: number
+  }
+}
+
+const DEFAULT_BUSINESS_SETTINGS = {
+  business_name: 'Katada Transportation Services',
+  support_email: 'tadsuu@gmail.com',
+  support_phone: '+63 906 496 1248',
+  business_address: '11th 12th St., Villamor',
+  city: 'Pasay City',
+  province: 'Metro Manila',
+  vat_percent: 0,
+}
+
+export async function getBookingInvoiceData(id: string): Promise<BookingInvoiceData> {
+  const [bookingRes, paymentsRes, settingsRes] = await Promise.all([
+    supabase
+      .from('bookings')
+      .select('*, profiles!customer_id(first_name,last_name,email,mobile,address,city,province,zip_code,country), vehicles!vehicle_id(name,year)')
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('payments')
+      .select('id,channel,amount,reference_number,paid_at,created_at')
+      .eq('booking_id', id)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('app_settings')
+      .select('business_name,support_email,support_phone,business_address,city,province,vat_percent')
+      .limit(1)
+      .maybeSingle(),
+  ])
+
+  if (bookingRes.error) throw bookingRes.error
+  if (paymentsRes.error) throw paymentsRes.error
+  if (settingsRes.error) throw settingsRes.error
+
+  const bookingRow = bookingRes.data as Booking & {
+    profiles?: BookingInvoiceData['customer'] | BookingInvoiceData['customer'][] | null
+    vehicles?: BookingInvoiceData['vehicle'] | BookingInvoiceData['vehicle'][] | null
+  }
+
+  const customer = bookingRow.profiles && !Array.isArray(bookingRow.profiles)
+    ? bookingRow.profiles
+    : null
+  const vehicle = bookingRow.vehicles && !Array.isArray(bookingRow.vehicles)
+    ? bookingRow.vehicles
+    : null
+
+  return {
+    booking: bookingRow,
+    customer,
+    vehicle,
+    payments: paymentsRes.data || [],
+    business: {
+      business_name: settingsRes.data?.business_name || DEFAULT_BUSINESS_SETTINGS.business_name,
+      support_email: settingsRes.data?.support_email || DEFAULT_BUSINESS_SETTINGS.support_email,
+      support_phone: settingsRes.data?.support_phone || DEFAULT_BUSINESS_SETTINGS.support_phone,
+      business_address: settingsRes.data?.business_address || DEFAULT_BUSINESS_SETTINGS.business_address,
+      city: settingsRes.data?.city || DEFAULT_BUSINESS_SETTINGS.city,
+      province: settingsRes.data?.province || DEFAULT_BUSINESS_SETTINGS.province,
+      vat_percent: settingsRes.data?.vat_percent ?? DEFAULT_BUSINESS_SETTINGS.vat_percent,
+    },
+  }
+}
+
 export async function getAdminBookingByNumber(bookingNumber: string): Promise<AdminBookingDetail> {
   const { data: booking, error: bErr } = await supabase
     .from('bookings')
