@@ -1,293 +1,245 @@
 import { getBookingInvoiceData, type BookingInvoiceData } from '@/services/booking-service'
 
-const PAGE_WIDTH = 842
-const PAGE_HEIGHT = 595
-const BUSINESS_NAME = 'Katada Transportation Sevices'
-
-type RgbColor = [number, number, number]
-
-interface TextOptions {
-  font?: 'F1' | 'F2' | 'F3'
-  size?: number
-  color?: RgbColor
-  align?: 'left' | 'right' | 'center'
-}
+const BUSINESS_NAME = 'Katada Transportation Services'
 
 export async function downloadBookingInvoicePdf(bookingId: string) {
   const invoice = await getBookingInvoiceData(bookingId)
-  const pdf = buildInvoicePdf(invoice)
-  const url = URL.createObjectURL(pdf)
-  const link = document.createElement('a')
+  const element = document.createElement('div')
+  element.innerHTML = buildInvoiceHtml(invoice)
+  element.style.position = 'fixed'
+  element.style.top = '0'
+  element.style.left = '0'
+  element.style.pointerEvents = 'none'
+  element.style.zIndex = '-1'
+  document.body.append(element)
+  const page = element.querySelector('.invoice-page')
 
-  link.href = url
-  link.download = `${buildInvoiceNumber(invoice.booking.booking_number)}.pdf`
-  document.body.append(link)
-  link.click()
-  link.remove()
-
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  try {
+    const html2pdf = (await import('html2pdf.js')).default
+    await html2pdf()
+      .set({
+        filename: `${buildInvoiceNumber(invoice.booking.booking_number)}.pdf`,
+        margin: 0,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+      })
+      .from(page instanceof HTMLElement ? page : element)
+      .save()
+  } finally {
+    element.remove()
+  }
 }
 
-export function buildInvoicePdf(data: BookingInvoiceData) {
-  const content = buildInvoiceContent(data)
-  const objects = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R >> >> /Contents 4 0 R >>`,
-    `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>',
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >>',
-  ]
+export async function buildInvoicePdf(data: BookingInvoiceData) {
+  const element = document.createElement('div')
+  element.innerHTML = buildInvoiceHtml(data)
+  const html2pdf = (await import('html2pdf.js')).default
 
-  return new Blob([buildPdfDocument(objects)], { type: 'application/pdf' })
+  return html2pdf()
+    .set({ margin: 0, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } })
+    .from(element)
+    .outputPdf('blob') as Promise<Blob>
+}
+
+export function buildInvoiceHtml(data: BookingInvoiceData) {
+  const invoice = getInvoiceView(data)
+
+  return `
+    <style>
+      @page { size: A4; margin: 0; }
+      .invoice-page, .invoice-page * { box-sizing: border-box; border: 0 !important; outline: 0; box-shadow: none; }
+      .invoice-page { width: 8.27in; min-height: 11.69in; padding: .6in .52in .5in; color: #16181d; background: #fff; font-family: Arial, Helvetica, sans-serif; }
+      .invoice-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 28px; align-items: end; padding-bottom: 14px; border-bottom: 3px solid #1f242c !important; }
+      .brand-block { display: grid; gap: 12px; }
+      .brand-icon { display: block; width: 48px; height: 48px; object-fit: contain; }
+      .brand { font-size: 17px; font-weight: 700; letter-spacing: .01em; }
+      .small { font-size: 10px; line-height: 1.6; color: #7e8795; }
+      .title { margin: 0 0 12px; font-size: 34px; line-height: 1; letter-spacing: .16em; text-align: right; font-weight: 800; }
+      .meta { display: grid; gap: 8px; justify-items: end; font-size: 11px; color: #5a6472; }
+      .meta strong { color: #26303d; }
+      .section { padding: 18px 0; }
+      .bill-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: start; border-bottom: 1px solid #d9dfe7 !important; }
+      .label { margin-bottom: 10px; font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: #9aa3b2; }
+      .name { font-size: 15px; font-weight: 700; color: #1a1f28; }
+      .notice-badge { padding: 6px 10px; font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #6c7685; border: 1px solid #d9dfe7 !important; border-radius: 2px; }
+      .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; border-bottom: 1px solid #d9dfe7 !important; }
+      .detail { min-height: 76px; }
+      .detail strong { display: block; margin-top: 6px; font-size: 12px; font-weight: 700; line-height: 1.45; color: #1a1f28; }
+      .detail .subtle { display: block; margin-top: 6px; font-size: 10px; line-height: 1.5; color: #7e8795; }
+      .split { display: grid; grid-template-columns: 1fr .96fr; gap: 22px; border-bottom: 3px solid #1f242c !important; }
+      table { width: 100%; border-collapse: collapse; font-size: 12px; }
+      th { padding: 8px 0 10px; text-align: left; font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: #9aa3b2; }
+      td { padding: 8px 0; vertical-align: top; line-height: 1.45; color: #2a313c; }
+      th:last-child, td:last-child { text-align: right; }
+      tbody tr + tr td { border-top: 1px solid #edf1f5 !important; }
+      .table-title { margin-bottom: 8px; font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: #9aa3b2; }
+      .muted { color: #9aa3b2; font-style: italic; }
+      .total { display: flex; justify-content: space-between; gap: 16px; padding-top: 12px; margin-top: 4px; font-size: 14px; font-weight: 700; color: #171b22; }
+      .due-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: start; padding: 28px 0 16px; }
+      .due-title { font-size: 16px; font-weight: 700; color: #171b22; }
+      .due-copy { margin-top: 18px; font-size: 10px; line-height: 1.6; color: #6f7987; }
+      .due-amount { font-size: 18px; font-weight: 700; color: #171b22; }
+      .due-amount strong { font-size: 28px; color: #e12b27; letter-spacing: .02em; }
+      .note { margin-top: 10px; padding-top: 18px; border-top: 1px solid #d9dfe7 !important; font-size: 10px; line-height: 2; color: #9aa3b2; }
+      .note strong { color: #444d5b; }
+      .footer { margin-top: 16px; font-size: 10px; line-height: 1.7; text-align: center; color: #b0b8c5; }
+    </style>
+    <main class="invoice-page">
+      <header class="invoice-top">
+        <div class="brand-block">
+          <img class="brand-icon" src="/apple-touch-icon.png" alt="Katada Transportation Services">
+          <div class="brand">${esc(BUSINESS_NAME)}</div>
+          <div class="small">${esc(invoice.businessAddress)}<br>${esc(invoice.supportEmail)}</div>
+        </div>
+        <div>
+          <h1 class="title">INVOICE</h1>
+          <div class="meta">
+            <span><strong>No:</strong> ${esc(invoice.invoiceNumber)}</span>
+            <span><strong>Date:</strong> ${esc(invoice.issueDate)}</span>
+            <span><strong>Booking:</strong> ${esc(data.booking.booking_number)}</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="section bill-row">
+        <div>
+          <div class="label">Billed To</div>
+          <div class="name">${esc(invoice.customerName)}</div>
+          <div class="small">${esc(invoice.customerEmail)}<br>${esc(invoice.customerPhone)}</div>
+        </div>
+        <div class="notice-badge">Not an official receipt</div>
+      </section>
+
+      <section class="section summary-grid">
+        <div class="detail">
+          <div class="label">Vehicle</div>
+          <strong>${esc(invoice.vehicleName)}</strong>
+          <span class="subtle">${esc(invoice.vehicleMeta)}</span>
+        </div>
+        <div class="detail">
+          <div class="label">Rental Period</div>
+          <strong>${formatPeriodHtml(invoice.period)}</strong>
+          <span class="subtle">${esc(invoice.duration)}</span>
+        </div>
+        <div class="detail">
+          <div class="label">Type</div>
+          <strong>${esc(invoice.rentalType)}</strong>
+        </div>
+        <div class="detail">
+          <div class="label">Pick-Up · Drop-Off</div>
+          <strong>${esc(invoice.pickupDropoff || '-')}</strong>
+        </div>
+      </section>
+
+      <section class="section split">
+        <div>
+          <div class="table-title">Charges</div>
+          <table>
+            <thead><tr><th>Description</th><th>Amount</th></tr></thead>
+            <tbody>${invoice.charges.map((charge) => `<tr><td>${esc(charge.label)}</td><td>${esc(formatCurrency(charge.amount))}</td></tr>`).join('')}</tbody>
+          </table>
+          <div class="total"><span>Rental Total</span><span>${esc(formatCurrency(data.booking.total_amount))}</span></div>
+        </div>
+        <div>
+          <div class="table-title">Payments</div>
+          <table>
+            <thead><tr><th>Payment</th><th>Amount</th></tr></thead>
+            <tbody>${invoice.paymentsHtml}</tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="due-row">
+        <div>
+          <div class="due-title">Amount Due</div>
+          <div class="due-copy">Please settle the remaining balance on the day of vehicle pickup.</div>
+        </div>
+        <div class="due-amount"><strong>${esc(formatCurrency(invoice.dueAmount))}</strong></div>
+      </section>
+
+      <p class="note"><strong>Note:</strong> Additional charges may apply for excess usage, vehicle damage beyond normal wear, fuel shortfall, or non-compliance with rental terms. Any extra charges will be communicated and settled separately.</p>
+      <p class="footer">This is an invoice, not an official receipt. For an official receipt please contact ${esc(BUSINESS_NAME)} directly. · ${esc(invoice.supportEmail)} · Generated ${esc(formatDateTime(data.booking.updated_at || data.booking.created_at))}</p>
+    </main>
+  `
 }
 
 export function buildInvoicePlaintext(data: BookingInvoiceData) {
-  const invoiceNumber = buildInvoiceNumber(data.booking.booking_number)
-  const issueDate = formatDate(data.booking.updated_at || data.booking.created_at)
-  const customerName = [data.customer?.first_name, data.customer?.last_name].filter(Boolean).join(' ') || data.booking.guest_name || 'Guest customer'
-  const customerEmail = data.customer?.email || data.booking.guest_email || '-'
-  const customerPhone = data.customer?.mobile || data.booking.guest_mobile || '-'
-  const vehicleMeta = data.vehicle?.year ? `Toyota · ${data.vehicle.year}` : 'Toyota'
-  const charges = normalizeCharges(data)
-  const dueAmount = Number(data.booking.remaining_amount || 0)
+  const invoice = getInvoiceView(data)
 
   return [
     BUSINESS_NAME,
-    data.business.business_address || '11th 12th St., Villamor',
-    data.business.support_email || 'tadsuu@gmail.com',
+    invoice.businessAddress,
+    invoice.supportEmail,
     'I N V O I C E',
-    `No: ${invoiceNumber}`,
-    `Date: ${issueDate}`,
+    `No: ${invoice.invoiceNumber}`,
+    `Date: ${invoice.issueDate}`,
     `Booking: ${data.booking.booking_number}`,
     'B I L L E D T O',
-    customerName,
-    customerEmail,
-    customerPhone,
+    invoice.customerName,
+    invoice.customerEmail,
+    invoice.customerPhone,
     'NOT AN OFFICIAL RECEIPT',
     'V E H I C L E',
-    data.vehicle?.name || 'Vehicle pending',
-    vehicleMeta,
+    invoice.vehicleName,
+    invoice.vehicleMeta,
     'R E N T A L P E R I O D',
-    `${formatDateTime(data.booking.start_at)} → ${formatDateTime(data.booking.end_at)}`,
-    formatDuration(data.booking.start_at, data.booking.end_at),
+    invoice.period,
+    invoice.duration,
     'T Y P E',
-    toRentalLabel(data.booking.rental_model),
+    invoice.rentalType,
     'P I C K - U P · D R O P - O F F',
+    invoice.pickupDropoff || '-',
     'C H A R G E S',
-    ...charges.map((charge) => `${charge.label} ${formatCurrency(charge.amount)}`),
+    ...invoice.charges.map((charge) => `${charge.label} ${formatCurrency(charge.amount)}`),
     `Rental Total ${formatCurrency(data.booking.total_amount)}`,
     'P A Y M E N T S',
     data.payments.length ? data.payments.map((payment) => `${formatDate(payment.paid_at || payment.created_at)} · ${toPaymentLabel(payment.channel)} ${formatCurrency(payment.amount)}`).join('\n') : 'No payments recorded',
-    `Amount Due ${formatCurrency(dueAmount)}`,
-    'Please settle the remaining balance on the day of vehicle pickup.',
-    'Note: Additional charges may apply for excess usage, vehicle damage beyond normal wear, fuel shortfall, or non-compliance with rental terms. Any extra charges will be communicated',
-    'and settled separately.',
-    `This is an invoice, not an official receipt. For an official receipt please contact ${BUSINESS_NAME} directly. · ${data.business.support_email || 'tadsuu@gmail.com'} · Generated ${formatDateTime(data.booking.updated_at || data.booking.created_at)}`,
+    `Amount Due ${formatCurrency(invoice.dueAmount)}`,
   ].join('\n')
 }
 
-function buildInvoiceContent(data: BookingInvoiceData) {
-  const parts: string[] = []
-  const invoiceNumber = buildInvoiceNumber(data.booking.booking_number)
-  const issueDate = formatDate(data.booking.updated_at || data.booking.created_at)
-  const businessAddress = data.business.business_address || '11th 12th St., Villamor'
-  const customerName = [data.customer?.first_name, data.customer?.last_name].filter(Boolean).join(' ') || data.booking.guest_name || 'Guest customer'
-  const customerEmail = data.customer?.email || data.booking.guest_email || '-'
-  const customerPhone = data.customer?.mobile || data.booking.guest_mobile || '-'
-  const pickupDropoff = [data.booking.pickup_location, data.booking.dropoff_location].filter(Boolean).join(' - ')
-  const charges = normalizeCharges(data)
-  const payments = data.payments
-  const paymentsTotal = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
+function getInvoiceView(data: BookingInvoiceData) {
+  const paymentsTotal = data.payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
   const dueAmount = Number(data.booking.remaining_amount || Math.max(0, data.booking.total_amount - paymentsTotal))
+  const vehicleMeta = data.vehicle?.year ? `Toyota · ${data.vehicle.year}` : 'Toyota'
+  const pickupDropoff = [data.booking.pickup_location, data.booking.dropoff_location].filter(Boolean).join(' - ')
+  const paymentsHtml = data.payments.length
+    ? data.payments.slice(0, 5).map((payment) => `<tr><td>${esc(formatDate(payment.paid_at || payment.created_at))}<br><span class="muted">${esc(toPaymentLabel(payment.channel))}${payment.reference_number ? ` · Ref ${esc(payment.reference_number)}` : ''}</span></td><td>${esc(formatCurrency(payment.amount))}</td></tr>`).join('')
+    : '<tr><td class="muted" colspan="2">No payments recorded</td></tr>'
+  const customerName = [data.customer?.first_name, data.customer?.last_name].filter(Boolean).join(' ') || data.booking.guest_name || 'Guest customer'
 
-  parts.push('0.1 0.12 0.16 RG 1.5 w')
-  parts.push(line(24, 492, 818, 492))
-  parts.push(line(24, 379, 818, 379))
-  parts.push(line(24, 283, 818, 283))
-  parts.push('0.86 0.89 0.94 RG 1 w')
-  parts.push(line(24, 149, 818, 149))
-  parts.push('0.1 0.12 0.16 RG 1.5 w')
-  parts.push(line(24, 224, 818, 224))
-  parts.push(rect(694, 439, 124, 24))
-
-  parts.push(text(BUSINESS_NAME, 24, 542, { font: 'F2', size: 18, color: [0.12, 0.13, 0.16] }))
-  parts.push(text(businessAddress, 24, 513, { size: 10, color: [0.45, 0.49, 0.56] }))
-  parts.push(text(data.business.support_email || 'tadsuu@gmail.com', 24, 494, { size: 10, color: [0.45, 0.49, 0.56] }))
-
-  parts.push(text('I N V O I C E', 818, 548, { font: 'F2', size: 34, align: 'right', color: [0.08, 0.09, 0.12] }))
-  parts.push(text(`No: ${invoiceNumber}`, 818, 515, { font: 'F2', size: 10, align: 'right', color: [0.26, 0.31, 0.39] }))
-  parts.push(text(`Date: ${issueDate}`, 818, 497, { font: 'F2', size: 10, align: 'right', color: [0.26, 0.31, 0.39] }))
-  parts.push(text(`Booking: ${data.booking.booking_number}`, 818, 479, { font: 'F2', size: 10, align: 'right', color: [0.26, 0.31, 0.39] }))
-
-  parts.push(text('B I L L E D T O', 24, 431, { font: 'F2', size: 11, color: [0.61, 0.66, 0.73] }))
-  parts.push(text(customerName, 24, 403, { font: 'F2', size: 14, color: [0.12, 0.13, 0.16] }))
-  parts.push(text(customerEmail, 24, 380, { size: 10, color: [0.45, 0.49, 0.56] }))
-  parts.push(text(customerPhone, 24, 361, { size: 10, color: [0.45, 0.49, 0.56] }))
-  parts.push(text('NOT AN OFFICIAL RECEIPT', 756, 446, { font: 'F2', size: 9, align: 'center', color: [0.45, 0.49, 0.56] }))
-
-  parts.push(text('V E H I C L E', 24, 345, { font: 'F2', size: 11, color: [0.61, 0.66, 0.73] }))
-  parts.push(text(data.vehicle?.name || 'Vehicle pending', 24, 320, { font: 'F2', size: 14, color: [0.12, 0.13, 0.16] }))
-  parts.push(text(data.vehicle?.year ? `Toyota · ${data.vehicle.year}` : 'Toyota', 24, 300, { size: 10, color: [0.45, 0.49, 0.56] }))
-
-  parts.push(text('R E N T A L P E R I O D', 184, 345, { font: 'F2', size: 11, color: [0.61, 0.66, 0.73] }))
-  parts.push(text(`${formatDateTime(data.booking.start_at)} → ${formatDateTime(data.booking.end_at)}`, 184, 320, { font: 'F2', size: 12, color: [0.12, 0.13, 0.16] }))
-  parts.push(text(formatDuration(data.booking.start_at, data.booking.end_at), 184, 300, { size: 10, color: [0.45, 0.49, 0.56] }))
-
-  parts.push(text('T Y P E', 462, 345, { font: 'F2', size: 11, color: [0.61, 0.66, 0.73] }))
-  parts.push(text(toRentalLabel(data.booking.rental_model), 462, 320, { font: 'F2', size: 14, color: [0.12, 0.13, 0.16] }))
-
-  parts.push(text('P I C K - U P · D R O P - O F F', 610, 345, { font: 'F2', size: 11, color: [0.61, 0.66, 0.73] }))
-  if (pickupDropoff) {
-    wrapText(pickupDropoff, 610, 320, 208, 14, { font: 'F2', size: 12, color: [0.12, 0.13, 0.16] }).forEach((entry) => parts.push(entry))
+  return {
+    invoiceNumber: buildInvoiceNumber(data.booking.booking_number),
+    issueDate: formatDate(data.booking.updated_at || data.booking.created_at),
+    businessAddress: data.business.business_address || '11th 12th St., Villamor',
+    supportEmail: data.business.support_email || 'tadsuu@gmail.com',
+    customerName,
+    customerEmail: data.customer?.email || data.booking.guest_email || '-',
+    customerPhone: data.customer?.mobile || data.booking.guest_mobile || '-',
+    vehicleName: data.vehicle?.name || 'Vehicle pending',
+    vehicleMeta,
+    period: `${formatDateTime(data.booking.start_at)} → ${formatDateTime(data.booking.end_at)}`,
+    duration: formatDuration(data.booking.start_at, data.booking.end_at),
+    rentalType: toRentalLabel(data.booking.rental_model),
+    pickupDropoff,
+    dueAmount,
+    charges: normalizeCharges(data),
+    paymentsHtml,
   }
-
-  parts.push(text('C H A R G E S', 24, 252, { font: 'F2', size: 11, color: [0.61, 0.66, 0.73] }))
-  let chargeY = 224
-  charges.forEach((charge, index) => {
-    parts.push(text(charge.label, 24, chargeY, { size: 11, color: [0.25, 0.3, 0.38] }))
-    parts.push(text(formatCurrency(charge.amount), 430, chargeY, { font: 'F2', size: 11, align: 'right', color: charge.muted ? [0.45, 0.49, 0.56] : [0.12, 0.13, 0.16] }))
-    if (index < charges.length - 1) {
-      parts.push('0.9 0.92 0.95 RG 1 w')
-      parts.push(line(24, chargeY - 11, 430, chargeY - 11))
-    }
-    chargeY -= 22
-  })
-
-  parts.push(text('Rental Total', 24, 170, { font: 'F2', size: 12, color: [0.12, 0.13, 0.16] }))
-  parts.push(text(formatCurrency(data.booking.total_amount), 430, 170, { font: 'F2', size: 12, align: 'right', color: [0.12, 0.13, 0.16] }))
-
-  parts.push(text('P A Y M E N T S', 488, 252, { font: 'F2', size: 11, color: [0.61, 0.66, 0.73] }))
-  if (payments.length === 0) {
-    parts.push(text('No payments recorded', 488, 224, { font: 'F3', size: 11, color: [0.61, 0.66, 0.73] }))
-  } else {
-    let paymentY = 224
-    payments.slice(0, 4).forEach((payment) => {
-      parts.push(text(`${formatDate(payment.paid_at || payment.created_at)} · ${toPaymentLabel(payment.channel)}`, 488, paymentY, { size: 10, color: [0.25, 0.3, 0.38] }))
-      parts.push(text(formatCurrency(payment.amount), 818, paymentY, { font: 'F2', size: 10, align: 'right', color: [0.12, 0.13, 0.16] }))
-      if (payment.reference_number) {
-        parts.push(text(`Ref ${payment.reference_number}`, 488, paymentY - 14, { size: 9, color: [0.61, 0.66, 0.73] }))
-      }
-      paymentY -= 32
-    })
-  }
-
-  parts.push(text('Amount Due', 24, 176, { font: 'F2', size: 16, color: [0.12, 0.13, 0.16] }))
-  parts.push(text('Please settle the remaining balance on the day of vehicle pickup.', 24, 139, { size: 10, color: [0.45, 0.49, 0.56] }))
-  parts.push(text(formatCurrency(dueAmount), 818, 170, { font: 'F2', size: 26, align: 'right', color: [0.91, 0.16, 0.18] }))
-
-  wrapText(
-    'Note: Additional charges may apply for excess usage, vehicle damage beyond normal wear, fuel shortfall, or non-compliance with rental terms. Any extra charges will be communicated and settled separately.',
-    24,
-    116,
-    794,
-    13,
-    { size: 8.5, color: [0.61, 0.66, 0.73] },
-  ).forEach((entry) => parts.push(entry))
-
-  parts.push(text(`This is an invoice, not an official receipt. For an official receipt please contact ${BUSINESS_NAME} directly. · ${data.business.support_email || 'tadsuu@gmail.com'} · Generated ${formatDateTime(data.booking.updated_at || data.booking.created_at)}`, 421, 28, { size: 8, align: 'center', color: [0.68, 0.72, 0.78] }))
-
-  return parts.join('\n')
 }
 
 function normalizeCharges(data: BookingInvoiceData) {
   const items = (data.booking.price_line_items || []).map((item) => ({
     label: item.detail ? `${item.label} (${item.detail})` : item.label,
     amount: Number(item.amount || 0),
-    muted: /vat/i.test(item.label),
   }))
 
   if (!items.some((item) => /vat/i.test(item.label))) {
-    items.push({ label: `VAT (${data.business.vat_percent}%)`, amount: 0, muted: true })
+    items.push({ label: `VAT (${data.business.vat_percent}%)`, amount: 0 })
   }
 
-  return items.slice(0, 6)
-}
-
-function buildPdfDocument(objects: string[]) {
-  let pdf = '%PDF-1.4\n'
-  const offsets = [0]
-
-  objects.forEach((object, index) => {
-    offsets.push(pdf.length)
-    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`
-  })
-
-  const xrefStart = pdf.length
-  pdf += `xref\n0 ${objects.length + 1}\n`
-  pdf += '0000000000 65535 f \n'
-
-  offsets.slice(1).forEach((offset) => {
-    pdf += `${String(offset).padStart(10, '0')} 00000 n \n`
-  })
-
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`
-  return pdf
-}
-
-function text(value: string, x: number, y: number, options: TextOptions = {}) {
-  const font = options.font || 'F1'
-  const size = options.size || 12
-  const color = options.color || [0, 0, 0]
-  const safeText = sanitizePdfText(value)
-  const width = estimateTextWidth(safeText, size)
-  const dx = options.align === 'right' ? x - width : options.align === 'center' ? x - (width / 2) : x
-
-  return `BT /${font} ${size} Tf ${color.join(' ')} rg 1 0 0 1 ${dx.toFixed(2)} ${y.toFixed(2)} Tm <${encodePdfHexText(safeText)}> Tj ET`
-}
-
-function wrapText(value: string, x: number, y: number, maxWidth: number, lineHeight: number, options: TextOptions = {}) {
-  const lines = splitLines(value, options.size || 12, maxWidth)
-  return lines.map((lineText, index) => text(lineText, x, y - (index * lineHeight), options))
-}
-
-function splitLines(value: string, size: number, maxWidth: number) {
-  const words = sanitizePdfText(value).split(/\s+/).filter(Boolean)
-  const lines: string[] = []
-  let current = ''
-
-  words.forEach((word) => {
-    const next = current ? `${current} ${word}` : word
-    if (estimateTextWidth(next, size) <= maxWidth || !current) {
-      current = next
-      return
-    }
-    lines.push(current)
-    current = word
-  })
-
-  if (current) lines.push(current)
-  return lines
-}
-
-function line(x1: number, y1: number, x2: number, y2: number) {
-  return `${x1} ${y1} m ${x2} ${y2} l S`
-}
-
-function rect(x: number, y: number, width: number, height: number) {
-  return `${x} ${y} ${width} ${height} re S`
-}
-
-function estimateTextWidth(value: string, size: number) {
-  return value.length * size * 0.54
-}
-
-function sanitizePdfText(value: string) {
-  return (value || '-').replace(/\s+/g, ' ').trim() || '-'
-}
-
-function encodePdfHexText(value: string) {
-  const hex = ['FE', 'FF']
-
-  for (const char of value) {
-    const codePoint = char.codePointAt(0)
-    if (codePoint === undefined) continue
-    if (codePoint > 0xffff) continue
-    hex.push(codePoint.toString(16).padStart(4, '0').toUpperCase())
-  }
-
-  return hex.join('')
+  return items.slice(0, 8)
 }
 
 function buildInvoiceNumber(bookingNumber: string) {
@@ -344,4 +296,14 @@ function toPaymentLabel(value: string) {
   if (value === 'ewallet') return 'E-Wallet'
   if (value === 'cash') return 'Cash'
   return value
+}
+
+function esc(value: string | number) {
+  return String(value).replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[char] || char)
+}
+
+function formatPeriodHtml(period: string) {
+  const [start, end] = period.split(' → ')
+  if (!end) return esc(period)
+  return `${esc(start)} →<br>${esc(end)}`
 }
