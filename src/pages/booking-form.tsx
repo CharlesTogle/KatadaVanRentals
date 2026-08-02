@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { useAuth } from '@/contexts/useAuth'
@@ -13,8 +13,9 @@ import { PaymentFields } from '@/components/booking/payment-fields'
 import { PriceSummary } from '@/components/booking/price-summary'
 import { BookingFormSkeleton } from '@/components/booking/booking-form-skeleton'
 import { showError } from '@/lib/errors'
-import { getBookingPriceBreakdown, getMissingSelfDriveDocuments, hasRequiredSelfDriveDocuments } from '@/lib/booking-utils'
+import { getBookingPriceBreakdown, getMissingSelfDriveDocuments, hasRequiredSelfDriveDocuments, normalizeCustomerRentalType, toBookingRentalModel, type CustomerRentalType } from '@/lib/booking-utils'
 import { loadBookingDateSelection, saveBookingDateSelection } from '@/lib/booking-date-storage'
+import { calculateToll, getNearestTollPlazas, getRouteQuote, suggestLocations } from '@/services/location-service'
 import { supabase } from '@/lib/supabase'
 import { useBookingStore } from '@/store/booking-store'
 
@@ -27,8 +28,10 @@ function generateBookingNumber(): string {
   return `CR-${y}${m}${d}-${rand}`
 }
 
-function formatRentalLabel(rentalType: 'self-drive' | 'with-driver') {
-  return rentalType === 'self-drive' ? 'Self Drive' : 'With Driver'
+function formatRentalLabel(rentalType: CustomerRentalType) {
+  if (rentalType === 'all-in') return 'All In'
+  if (rentalType === 'all-out') return 'All Out'
+  return 'Self Drive'
 }
 
 function formatDocumentLabel(type: string) {
@@ -53,17 +56,71 @@ function isMissingProfileField(value: string | null | undefined, field: 'mobile'
   return field === 'mobile' && trimmedValue === '+63'
 }
 
+type SelfDriveAddress = {
+  addressLine1: string
+  addressLine2: string
+  streetAddress: string
+  barangay: string
+  city: string
+  province: string
+  zipCode: string
+  country: string
+}
+
+const emptySelfDriveAddress: SelfDriveAddress = {
+  addressLine1: '',
+  addressLine2: '',
+  streetAddress: '',
+  barangay: '',
+  city: '',
+  province: '',
+  zipCode: '',
+  country: 'Philippines',
+}
+
+function getProfileAddress(profile: ReturnType<typeof useProfile>['data']): SelfDriveAddress {
+  if (!profile) return emptySelfDriveAddress
+
+  return {
+    addressLine1: profile.address_line_1 || '',
+    addressLine2: profile.address_line_2 || '',
+    streetAddress: profile.street_address || '',
+    barangay: profile.barangay || '',
+    city: profile.city || '',
+    province: profile.province || '',
+    zipCode: profile.zip_code || '',
+    country: profile.country || 'Philippines',
+  }
+}
+
+function formatSelfDriveAddress(address: SelfDriveAddress) {
+  return [
+    address.addressLine1,
+    address.addressLine2,
+    address.streetAddress,
+    address.barangay,
+    address.city,
+    address.province,
+    address.zipCode,
+    address.country,
+  ].map((part) => part.trim()).filter(Boolean).join(', ')
+}
+
 export default function BookingForm() {
   const { vehicleId } = useParams<{ vehicleId: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const rentalType = (searchParams.get('type') || 'self-drive') as 'self-drive' | 'with-driver'
+  const rentalType = normalizeCustomerRentalType(searchParams.get('type'))
   const startParam = searchParams.get('start') || ''
   const endParam = searchParams.get('end') || ''
 
   const locations = useBookingStore((s) => s.locations)
+  const mode = useBookingStore((s) => s.mode)
+  const routeSelections = useBookingStore((s) => s.routeSelections)
+  const tollSelections = useBookingStore((s) => s.tollSelections)
+  const routeQuote = useBookingStore((s) => s.routeQuote)
   const purpose = useBookingStore((s) => s.purpose)
   const notes = useBookingStore((s) => s.notes)
   const payment = useBookingStore((s) => s.payment)
@@ -73,6 +130,16 @@ export default function BookingForm() {
   const setSubmitting = useBookingStore((s) => s.setSubmitting)
   const setError = useBookingStore((s) => s.setError)
   const setNotes = useBookingStore((s) => s.setNotes)
+  const setRouteSelection = useBookingStore((s) => s.setRouteSelection)
+  const setRouteQuote = useBookingStore((s) => s.setRouteQuote)
+  const setTollCandidates = useBookingStore((s) => s.setTollCandidates)
+  const setTollRfidBreakdown = useBookingStore((s) => s.setTollRfidBreakdown)
+  const [routeLoading, setRouteLoading] = useState(false)
+  const [routeError, setRouteError] = useState('')
+  const [tollLoading, setTollLoading] = useState(false)
+  const [tollError, setTollError] = useState('')
+  const [completeAddress, setCompleteAddress] = useState<SelfDriveAddress>(emptySelfDriveAddress)
+  const [completeAddressEdited, setCompleteAddressEdited] = useState(false)
 
   const vehicleQuery = useVehicleById(vehicleId)
   const profileQuery = useProfile(user?.id)
@@ -89,15 +156,13 @@ export default function BookingForm() {
     isMissingProfileField(profileQuery.data?.last_name, 'default') && 'Last name',
     isMissingProfileField(profileQuery.data?.email, 'default') && 'Email address',
     isMissingProfileField(profileQuery.data?.mobile, 'mobile') && 'Mobile number',
-    isMissingProfileField(profileQuery.data?.address_line_1, 'default') && 'Address line 1',
-    isMissingProfileField(profileQuery.data?.street_address, 'default') && 'Street address',
-    isMissingProfileField(profileQuery.data?.barangay, 'default') && 'Barangay',
-    isMissingProfileField(profileQuery.data?.city, 'default') && 'City',
-    isMissingProfileField(profileQuery.data?.province, 'default') && 'Province',
-    isMissingProfileField(profileQuery.data?.zip_code, 'default') && 'ZIP code',
-    isMissingProfileField(profileQuery.data?.country, 'default') && 'Country',
   ].filter(Boolean) as string[]
   const profileBlocked = missingProfileFields.length > 0
+
+  useEffect(() => {
+    if (rentalType !== 'self-drive' || completeAddressEdited) return
+    setCompleteAddress(getProfileAddress(profileQuery.data))
+  }, [completeAddressEdited, profileQuery.data, rentalType])
 
   useEffect(() => {
     if (startParam || endParam) {
@@ -113,6 +178,205 @@ export default function BookingForm() {
     if (savedSelection.end) nextParams.set('end', savedSelection.end)
     setSearchParams(nextParams, { replace: true })
   }, [endParam, searchParams, setSearchParams, startParam])
+
+  const userId = user?.id ?? null
+
+  useEffect(() => {
+    const needsDistance = mode === 'dropoff' && rentalType !== 'self-drive'
+    if (!userId || !vehicleId || (rentalType !== 'all-in' && !needsDistance)) {
+      setRouteLoading(false)
+      setRouteError('')
+      setRouteQuote(null)
+      return
+    }
+
+    const hasPickup = routeSelections.pickup.lat != null && routeSelections.pickup.lng != null
+    const needsDestination = rentalType === 'all-in'
+    const hasDestination = !needsDestination || (routeSelections.destination.lat != null && routeSelections.destination.lng != null)
+    const hasDropoff = routeSelections.dropoff.lat != null && routeSelections.dropoff.lng != null
+    if (!hasPickup || !hasDestination || !hasDropoff) {
+      let cancelled = false
+      const canResolvePickup = !hasPickup && locations.pickup.trim().length >= 3
+      const canResolveDestination = needsDestination && !hasDestination && locations.destination.trim().length >= 3
+      const canResolveDropoff = !hasDropoff && locations.dropoff.trim().length >= 3
+      setRouteLoading(canResolvePickup || canResolveDestination || canResolveDropoff)
+
+      const autoResolveTimeout = window.setTimeout(() => {
+        void Promise.all([
+          canResolvePickup ? suggestLocations(locations.pickup).then((results) => results[0] ?? null) : null,
+          canResolveDestination ? suggestLocations(locations.destination).then((results) => results[0] ?? null) : null,
+          canResolveDropoff ? suggestLocations(locations.dropoff).then((results) => results[0] ?? null) : null,
+        ]).then(([pickup, destination, dropoff]) => {
+          if (cancelled) return
+          if (pickup) setRouteSelection('pickup', pickup)
+          if (destination) setRouteSelection('destination', destination)
+          if (dropoff) setRouteSelection('dropoff', dropoff)
+          if (!pickup && !destination && !dropoff) setRouteLoading(false)
+          if (pickup || destination || dropoff) setRouteError('')
+        }).catch(() => {
+          if (!cancelled) setRouteLoading(false)
+        })
+      }, 300)
+
+      setRouteQuote(null)
+      return () => {
+        cancelled = true
+        window.clearTimeout(autoResolveTimeout)
+      }
+    }
+
+    let cancelled = false
+    setRouteLoading(true)
+
+    void getRouteQuote({
+      pickup: routeSelections.pickup,
+      destination: needsDestination ? routeSelections.destination : undefined,
+      dropoff: routeSelections.dropoff,
+      vehicleId,
+      rentalModel: toBookingRentalModel(rentalType),
+    }).then((quote) => {
+      if (cancelled) return
+      setRouteQuote(quote)
+      setRouteError('')
+    }).catch((err) => {
+      if (cancelled) return
+      setRouteQuote(null)
+      setRouteError(err instanceof Error ? err.message : 'Failed to compute route quote')
+    }).finally(() => {
+      if (!cancelled) setRouteLoading(false)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    rentalType,
+    locations.dropoff,
+    locations.destination,
+    locations.pickup,
+    mode,
+    routeSelections.dropoff,
+    routeSelections.destination,
+    routeSelections.pickup,
+    setRouteQuote,
+    setRouteSelection,
+    userId,
+    vehicleId,
+  ])
+
+  useEffect(() => {
+    if (rentalType !== 'all-in') {
+      setTollCandidates([], [])
+      setTollError('')
+      return
+    }
+
+    const hasPickup = routeSelections.pickup.lat != null && routeSelections.pickup.lng != null
+    const hasDropoff = routeSelections.dropoff.lat != null && routeSelections.dropoff.lng != null
+    if (!hasPickup || !hasDropoff) {
+      setTollCandidates([], [])
+      setTollError('')
+      return
+    }
+
+    let cancelled = false
+
+    void getNearestTollPlazas({
+      pickup: routeSelections.pickup,
+      destination: routeSelections.destination,
+      dropoff: routeSelections.dropoff,
+      routeGeometry: routeQuote?.routeGeometry,
+    }).then((result) => {
+      if (cancelled) return
+      setTollCandidates(result.entryCandidates, result.exitCandidates)
+      setTollError('')
+    }).catch((err) => {
+      if (cancelled) return
+      setTollCandidates([], [])
+      setTollError(showError(err instanceof Error ? err : null))
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [routeQuote?.routeGeometry, routeSelections.dropoff, routeSelections.pickup, rentalType, setTollCandidates])
+
+  useEffect(() => {
+    if (rentalType !== 'all-in' || !routeQuote || !tollSelections.entry || !tollSelections.exit) {
+      setTollLoading(false)
+      setTollError('')
+      return
+    }
+
+    const entryPlaza = tollSelections.entry
+    const exitPlaza = tollSelections.exit
+    const hasComputedToll = routeQuote.tollSegments.length > 0
+      || routeQuote.tollEstimateAmount > 0
+      || routeQuote.tollRfidBreakdown.length > 0
+
+    const matchesCurrentSelection = hasComputedToll
+      && routeQuote.tollEntryPlaza === entryPlaza.name
+      && routeQuote.tollEntryExpressway === entryPlaza.expressway
+      && routeQuote.tollExitPlaza === exitPlaza.name
+      && routeQuote.tollExitExpressway === exitPlaza.expressway
+      && routeQuote.tollVehicleClass === tollSelections.vehicleClass
+
+    if (matchesCurrentSelection) {
+      setTollLoading(false)
+      setTollError('')
+      return
+    }
+
+    let cancelled = false
+    setTollLoading(true)
+
+    void calculateToll({
+      pickup: routeSelections.pickup,
+      destination: routeSelections.destination,
+      dropoff: routeSelections.dropoff,
+      entryPlaza: entryPlaza.id,
+      exitPlaza: exitPlaza.id,
+      returnEntryPlaza: exitPlaza.id,
+      returnExitPlaza: entryPlaza.id,
+      vehicleClass: tollSelections.vehicleClass,
+    }).then((result) => {
+      if (cancelled) return
+      setRouteQuote({ ...routeQuote, ...result })
+      setTollRfidBreakdown(result.tollRfidBreakdown)
+      setTollError('')
+    }).catch((err) => {
+      if (cancelled) return
+      setRouteQuote({
+        ...routeQuote,
+        tollEstimateAmount: 0,
+        tollSegments: [],
+        tollEntryPlaza: entryPlaza.name,
+        tollEntryExpressway: entryPlaza.expressway,
+        tollExitPlaza: exitPlaza.name,
+        tollExitExpressway: exitPlaza.expressway,
+        tollVehicleClass: tollSelections.vehicleClass,
+        tollRfidBreakdown: [],
+      })
+      setTollRfidBreakdown([])
+      setTollError(showError(err instanceof Error ? err : null))
+    }).finally(() => {
+      if (!cancelled) setTollLoading(false)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    rentalType,
+    routeQuote,
+    routeSelections.dropoff,
+    routeSelections.pickup,
+    setRouteQuote,
+    setTollRfidBreakdown,
+    tollSelections.entry,
+    tollSelections.exit,
+    tollSelections.vehicleClass,
+  ])
 
   if (!vehicleId || (!loading && !vehicle)) {
     return (
@@ -131,11 +395,29 @@ export default function BookingForm() {
   const endDate = endParam ? new Date(endParam) : null
   const pricing = getBookingPriceBreakdown({
     rentalType,
+    mode,
     startAt: startParam,
     endAt: endParam,
     basePricePerDay: bookingVehicle.base_price_per_day,
     driverRatePerDay: bookingVehicle.driver_rate_per_day,
+    routeQuote,
   })
+  const requiresPayment = pricing.deposit > 0
+  const needsRouteQuote = rentalType === 'all-in' || (mode === 'dropoff' && rentalType !== 'self-drive')
+  const basePriceLoading = routeLoading && mode === 'dropoff' && rentalType !== 'self-drive'
+  const fuelPriceLoading = routeLoading && rentalType === 'all-in'
+  const tollPriceLoading = rentalType === 'all-in' && (routeLoading || tollLoading)
+  const hasComputedToll = !!routeQuote
+    && (routeQuote.tollSegments.length > 0 || routeQuote.tollEstimateAmount > 0 || routeQuote.tollRfidBreakdown.length > 0)
+  const tollQuoteReady = !!routeQuote
+    && !!tollSelections.entry
+    && !!tollSelections.exit
+    && routeQuote.tollEntryPlaza === tollSelections.entry.name
+    && routeQuote.tollExitPlaza === tollSelections.exit.name
+    && routeQuote.tollVehicleClass === tollSelections.vehicleClass
+    && hasComputedToll
+    && !tollError
+  const needsTollEstimate = rentalType === 'all-in' && !tollQuoteReady
   const selectedPaymentMethod = paymentMethodsQuery.data?.find((method) => method.id === payment.method)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -153,12 +435,34 @@ export default function BookingForm() {
       return
     }
 
-    if (!payment.method) {
+    const bookingAddress = formatSelfDriveAddress(completeAddress)
+
+    if (rentalType === 'self-drive' && !bookingAddress) {
+      setError('Please enter your complete address for this self-drive booking.')
+      return
+    }
+
+    if (needsRouteQuote && (routeSelections.pickup.lat == null || (rentalType === 'all-in' && routeSelections.destination.lat == null) || routeSelections.dropoff.lat == null || !routeQuote)) {
+      setError(routeError || 'Choose suggested pickup, destination, and drop-off locations so we can compute your route estimate.')
+      return
+    }
+
+    if (needsTollEstimate) {
+      setError(tollError || 'Wait for the toll estimate to finish before submitting.')
+      return
+    }
+
+    if (requiresPayment && !payment.method) {
       setError('Please select a payment method.')
       return
     }
 
-    if (!receiptFile) {
+    if (requiresPayment && !payment.reference.trim()) {
+      setError('Please enter your payment reference number.')
+      return
+    }
+
+    if (requiresPayment && !receiptFile) {
       setError('Please upload your receipt or proof of payment.')
       return
     }
@@ -166,8 +470,11 @@ export default function BookingForm() {
     setSubmitting(true)
     setError('')
 
-    const rentalModel = rentalType === 'self-drive' ? 'self_drive' : 'all_out'
+    const rentalModel = toBookingRentalModel(rentalType)
     const idempotencyKey = crypto.randomUUID()
+    const bookingNotes = rentalType === 'self-drive'
+      ? [`Complete Address: ${bookingAddress}`, notes.trim()].filter(Boolean).join('\n\n')
+      : notes || null
 
     const { data: booking, error: bookingError } = await supabase.rpc(
       'create_booking',
@@ -175,15 +482,32 @@ export default function BookingForm() {
         p_booking_number: generateBookingNumber(),
         p_vehicle_id: bookingVehicle.id,
         p_rental_model: rentalModel,
+        p_booking_mode: mode,
         p_start_at: startDate?.toISOString() || new Date().toISOString(),
-        p_end_at: endDate?.toISOString() || null,
+        p_end_at: mode === 'dropoff' ? null : endDate?.toISOString() || null,
         p_duration_days: pricing.days || 1,
         p_pickup_location: locations.pickup || null,
         p_dropoff_location: locations.dropoff || null,
-        p_destination: locations.destination || null,
-        p_purpose_of_travel: purpose || null,
-        p_notes: notes || null,
+        p_destination: rentalType === 'all-in' || mode !== 'dropoff' ? locations.destination || null : null,
+        p_purpose_of_travel: mode === 'dropoff' ? null : purpose || null,
+        p_notes: bookingNotes || null,
         p_idempotency_key: idempotencyKey,
+        p_pickup_lat: routeSelections.pickup.lat,
+        p_pickup_lng: routeSelections.pickup.lng,
+        p_dropoff_lat: routeSelections.dropoff.lat,
+        p_dropoff_lng: routeSelections.dropoff.lng,
+        p_distance_km: routeQuote?.distanceKm ?? null,
+        p_duration_minutes: routeQuote?.durationMinutes ?? null,
+        p_fuel_estimate_liters: routeQuote?.fuelEstimateLiters ?? 0,
+        p_fuel_estimate_amount: routeQuote?.fuelEstimateAmount ?? 0,
+        p_toll_estimate_amount: routeQuote?.tollEstimateAmount ?? 0,
+        p_toll_segments: routeQuote?.tollSegments ?? [],
+        p_toll_entry_plaza: routeQuote?.tollEntryPlaza ?? null,
+        p_toll_entry_expressway: routeQuote?.tollEntryExpressway ?? null,
+        p_toll_exit_plaza: routeQuote?.tollExitPlaza ?? null,
+        p_toll_exit_expressway: routeQuote?.tollExitExpressway ?? null,
+        p_toll_vehicle_class: routeQuote?.tollVehicleClass ?? tollSelections.vehicleClass,
+        p_toll_rfid_breakdown: routeQuote?.tollRfidBreakdown ?? [],
       },
     )
 
@@ -195,29 +519,30 @@ export default function BookingForm() {
 
     let receiptPath: string | null = null
 
-    if (receiptFile) {
+    if (requiresPayment && receiptFile) {
       const ext = receiptFile.name.split('.').pop()
-      const path = `payment-receipts/${booking.id}/${Date.now()}.${ext}`
+      const path = `${booking.id}/${Date.now()}.${ext}`
       const { error: uploadError } = await supabase.storage
         .from('payment-receipts')
         .upload(path, receiptFile)
 
       if (!uploadError) {
-        const { data: { publicUrl } } = supabase.storage.from('payment-receipts').getPublicUrl(path)
-        receiptPath = publicUrl
+        receiptPath = path
       }
     }
 
-    await supabase.from('payments').insert({
-      booking_id: booking.id,
-      payment_method_id: payment.method,
-      channel: selectedPaymentMethod?.channel || 'bank_transfer',
-      status: 'submitted',
-      amount: booking.deposit_amount,
-      reference_number: payment.reference || null,
-      receipt_path: receiptPath,
-      submitted_by: user.id,
-    })
+    if (requiresPayment) {
+      await supabase.from('payments').insert({
+        booking_id: booking.id,
+        payment_method_id: payment.method,
+        channel: selectedPaymentMethod?.channel || 'bank_transfer',
+        status: 'submitted',
+        amount: booking.deposit_amount,
+        reference_number: payment.reference || null,
+        receipt_path: receiptPath,
+        submitted_by: user.id,
+      })
+    }
 
     try {
       await supabase.functions.invoke('send-email', {
@@ -294,7 +619,7 @@ export default function BookingForm() {
           <div className="mt-8 rounded-[24px] border border-[#e92935]/24 bg-[#fff5f5] px-5 py-5 text-[#b91c1c] sm:px-6">
             <p className="text-lg font-black">Complete your profile before booking</p>
             <p className="mt-2 text-sm font-medium leading-6 text-[#b91c1c]/88">
-              Your booking uses the contact and address details from your profile. Update the missing details first, then return here to continue.
+              Your booking uses the contact details from your profile. Update the missing details first, then return here to continue.
             </p>
             <ul className="mt-4 space-y-2 text-sm font-semibold">
               {missingProfileFields.map((field) => (
@@ -326,6 +651,51 @@ export default function BookingForm() {
 
               <BookingSection title="1. RENTAL DETAILS">
                 <RentalDetailsFields />
+                {rentalType === 'self-drive' ? (
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label htmlFor="booking-address-line-1" className="text-sm font-bold text-[#071f52]">Address Line 1 <span className="text-[#e92935]">*</span></label>
+                      <input id="booking-address-line-1" required value={completeAddress.addressLine1} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, addressLine1: e.target.value }) }} placeholder="Unit / House No. / Building" className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor="booking-address-line-2" className="text-sm font-bold text-[#071f52]">Address Line 2</label>
+                      <input id="booking-address-line-2" value={completeAddress.addressLine2} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, addressLine2: e.target.value }) }} placeholder="Subdivision / Building Wing / Landmark" className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60" />
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label htmlFor="booking-street-address" className="text-sm font-bold text-[#071f52]">Street Address <span className="text-[#e92935]">*</span></label>
+                        <input id="booking-street-address" required value={completeAddress.streetAddress} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, streetAddress: e.target.value }) }} placeholder="Street name" className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label htmlFor="booking-barangay" className="text-sm font-bold text-[#071f52]">Barangay <span className="text-[#e92935]">*</span></label>
+                        <input id="booking-barangay" required value={completeAddress.barangay} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, barangay: e.target.value }) }} placeholder="Barangay" className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60" />
+                      </div>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label htmlFor="booking-city" className="text-sm font-bold text-[#071f52]">City <span className="text-[#e92935]">*</span></label>
+                        <input id="booking-city" required value={completeAddress.city} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, city: e.target.value }) }} placeholder="Pasay City" className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label htmlFor="booking-province" className="text-sm font-bold text-[#071f52]">Province <span className="text-[#e92935]">*</span></label>
+                        <input id="booking-province" required value={completeAddress.province} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, province: e.target.value }) }} placeholder="Metro Manila" className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60" />
+                      </div>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label htmlFor="booking-zip-code" className="text-sm font-bold text-[#071f52]">ZIP Code <span className="text-[#e92935]">*</span></label>
+                        <input id="booking-zip-code" required value={completeAddress.zipCode} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, zipCode: e.target.value }) }} placeholder="1309" className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label htmlFor="booking-country" className="text-sm font-bold text-[#071f52]">Country <span className="text-[#e92935]">*</span></label>
+                        <select id="booking-country" required value={completeAddress.country} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, country: e.target.value }) }} className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60">
+                          <option value="Philippines">Philippines</option>
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-xs font-medium text-[#071f52]/48">Autofilled from your account address. Editing this only affects this booking.</p>
+                  </div>
+                ) : null}
               </BookingSection>
 
               <BookingSection title="2. LOCATIONS">
@@ -365,13 +735,19 @@ export default function BookingForm() {
               driverRatePerDay={bookingVehicle.driver_rate_per_day}
               baseTotal={pricing.baseTotal}
               driverTotal={pricing.driverTotal}
+              fuelEstimateAmount={pricing.fuelEstimateAmount}
+              tollEstimateAmount={pricing.tollEstimateAmount}
+              distanceKm={pricing.distanceKm}
+              baseLoading={basePriceLoading}
+              fuelLoading={fuelPriceLoading}
+              tollLoading={tollPriceLoading}
               grandTotal={pricing.grandTotal}
-                deposit={pricing.deposit}
-                remaining={pricing.remaining}
-                submitting={submitting}
-                disabled={profileBlocked || selfDriveBlocked || documentsQuery.isLoading || paymentMethodsQuery.isLoading}
-                disabledMessage={profileBlocked ? 'Complete your profile to enable booking.' : selfDriveBlocked ? 'Complete your profile documents to enable booking.' : undefined}
-              />
+              deposit={pricing.deposit}
+              remaining={pricing.remaining}
+              submitting={submitting}
+              disabled={profileBlocked || selfDriveBlocked || documentsQuery.isLoading || (requiresPayment && paymentMethodsQuery.isLoading) || (needsRouteQuote && (!routeQuote || routeLoading || needsTollEstimate || tollLoading))}
+              disabledMessage={profileBlocked ? 'Complete your profile to enable booking.' : selfDriveBlocked ? 'Complete your profile documents to enable booking.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : undefined))}
+            />
           </div>
         </div>
       </form>

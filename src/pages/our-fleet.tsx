@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CustomerShellFrame } from '@/components/customer-shell-frame'
+import { LocationSelector } from '@/components/booking/location-selector'
 import { useVehicles } from '@/hooks/use-vehicles'
 import { AppHeader } from '@/components/app-header'
 import { useAuth } from '@/contexts/useAuth'
@@ -10,7 +11,8 @@ import { loadBookingDateSelection, saveBookingDateSelection } from '@/lib/bookin
 import { useBookingStore } from '@/store/booking-store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Search, MapPin, Calendar, ArrowRight } from 'lucide-react'
+import { DateTimePicker } from '@/components/ui/date-time-picker'
+import { Search, ArrowRight } from 'lucide-react'
 
 function splitDateTimeValue(value: string) {
   if (!value) return { date: '', time: '' }
@@ -70,6 +72,7 @@ export default function OurFleet() {
   const initialEnd = splitDateTimeValue(savedSelection?.end || '')
   const locations = useBookingStore((s) => s.locations)
   const setLocations = useBookingStore((s) => s.setLocations)
+  const setRouteSelection = useBookingStore((s) => s.setRouteSelection)
   const [returnToDifferentLocation, setReturnToDifferentLocation] = useState(
     Boolean(locations.pickup && locations.dropoff && locations.dropoff !== locations.pickup),
   )
@@ -111,123 +114,87 @@ export default function OurFleet() {
       </div>
 
       <div className="mb-10 rounded-[24px] border border-[#071f52]/10 bg-white p-5 shadow-[0_12px_40px_rgba(7,31,82,0.08)] sm:p-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-2">
-            <label htmlFor="fleet-pickup" className="text-xs font-bold text-[#071f52]/60">{returnToDifferentLocation ? 'PICK-UP LOCATION' : 'PICK UP AND DROP OFF LOCATION'}</label>
-            <div className="relative">
-              <MapPin size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#071f52]/38" />
-              <input id="fleet-pickup" value={locations.pickup} onChange={(e) => setLocations({ pickup: e.target.value, dropoff: returnToDifferentLocation ? locations.dropoff : e.target.value })}
-                placeholder="Where to deliver? (optional)"
-                className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] py-2.5 pl-9 pr-4 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
-              />
-            </div>
+        <div
+          className={returnToDifferentLocation
+            ? 'grid gap-3 sm:grid-cols-2'
+            : 'grid gap-3 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(180px,0.9fr)] lg:items-end'}
+        >
+          <div
+            className={returnToDifferentLocation
+              ? 'space-y-2 [&_label]:text-xs [&_label]:font-bold [&_label]:text-[#071f52]'
+              : 'space-y-2 [&_label]:flex [&_label]:min-h-[2rem] [&_label]:items-end [&_label]:text-[11px] [&_label]:whitespace-nowrap'}
+          >
+            <LocationSelector
+              id="fleet-pickup"
+              label={returnToDifferentLocation ? 'PICK-UP LOCATION' : 'PICK-UP AND DROP-OFF LOCATION'}
+              value={locations.pickup}
+              placeholder="Where to deliver?"
+              onChange={(value) => setLocations({ pickup: value, dropoff: returnToDifferentLocation ? locations.dropoff : value })}
+              onSelect={(selection) => {
+                setRouteSelection('pickup', selection)
+                if (!returnToDifferentLocation) {
+                  setRouteSelection('dropoff', selection)
+                }
+              }}
+            />
           </div>
-          {returnToDifferentLocation ? (
-            <div className="space-y-2">
-              <label htmlFor="fleet-dropoff" className="text-xs font-bold text-[#071f52]/60">DROP-OFF LOCATION</label>
-              <div className="relative">
-                <MapPin size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#071f52]/38" />
-                <input
-                  id="fleet-dropoff"
-                  value={locations.dropoff}
-                  onChange={(e) => setLocations({ dropoff: e.target.value })}
-                  placeholder="Return location"
-                  className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] py-2.5 pl-9 pr-4 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
-                />
-              </div>
-            </div>
-          ) : null}
-          <div className="space-y-2">
-            <span className="text-xs font-bold text-[#071f52]/60">PICK-UP DATE & TIME</span>
-            <div className="grid gap-2 sm:grid-cols-[minmax(0,1.35fr)_minmax(88px,0.85fr)]">
-              <div className="relative min-w-0">
-                <label htmlFor="fleet-start-date" className="sr-only">Pick-up Date</label>
-                <Calendar size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#071f52]/38" />
-                <input
-                  id="fleet-start-date"
-                  type="date"
-                  value={startDatePart}
-                  onChange={(e) => {
-                    const nextDate = e.target.value
-                    const nextStart = mergeDateTimeValue(nextDate, startTimePart)
-                    const nextEnd = addHoursToDateTimeValue(nextStart, 24)
-                    setStartDatePart(nextDate)
-                    if (nextEnd) {
-                      const splitEnd = splitDateTimeValue(nextEnd)
-                      setEndDatePart(splitEnd.date)
-                      setEndTimePart(splitEnd.time)
-                    }
-                    updateBookingDates({ start: nextStart, end: nextEnd })
-                  }}
-                  className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] py-2.5 pl-9 pr-4 text-sm font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
-                />
-              </div>
-              <div className="relative min-w-0">
-                <label htmlFor="fleet-start-time" className="sr-only">Pick-up Time</label>
-                <input
-                  id="fleet-start-time"
-                  type="time"
-                  value={startTimePart}
-                  onChange={(e) => {
-                    const nextTime = e.target.value
-                    const nextStart = mergeDateTimeValue(startDatePart, nextTime)
-                    const nextEnd = addHoursToDateTimeValue(nextStart, 24)
-                    setStartTimePart(nextTime)
-                    if (nextEnd) {
-                      const splitEnd = splitDateTimeValue(nextEnd)
-                      setEndDatePart(splitEnd.date)
-                      setEndTimePart(splitEnd.time)
-                    }
-                    updateBookingDates({ start: nextStart, end: nextEnd })
-                  }}
-                  className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
-                />
-              </div>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <span className="text-xs font-bold text-[#071f52]/60">DROP-OFF DATE & TIME</span>
-            <div className="grid gap-2 sm:grid-cols-[minmax(0,1.35fr)_minmax(88px,0.85fr)]">
-              <div className="relative min-w-0">
-                <label htmlFor="fleet-end-date" className="sr-only">Drop-off Date</label>
-                <Calendar size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#071f52]/38" />
-                <input
-                  id="fleet-end-date"
-                  type="date"
-                  value={endDatePart}
-                  onChange={(e) => {
-                    const nextDate = e.target.value
-                    setEndDatePart(nextDate)
-                    updateBookingDates({ end: mergeDateTimeValue(nextDate, endTimePart) })
-                  }}
-                  className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] py-2.5 pl-9 pr-4 text-sm font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
-                />
-              </div>
-              <div className="relative min-w-0">
-                <label htmlFor="fleet-end-time" className="sr-only">Drop-off Time</label>
-                <input
-                  id="fleet-end-time"
-                  type="time"
-                  value={endTimePart}
-                  onChange={(e) => {
-                    const nextTime = e.target.value
-                    setEndTimePart(nextTime)
-                    updateBookingDates({ end: mergeDateTimeValue(endDatePart, nextTime) })
-                  }}
-                  className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
-                />
-              </div>
-            </div>
-          </div>
+          {returnToDifferentLocation ? <div className="space-y-2 [&_label]:text-xs [&_label]:font-bold [&_label]:text-[#071f52]">
+            <LocationSelector
+              id="fleet-dropoff"
+              label="DROP-OFF LOCATION"
+              value={locations.dropoff}
+              placeholder="Return location"
+              readOnly={false}
+              onChange={(value) => setLocations({ dropoff: value })}
+              onSelect={(selection) => setRouteSelection('dropoff', selection)}
+            />
+          </div> : null}
+          <DateTimePicker
+            id="fleet-start-at"
+            label="PICK-UP DATE & TIME"
+            value={mergeDateTimeValue(startDatePart, startTimePart)}
+            placeholder="Select date & time"
+            labelClassName={returnToDifferentLocation ? 'text-xs font-bold text-[#071f52]' : 'text-[11px] font-bold text-[#071f52]'}
+            triggerClassName={returnToDifferentLocation ? 'min-h-[48px] text-sm text-[#071f52]' : 'min-h-[48px] text-sm text-[#071f52]'}
+            onChange={(value) => {
+              const nextStart = splitDateTimeValue(value)
+              const nextEnd = addHoursToDateTimeValue(value, 24)
+              setStartDatePart(nextStart.date)
+              setStartTimePart(nextStart.time)
+              if (nextEnd) {
+                const splitEnd = splitDateTimeValue(nextEnd)
+                setEndDatePart(splitEnd.date)
+                setEndTimePart(splitEnd.time)
+              } else {
+                setEndDatePart('')
+                setEndTimePart('')
+              }
+              updateBookingDates({ start: value, end: nextEnd })
+            }}
+          />
+          <DateTimePicker
+            id="fleet-end-at"
+            label="DROP-OFF DATE & TIME"
+            value={mergeDateTimeValue(endDatePart, endTimePart)}
+            placeholder="Select date & time"
+            labelClassName={returnToDifferentLocation ? 'text-xs font-bold text-[#071f52]' : 'text-[11px] font-bold text-[#071f52]'}
+            triggerClassName={returnToDifferentLocation ? 'min-h-[48px] text-sm text-[#071f52]' : 'min-h-[48px] text-sm text-[#071f52]'}
+            onChange={(value) => {
+              const nextEnd = splitDateTimeValue(value)
+              setEndDatePart(nextEnd.date)
+              setEndTimePart(nextEnd.time)
+              updateBookingDates({ end: value })
+            }}
+          />
           {!returnToDifferentLocation ? (
             <div className="flex items-end">
-              <Button type="button" onClick={applyFilters} className="w-full gap-2 bg-[#e92935] text-white hover:bg-[#c91f2a]">
+              <Button type="button" onClick={applyFilters} className="h-[50px] w-full gap-2 rounded-2xl bg-[#e92935] text-white hover:bg-[#c91f2a]">
                 <Search size={16} /> Find a Car
               </Button>
             </div>
           ) : null}
         </div>
-        <label className="mt-4 inline-flex w-full items-center justify-center gap-2 text-sm font-bold text-[#071f52]/70">
+        <label className="mt-4 inline-flex w-full items-center justify-start gap-2 text-sm font-bold text-[#071f52]/70">
           <input
             type="checkbox"
             checked={returnToDifferentLocation}
@@ -242,7 +209,7 @@ export default function OurFleet() {
         {returnToDifferentLocation ? (
           <div className="mt-4">
             <div className="flex items-end">
-              <Button type="button" onClick={applyFilters} className="w-full gap-2 bg-[#e92935] text-white hover:bg-[#c91f2a]">
+              <Button type="button" onClick={applyFilters} className="h-[50px] w-full gap-2 rounded-2xl bg-[#e92935] text-white hover:bg-[#c91f2a]">
                 <Search size={16} /> Find a Car
               </Button>
             </div>

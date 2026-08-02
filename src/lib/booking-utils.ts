@@ -1,5 +1,6 @@
 import type { BookingStatus } from '@/types/booking'
 import type { CustomerDocument, DocumentType } from '@/types/document'
+import type { RouteQuoteResponse } from '@/types/location'
 
 export const SELF_DRIVE_DOCUMENT_TYPES: DocumentType[] = [
   'driver_license',
@@ -27,31 +28,62 @@ export function getMissingSelfDriveDocuments(documents: CustomerDocument[]) {
   return SELF_DRIVE_DOCUMENT_TYPES.filter((type) => !readyTypes.has(type))
 }
 
+export type CustomerRentalType = 'self-drive' | 'all-out' | 'all-in'
+export type BookingMode = 'dropoff' | 'keep'
+
 interface BookingPriceBreakdownInput {
-  rentalType: 'self-drive' | 'with-driver'
+  rentalType: CustomerRentalType
+  mode?: BookingMode
   startAt: string
   endAt: string
   basePricePerDay: number
   driverRatePerDay: number
+  routeQuote?: RouteQuoteResponse | null
 }
 
-export function getBookingPriceBreakdown({ rentalType, startAt, endAt, basePricePerDay, driverRatePerDay }: BookingPriceBreakdownInput) {
+export function normalizeCustomerRentalType(value: string | null): CustomerRentalType {
+  if (value === 'all-in') return 'all-in'
+  if (value === 'all-out' || value === 'with-driver') return 'all-out'
+  return 'self-drive'
+}
+
+export function toBookingRentalModel(rentalType: CustomerRentalType) {
+  if (rentalType === 'all-in') return 'all_in' as const
+  if (rentalType === 'all-out') return 'all_out' as const
+  return 'self_drive' as const
+}
+
+export function usesDriver(rentalType: CustomerRentalType) {
+  return rentalType === 'all-in' || rentalType === 'all-out'
+}
+
+export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, endAt, basePricePerDay, driverRatePerDay, routeQuote }: BookingPriceBreakdownInput) {
   const startDate = startAt ? new Date(startAt) : null
   const endDate = endAt ? new Date(endAt) : null
   const days = startDate && endDate
     ? Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)))
-    : 0
+    : startDate && mode === 'dropoff'
+      ? 1
+      : 0
 
-  const baseTotal = days * basePricePerDay
-  const driverTotal = rentalType === 'with-driver' ? days * driverRatePerDay : 0
-  const grandTotal = baseTotal + driverTotal
+  const distanceKm = Math.round(routeQuote?.distanceKm ?? 0)
+  const baseTotal = mode === 'dropoff' && usesDriver(rentalType)
+    ? distanceKm * basePricePerDay
+    : days * basePricePerDay
+  const driverTotal = usesDriver(rentalType) && mode === 'keep' ? days * driverRatePerDay : 0
+  const fuelEstimateAmount = rentalType === 'all-in' ? Math.round(routeQuote?.fuelEstimateAmount ?? 0) : 0
+  const tollEstimateAmount = rentalType === 'all-in' ? Math.round(routeQuote?.tollEstimateAmount ?? 0) : 0
+  const grandTotal = baseTotal + driverTotal + fuelEstimateAmount + tollEstimateAmount
   const deposit = Math.round(grandTotal * 0.1)
   const remaining = Math.max(0, grandTotal - deposit)
 
   return {
     days,
+    distanceKm,
     baseTotal,
     driverTotal,
+    fuelEstimateAmount,
+    tollEstimateAmount,
     grandTotal,
     deposit,
     remaining,

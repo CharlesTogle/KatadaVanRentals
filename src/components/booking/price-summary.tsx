@@ -1,13 +1,20 @@
+import type { CustomerRentalType } from '@/lib/booking-utils'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 
 interface PriceSummaryProps {
-  rentalType: 'self-drive' | 'with-driver'
+  rentalType: CustomerRentalType
   days: number
   basePricePerDay: number
   driverRatePerDay: number
   baseTotal: number
   driverTotal: number
+  fuelEstimateAmount?: number
+  tollEstimateAmount?: number
+  distanceKm?: number
+  baseLoading?: boolean
+  fuelLoading?: boolean
+  tollLoading?: boolean
   grandTotal: number
   deposit: number
   remaining: number
@@ -16,20 +23,36 @@ interface PriceSummaryProps {
   disabledMessage?: React.ReactNode
 }
 
-export function PriceSummary({ rentalType, days, basePricePerDay, driverRatePerDay, baseTotal, driverTotal, grandTotal, deposit, remaining, submitting, disabled = false, disabledMessage }: PriceSummaryProps) {
+export function PriceSummary({ rentalType, days, basePricePerDay, driverRatePerDay, baseTotal, driverTotal, fuelEstimateAmount = 0, tollEstimateAmount = 0, distanceKm = 0, baseLoading = false, fuelLoading = false, tollLoading = false, grandTotal, deposit, remaining, submitting, disabled = false, disabledMessage }: PriceSummaryProps) {
+  const amount = (value: number, loading?: boolean) => loading
+    ? <span className="font-bold text-[#071f52]/48">Computing...</span>
+    : <span className="font-bold">₱{value.toLocaleString()}.00</span>
+
   return (
     <div className="card space-y-5 lg:rounded-[28px] lg:p-6">
       <h3 className="text-sm font-black uppercase tracking-[0.12em] text-[#071f52]">Price Summary</h3>
 
       <div className="space-y-3 text-sm">
         <div className="flex justify-between">
-          <span className="text-[#071f52]/66">Base ({days}d × ₱{basePricePerDay.toLocaleString()})</span>
-          <span className="font-bold">₱{baseTotal.toLocaleString()}.00</span>
+          <span className="text-[#071f52]/66">{distanceKm > 0 && rentalType !== 'self-drive' ? `Fare (${distanceKm}km × ₱${basePricePerDay.toLocaleString()})` : `Base (${days}d × ₱${basePricePerDay.toLocaleString()})`}</span>
+          {amount(baseTotal, baseLoading)}
         </div>
-        {rentalType === 'with-driver' && (
+        {driverTotal > 0 && (
           <div className="flex justify-between">
             <span className="text-[#071f52]/66">Driver ({days}d × ₱{driverRatePerDay.toLocaleString()})</span>
             <span className="font-bold">₱{driverTotal.toLocaleString()}.00</span>
+          </div>
+        )}
+        {rentalType === 'all-in' && (
+          <div className="flex justify-between">
+            <span className="text-[#071f52]/66">Fuel Estimate</span>
+            {amount(fuelEstimateAmount, fuelLoading)}
+          </div>
+        )}
+        {rentalType === 'all-in' && (
+          <div className="flex justify-between">
+            <span className="text-[#071f52]/66">Toll Estimate</span>
+            {amount(tollEstimateAmount, tollLoading)}
           </div>
         )}
         <div className="flex justify-between border-t border-[#071f52]/10 pt-3 text-base">
@@ -51,6 +74,11 @@ export function PriceSummary({ rentalType, days, basePricePerDay, driverRatePerD
             </div>
           </>
         )}
+        {rentalType === 'all-in' ? (
+          <p className="text-xs font-semibold leading-5 text-[#071f52]/48">
+            Computed as Pickup -&gt; Destination -&gt; Return. Fuel and toll are estimates. Final actuals are reconciled after the trip.
+          </p>
+        ) : null}
       </div>
 
       <Button type="submit" disabled={submitting || disabled}
