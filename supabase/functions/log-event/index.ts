@@ -1,6 +1,14 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_URLS') ?? '').split(',').map(s => s.trim()).filter(Boolean)
+const ALLOWED_URLS = Deno.env.get('ALLOWED_URLS')?.trim() ?? ''
+const ALLOWED_ORIGINS = ALLOWED_URLS.split(',').map(s => s.trim()).filter(Boolean)
+
+function json(req: Request, body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+  })
+}
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? ''
@@ -15,15 +23,16 @@ function corsHeaders(req: Request): Record<string, string> {
 }
 
 serve(async (req) => {
+  if (!ALLOWED_URLS) {
+    return json(req, { error: 'ALLOWED_URLS is not configured' }, 500)
+  }
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders(req) })
   }
 
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-    })
+    return json(req, { error: 'Method not allowed' }, 405)
   }
 
   const body = await req.json()

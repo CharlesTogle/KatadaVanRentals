@@ -4,7 +4,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_URLS') ?? '').split(',').map(s => s.trim()).filter(Boolean)
+const ALLOWED_URLS = Deno.env.get('ALLOWED_URLS')?.trim() ?? ''
+const ALLOWED_ORIGINS = ALLOWED_URLS.split(',').map(s => s.trim()).filter(Boolean)
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? ''
@@ -24,6 +25,7 @@ function json(req: Request, body: unknown, status = 200) {
 }
 
 serve(async (req) => {
+  if (!ALLOWED_URLS) return json(req, { error: 'ALLOWED_URLS is not configured' }, 500)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders(req) })
   }

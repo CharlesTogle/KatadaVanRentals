@@ -8,7 +8,8 @@ const SENDER_NAME = Deno.env.get('SENDER_NAME') ?? 'Katada Van Rentals'
 const SENDER_EMAIL = Deno.env.get('SENDER_EMAIL') ?? ''
 const DEVELOPER_EMAIL = Deno.env.get('DEVELOPER_EMAIL') ?? ''
 
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_URLS') ?? '').split(',').map(s => s.trim()).filter(Boolean)
+const ALLOWED_URLS = Deno.env.get('ALLOWED_URLS')?.trim() ?? ''
+const ALLOWED_ORIGINS = ALLOWED_URLS.split(',').map(s => s.trim()).filter(Boolean)
 
 const LIVE_BOOKING_STATUSES = ['for_review', 'awaiting_documents', 'pending_price_approval', 'confirmed', 'on_trip'] as const
 
@@ -52,6 +53,11 @@ function computeDurationDays(startAt: string, endAt: string): number {
 }
 
 serve(async (req) => {
+  if (!ALLOWED_URLS) {
+    log('ERROR', 'ALLOWED_URLS is not configured')
+    return json(req, { error: 'ALLOWED_URLS is not configured' }, 500)
+  }
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders(req) })
   }
@@ -93,7 +99,7 @@ serve(async (req) => {
     return json(req, { error: 'Invalid request body' }, 400)
   }
 
-  const { customerMode, existingCustomerId, newCustomer, vehicleId, rentalModel, startAt, endAt, pickupLocation, dropoffLocation, depositAmount } = body as {
+  const { customerMode, existingCustomerId, newCustomer, vehicleId, rentalModel, startAt, endAt, pickupLocation, dropoffLocation, depositAmount, pickupLat, pickupLng, dropoffLat, dropoffLng, distanceKm, durationMinutes, fuelEstimateLiters, fuelEstimateAmount, tollEstimateAmount, tollSegments, tollEntryPlaza, tollEntryExpressway, tollExitPlaza, tollExitExpressway, tollVehicleClass, tollRfidBreakdown } = body as {
     customerMode: string
     existingCustomerId?: string
     newCustomer?: { firstName: string; lastName: string; email: string; mobile?: string; sendInvite: boolean }
@@ -104,6 +110,22 @@ serve(async (req) => {
     pickupLocation?: string
     dropoffLocation?: string
     depositAmount?: number
+    pickupLat?: number
+    pickupLng?: number
+    dropoffLat?: number
+    dropoffLng?: number
+    distanceKm?: number
+    durationMinutes?: number
+    fuelEstimateLiters?: number
+    fuelEstimateAmount?: number
+    tollEstimateAmount?: number
+    tollSegments?: unknown[]
+    tollEntryPlaza?: string
+    tollEntryExpressway?: string
+    tollExitPlaza?: string
+    tollExitExpressway?: string
+    tollVehicleClass?: 1 | 2 | 3
+    tollRfidBreakdown?: Record<string, unknown>[]
   }
 
   // Validate
@@ -218,7 +240,23 @@ serve(async (req) => {
       end_at: endAt,
       duration_days: durationDays,
       pickup_location: pickupLocation || null,
+      pickup_lat: pickupLat ?? null,
+      pickup_lng: pickupLng ?? null,
       dropoff_location: dropoffLocation || null,
+      dropoff_lat: dropoffLat ?? null,
+      dropoff_lng: dropoffLng ?? null,
+      distance_km: distanceKm ?? null,
+      duration_minutes: durationMinutes ?? null,
+      fuel_estimate_liters: fuelEstimateLiters ?? 0,
+      fuel_estimate_amount: fuelEstimateAmount ?? 0,
+      toll_estimate_amount: tollEstimateAmount ?? 0,
+      toll_segments: tollSegments ?? [],
+      toll_entry_plaza: tollEntryPlaza ?? null,
+      toll_entry_expressway: tollEntryExpressway ?? null,
+      toll_exit_plaza: tollExitPlaza ?? null,
+      toll_exit_expressway: tollExitExpressway ?? null,
+      toll_vehicle_class: tollVehicleClass ?? 1,
+      toll_rfid_breakdown: tollRfidBreakdown ?? [],
       created_by: user.id,
     })
     .select('id, booking_number, customer_id, total_amount, deposit_amount, remaining_amount, price_line_items')

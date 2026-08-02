@@ -9,7 +9,8 @@ const RATE_LIMIT = 10
 const RATE_WINDOW = 60_000
 const buckets = new Map<string, number[]>()
 
-const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_URLS') ?? '').split(',').map(s => s.trim()).filter(Boolean)
+const ALLOWED_URLS = Deno.env.get('ALLOWED_URLS')?.trim() ?? ''
+const ALLOWED_ORIGINS = ALLOWED_URLS.split(',').map(s => s.trim()).filter(Boolean)
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? ''
@@ -42,6 +43,11 @@ function json(req: Request, body: unknown, status = 200) {
 }
 
 serve(async (req) => {
+  if (!ALLOWED_URLS) {
+    log('ERROR', 'ALLOWED_URLS is not configured')
+    return json(req, { error: 'ALLOWED_URLS is not configured' }, 500)
+  }
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders(req) })
   }
