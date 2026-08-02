@@ -12,6 +12,8 @@ describe('useBookingStore', () => {
     expect(s.profile.first_name).toBe('')
     expect(s.profile.mobile).toBe('+63 ')
     expect(s.address.country).toBe('Philippines')
+    expect(s.routeSelections.pickup.lat).toBeNull()
+    expect(s.routeQuote).toBeNull()
     expect(s.submitting).toBe(false)
     expect(s.error).toBe('')
   })
@@ -39,6 +41,33 @@ describe('useBookingStore', () => {
   it('setPurpose updates purpose', () => {
     useBookingStore.getState().setPurpose('Leisure/Vacation')
     expect(useBookingStore.getState().purpose).toBe('Leisure/Vacation')
+  })
+
+  it('setRouteSelection stores coordinates and clears stale quote', () => {
+    useBookingStore.getState().setRouteQuote({
+      distanceKm: 10,
+      durationMinutes: 20,
+      tollEstimateAmount: 0,
+      tollSegments: [],
+      fuelEstimateLiters: 1,
+      fuelEstimateAmount: 50,
+      tollEntryPlaza: null,
+      tollEntryExpressway: null,
+      tollExitPlaza: null,
+      tollExitExpressway: null,
+      tollVehicleClass: 1,
+      tollRfidBreakdown: [],
+    })
+
+    useBookingStore.getState().setRouteSelection('pickup', {
+      address: 'Makati',
+      lat: 14.55,
+      lng: 121.02,
+    })
+
+    const state = useBookingStore.getState()
+    expect(state.routeSelections.pickup.address).toBe('Makati')
+    expect(state.routeQuote).toBeNull()
   })
 
   it('setSubmitting toggles submitting flag', () => {

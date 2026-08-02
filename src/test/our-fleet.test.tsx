@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import OurFleet from '@/pages/our-fleet'
 import { LocationsFields } from '@/components/booking/locations-fields'
@@ -49,10 +49,8 @@ describe('OurFleet', () => {
       </MemoryRouter>,
     )
 
-    fireEvent.change(screen.getByLabelText(/Pick-up Date/i), { target: { value: '2026-08-01' } })
-    fireEvent.change(screen.getByLabelText(/Pick-up Time/i), { target: { value: '09:30' } })
-    fireEvent.change(screen.getByLabelText(/Drop-off Date/i), { target: { value: '2026-08-03' } })
-    fireEvent.change(screen.getByLabelText(/Drop-off Time/i), { target: { value: '17:45' } })
+    fireEvent.change(screen.getByLabelText(/PICK-UP DATE & TIME/i), { target: { value: '2026-08-01T09:30' } })
+    fireEvent.change(screen.getByLabelText(/DROP-OFF DATE & TIME/i), { target: { value: '2026-08-03T17:45' } })
 
     expect(JSON.parse(window.localStorage.getItem('booking-date-selection') || '{}')).toEqual({
       start: '2026-08-01T09:30',
@@ -67,11 +65,9 @@ describe('OurFleet', () => {
       </MemoryRouter>,
     )
 
-    fireEvent.change(screen.getByLabelText(/Pick-up Date/i), { target: { value: '2026-08-01' } })
-    fireEvent.change(screen.getByLabelText(/Pick-up Time/i), { target: { value: '09:30' } })
+    fireEvent.change(screen.getByLabelText(/PICK-UP DATE & TIME/i), { target: { value: '2026-08-01T09:30' } })
 
-    expect(screen.getByLabelText(/Drop-off Date/i)).toHaveValue('2026-08-02')
-    expect(screen.getByLabelText(/Drop-off Time/i)).toHaveValue('09:30')
+    expect(screen.getByLabelText(/DROP-OFF DATE & TIME/i)).toHaveValue('2026-08-02T09:30')
     expect(JSON.parse(window.localStorage.getItem('booking-date-selection') || '{}')).toEqual({
       start: '2026-08-01T09:30',
       end: '2026-08-02T09:30',
@@ -85,9 +81,8 @@ describe('OurFleet', () => {
       </MemoryRouter>,
     )
 
-    fireEvent.change(screen.getByLabelText(/PICK-UP LOCATION/i), { target: { value: 'Makati' } })
-    fireEvent.change(screen.getByLabelText(/Pick-up Date/i), { target: { value: '2026-08-01' } })
-    fireEvent.change(screen.getByLabelText(/Pick-up Time/i), { target: { value: '09:30' } })
+    fireEvent.change(screen.getByLabelText(/PICK-UP AND DROP-OFF LOCATION/i), { target: { value: 'Makati' } })
+    fireEvent.change(screen.getByLabelText(/PICK-UP DATE & TIME/i), { target: { value: '2026-08-01T09:30' } })
     fireEvent.click(screen.getByRole('button', { name: /Find a Car/i }))
 
     expect(screen.getByText(/Showing results for:/)).toBeInTheDocument()
@@ -97,16 +92,23 @@ describe('OurFleet', () => {
     expect(screen.getByText('Makati, August 2, 2026 9:30 AM')).toBeInTheDocument()
   })
 
-  it('persists pickup and return locations into the booking store for the booking page', () => {
+  it('shows the drop-off field only when returning to a different location is selected', () => {
     render(
       <MemoryRouter>
         <OurFleet />
       </MemoryRouter>,
     )
 
-    fireEvent.change(screen.getByLabelText(/PICK-UP LOCATION/i), { target: { value: 'Makati City' } })
+    fireEvent.change(screen.getByLabelText(/PICK-UP AND DROP-OFF LOCATION/i), { target: { value: 'Makati City' } })
+
+    expect(screen.queryByLabelText(/^DROP-OFF LOCATION$/i)).not.toBeInTheDocument()
+
     fireEvent.click(screen.getByLabelText(/Return to a different location/i))
-    fireEvent.change(screen.getByLabelText(/DROP-OFF LOCATION/i), { target: { value: 'NAIA Terminal 3' } })
+
+    expect(screen.getByLabelText(/^DROP-OFF LOCATION$/i)).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText(/^DROP-OFF LOCATION$/i), { target: { value: 'NAIA Terminal 3' } })
+
     fireEvent.click(screen.getByRole('button', { name: /Find a Car/i }))
 
     expect(useBookingStore.getState().locations).toMatchObject({
@@ -114,14 +116,14 @@ describe('OurFleet', () => {
       dropoff: 'NAIA Terminal 3',
     })
 
+    cleanup()
     render(
       <MemoryRouter initialEntries={['/dashboard/book/vehicle-1?type=self-drive']}>
         <LocationsFields />
       </MemoryRouter>,
     )
 
-    expect(screen.getByLabelText(/Pick-up \/ Delivery Location/i)).toHaveValue('Makati City')
-    expect(screen.getByLabelText(/Drop-off \/ Return Location/i)).toHaveValue('NAIA Terminal 3')
+    expect(screen.getByLabelText(/Delivery & Return Location/i)).toHaveValue('Makati City')
   })
 
   it('uses the pickup location as the return location when a different return point is not selected', () => {
@@ -131,7 +133,7 @@ describe('OurFleet', () => {
       </MemoryRouter>,
     )
 
-    fireEvent.change(screen.getByLabelText(/PICK-UP LOCATION/i), { target: { value: 'BGC' } })
+    fireEvent.change(screen.getByLabelText(/PICK-UP AND DROP-OFF LOCATION/i), { target: { value: 'BGC' } })
     fireEvent.click(screen.getByRole('button', { name: /Find a Car/i }))
 
     expect(useBookingStore.getState().locations).toMatchObject({

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canCustomerCancelBooking, getAdminBookingActions, hasRequiredSelfDriveDocuments } from '@/lib/booking-utils'
+import { canCustomerCancelBooking, getAdminBookingActions, getBookingPriceBreakdown, hasRequiredSelfDriveDocuments } from '@/lib/booking-utils'
 
 describe('booking-utils', () => {
   it('requires all self-drive documents', () => {
@@ -51,5 +51,29 @@ describe('booking-utils', () => {
       { label: 'Reject', nextStatus: 'rejected' },
     ])
     expect(getAdminBookingActions('completed')).toEqual([])
+  })
+
+  it('adds toll estimates to all-in totals', () => {
+    expect(getBookingPriceBreakdown({
+      rentalType: 'all-in',
+      startAt: '2026-08-01T08:00:00.000Z',
+      endAt: '2026-08-02T08:00:00.000Z',
+      basePricePerDay: 4500,
+      driverRatePerDay: 800,
+      routeQuote: {
+        distanceKm: 42,
+        durationMinutes: 95,
+        tollEstimateAmount: 105,
+        tollSegments: [{ name: 'NLEX: Balintawak to Bocaue', amount: 105, currency: 'PHP' }],
+        fuelEstimateLiters: 5.25,
+        fuelEstimateAmount: 315,
+        tollEntryPlaza: 'Balintawak',
+        tollEntryExpressway: 'NLEX',
+        tollExitPlaza: 'Bocaue',
+        tollExitExpressway: 'NLEX',
+        tollVehicleClass: 1,
+        tollRfidBreakdown: [{ system: 'easytrip', amount: 105 }],
+      },
+    }).grandTotal).toBe(5720)
   })
 })

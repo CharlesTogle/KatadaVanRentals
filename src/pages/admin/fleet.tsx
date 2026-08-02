@@ -150,7 +150,10 @@ export default function Fleet() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#071f52]/6">
-              {filtered.map((v: Vehicle) => (
+              {filtered.map((v: Vehicle, index) => {
+                const openUp = index >= filtered.length - 2
+
+                return (
                 <tr key={v.id} className="hover:bg-[#f7f9ff] transition-colors">
                   <td className="px-5 py-3">
                     <img
@@ -198,7 +201,10 @@ export default function Fleet() {
                     {openMenuId === v.id && (
                       <>
                         <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
-                        <div className="absolute right-0 top-10 z-20 w-36 rounded-xl border border-[#071f52]/10 bg-white py-1 shadow-lg">
+                        <div className={cn(
+                          'absolute right-0 z-20 w-36 rounded-xl border border-[#071f52]/10 bg-white py-1 shadow-lg',
+                          openUp ? 'bottom-10' : 'top-10',
+                        )}>
                           <button
                             className="flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold text-[#071f52] hover:bg-[#f7f9ff]"
                             onClick={() => { setEditing(v); setOpenMenuId(null) }}
@@ -216,7 +222,8 @@ export default function Fleet() {
                     )}
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

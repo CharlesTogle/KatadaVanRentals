@@ -1,6 +1,6 @@
-import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useFileViewer } from '@/hooks/use-file-viewer'
 import { getProfile } from '@/services/profile-service'
 import { getCustomerDocuments, getCustomerDocumentSignedUrl } from '@/services/document-service'
 import { showError } from '@/lib/errors'
@@ -30,8 +30,9 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function CustomerDetail() {
   const { customerId } = useParams<{ customerId: string }>()
-  const [viewing, setViewing] = useState<{ src: string; alt: string } | null>(null)
-  const [openingId, setOpeningId] = useState<string | null>(null)
+  const { viewing, openingId, openFile, closeViewer } = useFileViewer((error) => {
+    toast.error(showError(error))
+  })
 
   const { data: profile, isLoading: profileLoading, error: profileError } = useQuery({
     queryKey: ['admin', 'customer', customerId],
@@ -46,25 +47,13 @@ export default function CustomerDetail() {
   })
 
   const handleView = async (doc: CustomerDocument) => {
-    setOpeningId(doc.id)
-
-    try {
-      const signedUrl = await getCustomerDocumentSignedUrl(doc.file_path)
-
-      if (doc.mime_type === 'application/pdf') {
-        window.open(signedUrl, '_blank', 'noopener,noreferrer')
-        return
-      }
-
-      setViewing({
-        src: signedUrl,
-        alt: DOC_LABELS[doc.document_type] || 'Document',
-      })
-    } catch (error) {
-      toast.error(showError(error as Error))
-    } finally {
-      setOpeningId(null)
-    }
+    await openFile({
+      id: doc.id,
+      path: doc.file_path,
+      alt: DOC_LABELS[doc.document_type] || 'Document',
+      resolveUrl: getCustomerDocumentSignedUrl,
+      isPdf: doc.mime_type === 'application/pdf',
+    })
   }
 
   if (profileLoading) {
@@ -173,7 +162,7 @@ export default function CustomerDetail() {
 
     <ImageViewer
       open={!!viewing}
-      onClose={() => setViewing(null)}
+      onClose={closeViewer}
       src={viewing?.src || ''}
       alt={viewing?.alt || ''}
     />

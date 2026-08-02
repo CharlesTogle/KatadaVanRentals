@@ -7,7 +7,7 @@ import { getAdminBookingDetailActions } from '@/lib/booking-utils'
 const useAdminBooking = vi.fn()
 const mutateAsync = vi.fn()
 const upload = vi.fn()
-const getPublicUrl = vi.fn(() => ({ data: { publicUrl: 'https://example.com/receipt.pdf' } }))
+const createSignedUrl = vi.fn().mockResolvedValue({ data: { signedUrl: 'https://example.com/receipt.pdf' }, error: null })
 
 vi.mock('@/hooks/use-bookings', () => ({
   useAdminBooking: (...args: unknown[]) => useAdminBooking(...args),
@@ -25,7 +25,7 @@ vi.mock('@/lib/supabase', () => ({
     storage: {
       from: () => ({
         upload: (...args: unknown[]) => upload(...args),
-        getPublicUrl,
+        createSignedUrl,
       }),
     },
   },
@@ -79,6 +79,7 @@ describe('AdminBookingDetail', () => {
     vi.clearAllMocks()
     mutateAsync.mockResolvedValue(undefined)
     upload.mockResolvedValue({ error: null })
+    createSignedUrl.mockResolvedValue({ data: { signedUrl: 'https://example.com/receipt.pdf' }, error: null })
   })
 
   it('renders loading state then booking number without changing hook order', async () => {
@@ -301,7 +302,7 @@ describe('AdminBookingDetail', () => {
 
     await waitFor(() => {
       expect(upload).toHaveBeenCalled()
-      expect(mutateAsync).toHaveBeenCalledWith({ type: 'start_trip', bookingId: 'booking-1', collectedAmount: 7000, paymentMethodId: 'pm-1', paymentChannel: 'bank_transfer', referenceNumber: 'REF-123', receiptPath: 'https://example.com/receipt.pdf' })
+      expect(mutateAsync).toHaveBeenCalledWith({ type: 'start_trip', bookingId: 'booking-1', collectedAmount: 7000, paymentMethodId: 'pm-1', paymentChannel: 'bank_transfer', referenceNumber: 'REF-123', receiptPath: expect.stringMatching(/^booking-1\/\d+\.pdf$/) })
     })
   })
 
@@ -327,7 +328,7 @@ describe('AdminBookingDetail', () => {
 
     await waitFor(() => {
       expect(upload).toHaveBeenCalled()
-      expect(mutateAsync).toHaveBeenCalledWith({ type: 'extend', bookingId: 'booking-1', newEndAt: '2026-07-30', extensionAmount: 1500, reason: 'Customer requested two extra days', collectNow: true, paymentMethodId: 'pm-1', paymentChannel: 'bank_transfer', referenceNumber: 'EXT-456', receiptPath: 'https://example.com/receipt.pdf' })
+      expect(mutateAsync).toHaveBeenCalledWith({ type: 'extend', bookingId: 'booking-1', newEndAt: '2026-07-30', extensionAmount: 1500, reason: 'Customer requested two extra days', collectNow: true, paymentMethodId: 'pm-1', paymentChannel: 'bank_transfer', referenceNumber: 'EXT-456', receiptPath: expect.stringMatching(/^booking-1\/\d+\.pdf$/) })
     })
   })
 
@@ -382,6 +383,55 @@ describe('AdminBookingDetail', () => {
       expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Release Unit / Start Trip' })).not.toBeInTheDocument()
     })
+  })
+
+  it('shows payment receipts inline when the stored path includes the bucket prefix', async () => {
+    const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
+
+    createSignedUrl.mockImplementation(async (path: string) => {
+      if (path === 'booking-1/receipt.png') {
+        return { data: { signedUrl: 'https://example.com/receipt.png' }, error: null }
+      }
+
+      return { data: null, error: new Error('not found') }
+    })
+
+    useAdminBooking.mockReturnValue({
+      data: {
+        booking: mockBooking,
+        customer: mockCustomer,
+        vehicle: mockVehicle,
+        payments: [{
+          id: 'payment-1',
+          channel: 'bank_transfer',
+          status: 'submitted',
+          amount: 2000,
+          reference_number: 'REF-123',
+          receipt_path: 'payment-receipts/booking-1/receipt.png',
+          paid_at: null,
+          created_at: '2026-07-23T10:00:00Z',
+        }],
+        documents: [],
+        status_events: [],
+        extensions: [],
+        invoice: null,
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    fireEvent.click(await screen.findByRole('link', { name: /view receipt/i }))
+
+    await waitFor(() => {
+      expect(createSignedUrl).toHaveBeenCalledWith('booking-1/receipt.png', 3600)
+      expect(screen.getByAltText('Payment receipt')).toHaveAttribute('src', 'https://example.com/receipt.png')
+    })
+
+    expect(windowOpen).not.toHaveBeenCalled()
+
+    windowOpen.mockRestore()
   })
 
   it('getAdminBookingDetailActions returns correct actions per status', () => {

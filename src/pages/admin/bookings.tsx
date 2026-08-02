@@ -106,7 +106,10 @@ export default function AdminBookings() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#071f52]/6">
-              {bookings.map((b: any) => (
+              {bookings.map((b: any, index: number) => {
+                const openUp = index >= bookings.length - 2
+
+                return (
                 <tr key={b.id} className="hover:bg-[#f7f9ff] transition-colors">
                   <td className="px-5 py-3">
                     <Link to={`/admin/bookings/${b.booking_number}`} className="text-sm font-bold text-[#071f52] hover:underline">
@@ -146,7 +149,10 @@ export default function AdminBookings() {
                       </button>
 
                       {openMenuId === b.id ? (
-                        <div className="absolute right-0 top-11 z-10 min-w-40 rounded-2xl border border-[#071f52]/10 bg-white p-1.5 shadow-xl">
+                        <div className={cn(
+                          'absolute right-0 z-10 min-w-40 rounded-2xl border border-[#071f52]/10 bg-white p-1.5 shadow-xl',
+                          openUp ? 'bottom-11' : 'top-11',
+                        )}>
                           <Link
                             to={`/admin/bookings/${b.booking_number}`}
                             onClick={() => setOpenMenuId(null)}
@@ -167,7 +173,8 @@ export default function AdminBookings() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

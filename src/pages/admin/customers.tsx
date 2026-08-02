@@ -5,6 +5,7 @@ import { useAdminCustomers } from '@/hooks/use-profile'
 import { deactivateCustomer, reactivateCustomer, deleteCustomer } from '@/services/profile-service'
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
+import { cn } from '@/lib/utils'
 import { Search, Download, MoreHorizontal } from 'lucide-react'
 import type { AdminCustomerRow } from '@/types/admin-customer'
 
@@ -141,7 +142,10 @@ export default function Customers() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#071f52]/6">
-              {customers.map((c) => (
+              {customers.map((c, index) => {
+                const openUp = index >= customers.length - 2
+
+                return (
                 <tr key={c.id} className="hover:bg-[#f7f9ff] transition-colors">
                   <td className="px-5 py-3">
                     <div>
@@ -173,18 +177,21 @@ export default function Customers() {
                         {c.is_active ? 'Active' : 'Inactive'}
                       </span>
                       <div className="relative flex justify-start">
-                      <button
-                        type="button"
-                        aria-label={`Open actions for ${c.first_name} ${c.last_name}`}
-                        aria-expanded={openMenuId === c.id}
-                        onClick={() => setOpenMenuId((current) => current === c.id ? null : c.id)}
-                        className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8"
-                      >
-                        <MoreHorizontal size={16} />
-                      </button>
+                        <button
+                          type="button"
+                          aria-label={`Open actions for ${c.first_name} ${c.last_name}`}
+                          aria-expanded={openMenuId === c.id}
+                          onClick={() => setOpenMenuId((current) => current === c.id ? null : c.id)}
+                          className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8"
+                        >
+                          <MoreHorizontal size={16} />
+                        </button>
 
-                      {openMenuId === c.id ? (
-                        <div className="absolute right-0 top-11 z-10 min-w-44 rounded-2xl border border-[#071f52]/10 bg-white p-1.5 shadow-xl">
+                        {openMenuId === c.id ? (
+                          <div className={cn(
+                            'absolute right-0 z-10 min-w-44 rounded-2xl border border-[#071f52]/10 bg-white p-1.5 shadow-xl',
+                            openUp ? 'bottom-11' : 'top-11',
+                          )}>
                           <Link
                             to={`/admin/customers/${c.id}`}
                             onClick={() => setOpenMenuId(null)}
@@ -206,13 +213,14 @@ export default function Customers() {
                           >
                             Delete Account
                           </button>
-                        </div>
-                      ) : null}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

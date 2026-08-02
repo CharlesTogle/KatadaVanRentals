@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
 import { useCustomerDocuments, useSaveCustomerDocument, useDeleteCustomerDocument } from '@/hooks/use-documents'
+import { useFileViewer } from '@/hooks/use-file-viewer'
 import { getCustomerDocumentSignedUrl } from '@/services/document-service'
 import { showError } from '@/lib/errors'
 import { toast } from '@/lib/toast'
@@ -29,13 +30,14 @@ export default function Documents() {
   const [uploading, setUploading] = useState<Record<string, boolean>>({})
   const [activeKey, setActiveKey] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<CustomerDocument | null>(null)
-  const [viewing, setViewing] = useState<{ src: string; alt: string } | null>(null)
-  const [openingId, setOpeningId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { user } = useAuth()
   const { data: documents = [], isLoading } = useCustomerDocuments(user?.id)
   const saveDocument = useSaveCustomerDocument(user?.id)
   const deleteDocument = useDeleteCustomerDocument(user?.id)
+  const { viewing, openingId, openFile, closeViewer } = useFileViewer((error) => {
+    toast.error(showError(error))
+  })
 
   const docsByKey = Object.fromEntries(
     documents.map((doc) => [doc.document_type, doc]),
@@ -95,25 +97,13 @@ export default function Documents() {
   }
 
   const handleView = async (doc: CustomerDocument) => {
-    setOpeningId(doc.id)
-
-    try {
-      const signedUrl = await getCustomerDocumentSignedUrl(doc.file_path)
-
-      if (doc.mime_type === 'application/pdf') {
-        window.open(signedUrl, '_blank', 'noopener,noreferrer')
-        return
-      }
-
-      setViewing({
-        src: signedUrl,
-        alt: getDocumentLabel(doc.document_type),
-      })
-    } catch (error) {
-      toast.error(showError(error as Error))
-    } finally {
-      setOpeningId(null)
-    }
+    await openFile({
+      id: doc.id,
+      path: doc.file_path,
+      alt: getDocumentLabel(doc.document_type),
+      resolveUrl: getCustomerDocumentSignedUrl,
+      isPdf: doc.mime_type === 'application/pdf',
+    })
   }
 
   return (
@@ -266,7 +256,7 @@ export default function Documents() {
 
       <ImageViewer
         open={!!viewing}
-        onClose={() => setViewing(null)}
+        onClose={closeViewer}
         src={viewing?.src || ''}
         alt={viewing?.alt || ''}
       />

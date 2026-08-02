@@ -32,12 +32,20 @@ const emptyProfile = {
   profile_image_path: null as string | null,
 }
 
+const MOBILE_PREFIX = '+63 '
+
 function isMissingRequiredValue(value: string, field: 'default' | 'mobile' = 'default') {
   const trimmedValue = value.trim()
 
   if (trimmedValue === '') return true
 
   return field === 'mobile' && trimmedValue === '+63'
+}
+
+function getMobileDigits(value: string) {
+  const mobileValue = value.startsWith(MOBILE_PREFIX) ? value.slice(MOBILE_PREFIX.length) : value
+
+  return mobileValue.replace(/\D/g, '')
 }
 
 export default function Profile() {
@@ -65,15 +73,38 @@ export default function Profile() {
       : 'border-[#071f52]/14 focus:border-[#071f52] focus:ring-[#ffd923]/60',
   )
 
+  const mobileDigits = getMobileDigits(profile.mobile)
+
+  const profileFieldErrors = {
+    first_name: showProfileValidation && isMissingRequiredValue(profile.first_name) ? 'First name is required.' : '',
+    last_name: showProfileValidation && isMissingRequiredValue(profile.last_name) ? 'Last name is required.' : '',
+    mobile: !showProfileValidation
+      ? ''
+      : isMissingRequiredValue(profile.mobile, 'mobile')
+        ? 'Mobile number is required.'
+        : mobileDigits.length !== 10
+          ? 'Mobile number must be exactly 10 digits.'
+          : '',
+    address_line_1: showProfileValidation && isMissingRequiredValue(profile.address_line_1) ? 'Address line 1 is required.' : '',
+    street_address: showProfileValidation && isMissingRequiredValue(profile.street_address) ? 'Street address is required.' : '',
+    barangay: showProfileValidation && isMissingRequiredValue(profile.barangay) ? 'Barangay is required.' : '',
+    city: showProfileValidation && isMissingRequiredValue(profile.city) ? 'City is required.' : '',
+    province: showProfileValidation && isMissingRequiredValue(profile.province) ? 'Province is required.' : '',
+    zip_code: showProfileValidation && isMissingRequiredValue(profile.zip_code) ? 'ZIP code is required.' : '',
+    country: showProfileValidation && isMissingRequiredValue(profile.country) ? 'Country is required.' : '',
+  }
+
   const invalidProfileFields = {
-    mobile: showProfileValidation && isMissingRequiredValue(profile.mobile, 'mobile'),
-    address_line_1: showProfileValidation && isMissingRequiredValue(profile.address_line_1),
-    street_address: showProfileValidation && isMissingRequiredValue(profile.street_address),
-    barangay: showProfileValidation && isMissingRequiredValue(profile.barangay),
-    city: showProfileValidation && isMissingRequiredValue(profile.city),
-    province: showProfileValidation && isMissingRequiredValue(profile.province),
-    zip_code: showProfileValidation && isMissingRequiredValue(profile.zip_code),
-    country: showProfileValidation && isMissingRequiredValue(profile.country),
+    first_name: Boolean(profileFieldErrors.first_name),
+    last_name: Boolean(profileFieldErrors.last_name),
+    mobile: Boolean(profileFieldErrors.mobile),
+    address_line_1: Boolean(profileFieldErrors.address_line_1),
+    street_address: Boolean(profileFieldErrors.street_address),
+    barangay: Boolean(profileFieldErrors.barangay),
+    city: Boolean(profileFieldErrors.city),
+    province: Boolean(profileFieldErrors.province),
+    zip_code: Boolean(profileFieldErrors.zip_code),
+    country: Boolean(profileFieldErrors.country),
   }
 
   useEffect(() => {
@@ -84,7 +115,7 @@ export default function Profile() {
         first_name: profileData.first_name || user?.user_metadata?.full_name?.split(' ')[0] || '',
         last_name: profileData.last_name || user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
         email: profileData.email || user?.email || '',
-        mobile: profileData.mobile || '+63 ',
+        mobile: profileData.mobile || MOBILE_PREFIX,
         address_line_1: profileData.address_line_1 || parsedAddress.address_line_1,
         address_line_2: profileData.address_line_2 || parsedAddress.address_line_2,
         street_address: profileData.street_address || parsedAddress.street_address,
@@ -124,7 +155,7 @@ export default function Profile() {
     setShowProfileValidation(true)
 
     if (mobileInputRef.current) {
-      mobileInputRef.current.setCustomValidity(profile.mobile === '+63 ' ? 'Please fill out this field.' : '')
+      mobileInputRef.current.setCustomValidity(profileFieldErrors.mobile)
     }
 
     if (!e.currentTarget.reportValidity()) {
@@ -248,27 +279,33 @@ export default function Profile() {
             </div>
           </div>
 
-          <form onSubmit={handleSaveProfile} className="space-y-4">
+          <form noValidate onSubmit={handleSaveProfile} className="space-y-4">
             <p className="px-1 py-1 text-sm font-black text-[#b91c1c]">
               Fields with (*) are required to make a booking.
             </p>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#071f52]">First Name</label>
+                <label className="text-xs font-bold text-[#071f52]">First Name <span className="text-[#e92935]">*</span></label>
                 <input
                   value={profile.first_name}
                   onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
-                  className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+                  aria-invalid={invalidProfileFields.first_name}
+                  required
+                  className={getProfileFieldClassName(invalidProfileFields.first_name)}
                 />
+                {profileFieldErrors.first_name ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.first_name}</p> : null}
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#071f52]">Last Name</label>
+                <label className="text-xs font-bold text-[#071f52]">Last Name <span className="text-[#e92935]">*</span></label>
                 <input
                   value={profile.last_name}
                   onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
-                  className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+                  aria-invalid={invalidProfileFields.last_name}
+                  required
+                  className={getProfileFieldClassName(invalidProfileFields.last_name)}
                 />
+                {profileFieldErrors.last_name ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.last_name}</p> : null}
               </div>
             </div>
 
@@ -289,19 +326,22 @@ export default function Profile() {
                   ref={mobileInputRef}
                   value={profile.mobile}
                   onChange={(e) => {
-                    const val = e.target.value
+                    const digits = getMobileDigits(e.target.value)
                     e.target.setCustomValidity('')
-                    setProfile({ ...profile, mobile: val.startsWith('+63 ') ? val : '+63 ' })
+                    setProfile({ ...profile, mobile: `${MOBILE_PREFIX}${digits.slice(0, 10)}` })
                   }}
                   aria-invalid={invalidProfileFields.mobile}
                   required
-                  placeholder="+63 917 XXX XXXX"
+                  inputMode="numeric"
+                  maxLength={MOBILE_PREFIX.length + 10}
+                  placeholder="+63 9171234567"
                   className={cn(
                     getProfileFieldClassName(invalidProfileFields.mobile),
                     'py-2.5 pl-9 pr-4 placeholder:text-[#071f52]/38',
                   )}
                 />
               </div>
+              {profileFieldErrors.mobile ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.mobile}</p> : null}
             </div>
 
             <div className="space-y-1.5">
@@ -314,6 +354,7 @@ export default function Profile() {
                 placeholder="Unit / House No. / Building"
                 className={cn(getProfileFieldClassName(invalidProfileFields.address_line_1), 'placeholder:text-[#071f52]/38')}
               />
+              {profileFieldErrors.address_line_1 ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.address_line_1}</p> : null}
             </div>
 
             <div className="space-y-1.5">
@@ -337,6 +378,7 @@ export default function Profile() {
                   placeholder="Street name"
                   className={cn(getProfileFieldClassName(invalidProfileFields.street_address), 'placeholder:text-[#071f52]/38')}
                 />
+                {profileFieldErrors.street_address ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.street_address}</p> : null}
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#071f52]">Barangay <span className="text-[#e92935]">*</span></label>
@@ -348,6 +390,7 @@ export default function Profile() {
                   placeholder="Barangay"
                   className={cn(getProfileFieldClassName(invalidProfileFields.barangay), 'placeholder:text-[#071f52]/38')}
                 />
+                {profileFieldErrors.barangay ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.barangay}</p> : null}
               </div>
             </div>
 
@@ -362,6 +405,7 @@ export default function Profile() {
                   placeholder="Pasay City"
                   className={getProfileFieldClassName(invalidProfileFields.city)}
                 />
+                {profileFieldErrors.city ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.city}</p> : null}
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#071f52]">Province <span className="text-[#e92935]">*</span></label>
@@ -373,6 +417,7 @@ export default function Profile() {
                   placeholder="Metro Manila"
                   className={getProfileFieldClassName(invalidProfileFields.province)}
                 />
+                {profileFieldErrors.province ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.province}</p> : null}
               </div>
             </div>
 
@@ -387,6 +432,7 @@ export default function Profile() {
                   placeholder="1309"
                   className={getProfileFieldClassName(invalidProfileFields.zip_code)}
                 />
+                {profileFieldErrors.zip_code ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.zip_code}</p> : null}
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#071f52]">Country <span className="text-[#e92935]">*</span></label>
@@ -399,6 +445,7 @@ export default function Profile() {
                 >
                   {countries.map((c) => (<option key={c}>{c}</option>))}
                 </select>
+                {profileFieldErrors.country ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.country}</p> : null}
               </div>
             </div>
 

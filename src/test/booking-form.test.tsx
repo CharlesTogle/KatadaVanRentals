@@ -89,7 +89,6 @@ vi.mock('@/lib/supabase', () => ({
     storage: {
       from: () => ({
         upload: vi.fn().mockResolvedValue({ error: null }),
-        getPublicUrl: vi.fn(() => ({ data: { publicUrl: 'https://example.com/receipt.pdf' } })),
       }),
     },
     functions: {
@@ -108,6 +107,13 @@ function renderBookingForm(entry: string) {
   )
 }
 
+function fillPaymentProof() {
+  fireEvent.change(screen.getByPlaceholderText('Transaction / Ref #'), { target: { value: 'REF-123' } })
+  const file = new File(['receipt'], 'receipt.pdf', { type: 'application/pdf' })
+  const input = document.querySelector('input[type="file"]') as HTMLInputElement
+  fireEvent.change(input, { target: { files: [file] } })
+}
+
 describe('BookingForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -115,23 +121,75 @@ describe('BookingForm', () => {
     mockProfile = defaultProfile
     window.localStorage.clear()
     paymentsInsert.mockResolvedValue({ error: null })
-    functionsInvoke.mockResolvedValue({ error: null })
+    functionsInvoke.mockImplementation((name: string, options?: { body?: { entryPlaza?: string } }) => {
+      if (name === 'route-quote') {
+        return Promise.resolve({
+          data: {
+            distanceKm: 42,
+            durationMinutes: 95,
+            tollEstimateAmount: 0,
+            tollSegments: [],
+            fuelEstimateLiters: 5.25,
+            fuelEstimateAmount: 315,
+            tollEntryPlaza: null,
+            tollEntryExpressway: null,
+            tollExitPlaza: null,
+            tollExitExpressway: null,
+            tollVehicleClass: 1,
+            tollRfidBreakdown: [],
+          },
+          error: null,
+        })
+      }
+
+      if (name === 'toll-estimate') {
+        const body = options?.body
+        if (body?.entryPlaza) {
+          return Promise.resolve({
+            data: {
+              tollEstimateAmount: 105,
+              tollSegments: [{ name: 'NLEX: Balintawak to Bocaue', amount: 105, currency: 'PHP' }],
+              tollEntryPlaza: 'Balintawak',
+              tollEntryExpressway: 'NLEX',
+              tollExitPlaza: 'Bocaue',
+              tollExitExpressway: 'NLEX',
+              tollVehicleClass: 1,
+              tollRfidBreakdown: [{ system: 'easytrip', amount: 105 }],
+            },
+            error: null,
+          })
+        }
+
+        return Promise.resolve({
+          data: {
+            entryCandidates: [{ id: 'nlex-balintawak', name: 'Balintawak', expressway: 'NLEX', label: 'Balintawak (NLEX)', distanceKm: 1.2 }],
+            exitCandidates: [{ id: 'nlex-bocaue', name: 'Bocaue', expressway: 'NLEX', label: 'Bocaue (NLEX)', distanceKm: 2.4 }],
+          },
+          error: null,
+        })
+      }
+
+      return Promise.resolve({ error: null })
+    })
   })
 
-  it('shows every missing profile field including placeholder-only mobile', () => {
+  it('does not require profile address fields before booking', () => {
     mockProfile = {
       ...defaultProfile,
-      mobile: '+63 ',
       address_line_1: '',
       street_address: '',
+      barangay: '',
+      city: '',
+      province: '',
+      zip_code: '',
+      country: '',
     }
     useCustomerDocuments.mockReturnValue({ data: [], isLoading: false })
 
     renderBookingForm('/dashboard/book/vehicle-1?type=with-driver&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
 
-    expect(screen.getByText('× Mobile number - missing')).toBeInTheDocument()
-    expect(screen.getByText('× Address line 1 - missing')).toBeInTheDocument()
-    expect(screen.getByText('× Street address - missing')).toBeInTheDocument()
+    expect(screen.queryByText(/Complete your profile before booking/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Address line 1/i)).not.toBeInTheDocument()
   })
 
   it('sends the back-to-vehicle action to the fleet page', () => {
@@ -176,10 +234,13 @@ describe('BookingForm', () => {
 
     renderBookingForm('/dashboard/book/vehicle-1?type=self-drive&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
 
-    const file = new File(['receipt'], 'receipt.pdf', { type: 'application/pdf' })
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Address Line 1/i)).toHaveValue('Unit 3A')
+    })
 
-    fireEvent.change(input, { target: { files: [file] } })
+    fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: 'Booking-only address' } })
+
+    fillPaymentProof()
 
     fireEvent.click(screen.getByRole('button', { name: 'Submit Booking' }))
 
@@ -187,6 +248,7 @@ describe('BookingForm', () => {
       expect(rpc).toHaveBeenCalledWith('create_booking', expect.objectContaining({
         p_vehicle_id: 'vehicle-1',
         p_rental_model: 'self_drive',
+        p_notes: 'Complete Address: Booking-only address, Blue Residences, Taft Avenue, Barangay 76, Quezon City, Metro Manila, 1100, Philippines',
       }))
     })
 
@@ -197,6 +259,73 @@ describe('BookingForm', () => {
       }),
     })
     expect(navigate).toHaveBeenCalledWith('/bookings')
+  })
+
+  it('submits all-in with a computed route quote and payment proof', async () => {
+    useCustomerDocuments.mockReturnValue({ data: [], isLoading: false })
+    useBookingStore.getState().setLocations({
+      pickup: 'Makati City',
+      dropoff: 'Pasay City',
+      destination: 'NAIA Terminal 3',
+    })
+    useBookingStore.getState().setRouteSelection('pickup', {
+      address: 'Makati City',
+      lat: 14.5547,
+      lng: 121.0244,
+    })
+    useBookingStore.getState().setRouteSelection('destination', {
+      address: 'NAIA Terminal 3',
+      lat: 14.5191,
+      lng: 121.0136,
+    })
+    useBookingStore.getState().setRouteSelection('dropoff', {
+      address: 'Pasay City',
+      lat: 14.5378,
+      lng: 121.0014,
+    })
+
+    rpc.mockResolvedValue({
+      data: {
+        id: 'booking-2',
+        booking_number: 'CR-260723-EFGH',
+        total_amount: 5615,
+        deposit_amount: 0,
+        remaining_amount: 5615,
+      },
+      error: null,
+    })
+
+    renderBookingForm('/dashboard/book/vehicle-1?type=all-in&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
+
+    await waitFor(() => {
+      expect(functionsInvoke).toHaveBeenCalledWith('route-quote', expect.any(Object))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Submit Booking' })).toBeEnabled()
+    })
+
+    fillPaymentProof()
+    fireEvent.click(screen.getByRole('button', { name: 'Submit Booking' }))
+
+    await waitFor(() => {
+      expect(rpc).toHaveBeenCalledWith('create_booking', expect.objectContaining({
+        p_rental_model: 'all_in',
+        p_distance_km: 42,
+        p_duration_minutes: 95,
+        p_fuel_estimate_liters: 5.25,
+        p_fuel_estimate_amount: 315,
+        p_destination: 'NAIA Terminal 3',
+        p_toll_estimate_amount: 105,
+        p_toll_entry_plaza: 'Balintawak',
+        p_toll_exit_plaza: 'Bocaue',
+      }))
+    })
+
+    expect(paymentsInsert).toHaveBeenCalledWith(expect.objectContaining({
+      reference_number: 'REF-123',
+      status: 'submitted',
+    }))
   })
 
   it('does not block booking when the profile is complete', () => {
@@ -210,6 +339,7 @@ describe('BookingForm', () => {
     })
 
     renderBookingForm('/dashboard/book/vehicle-1?type=with-driver&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
+    fireEvent.click(screen.getByRole('button', { name: /Keep the Car/i }))
 
     expect(screen.queryByText(/Complete your profile before booking/i)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Submit Booking' })).toBeEnabled()
@@ -225,14 +355,13 @@ describe('BookingForm', () => {
     renderBookingForm('/dashboard/book/vehicle-1?type=with-driver')
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Pick-up Date/i)).toHaveValue('2026-07-25')
-      expect(screen.getByLabelText(/Pick-up Time/i)).toHaveValue('08:00')
+      expect(screen.getByLabelText(/Pick-up Date & Time/i)).toHaveValue('2026-07-25T08:00')
     })
 
-    const pickupTimeInput = screen.getByLabelText(/Pick-up Time/i)
-    fireEvent.change(pickupTimeInput, { target: { value: '09:15' } })
+    const pickupDateTimeInput = screen.getByLabelText(/Pick-up Date & Time/i)
+    fireEvent.change(pickupDateTimeInput, { target: { value: '2026-07-25T09:15' } })
 
-    expect(pickupTimeInput).toHaveValue('09:15')
+    expect(pickupDateTimeInput).toHaveValue('2026-07-25T09:15')
     expect(JSON.parse(window.localStorage.getItem('booking-date-selection') || '{}')).toEqual({
       start: '2026-07-25T09:15',
       end: '2026-07-26T10:30',

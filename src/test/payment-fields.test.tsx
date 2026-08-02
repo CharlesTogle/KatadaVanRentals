@@ -58,4 +58,14 @@ describe('PaymentFields', () => {
 
     expect(screen.getByDisplayValue('₱ 8,400')).toBeInTheDocument()
   })
+
+  it('shows a no-deposit message when deposit is zero', () => {
+    render(
+      <MemoryRouter initialEntries={['/dashboard/book/vehicle-1?type=all-in']}>
+        <PaymentFields depositAmount={0} />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText(/No deposit is required/i)).toBeInTheDocument()
+  })
 })

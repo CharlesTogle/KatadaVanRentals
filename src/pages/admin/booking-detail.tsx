@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAdminBooking, useAdminBookingAction } from '@/hooks/use-bookings'
+import { useFileViewer } from '@/hooks/use-file-viewer'
 import { usePaymentMethods } from '@/hooks/use-payment-methods'
 import { formatBookingStatus, getAdminBookingDetailActions, type AdminActionType } from '@/lib/booking-utils'
 import { STATUS_COLORS } from '@/config/constants'
@@ -9,6 +10,7 @@ import { showError } from '@/lib/errors'
 import { toast } from '@/lib/toast'
 import { supabase } from '@/lib/supabase'
 import { Dialog } from '@/components/ui/dialog'
+import { ImageViewer } from '@/components/ui/image-viewer'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -23,6 +25,18 @@ import {
 } from 'lucide-react'
 
 const TIMELINE_STATUSES = ['for_review', 'awaiting_documents', 'confirmed', 'on_trip', 'completed']
+const PAYMENT_RECEIPT_BUCKET = 'payment-receipts'
+
+function getPaymentReceiptPathCandidates(filePath: string) {
+  const trimmedPath = filePath.replace(/^\/+/, '')
+  const strippedBucketPath = trimmedPath.replace(new RegExp(`^${PAYMENT_RECEIPT_BUCKET}/`), '')
+
+  return [...new Set([
+    strippedBucketPath,
+    trimmedPath,
+    `${PAYMENT_RECEIPT_BUCKET}/${strippedBucketPath}`,
+  ].filter(Boolean))]
+}
 
 export default function BookingDetail() {
   const { bookingNumber } = useParams<{ bookingNumber: string }>()
@@ -30,6 +44,9 @@ export default function BookingDetail() {
   const { data, isLoading, error } = useAdminBooking(bookingNumber)
   const { data: paymentMethods = [] } = usePaymentMethods()
   const bookingAction = useAdminBookingAction()
+  const { viewing, openingId, openFile, closeViewer } = useFileViewer((viewError) => {
+    toast.error(showError(viewError))
+  })
   const [activeModal, setActiveModal] = useState<AdminActionType | null>(null)
   const [modalForm, setModalForm] = useState({
     reason: '',
@@ -140,17 +157,36 @@ export default function BookingDetail() {
   const handleCompleteBooking = () => runAction({ type: 'complete', bookingId: booking.id }, 'Booking marked as returned.')
   const handleDeleteBooking = () => runAction({ type: 'delete', bookingId: booking.id }, 'Booking deleted.', () => navigate('/admin/bookings'))
 
+  const getPaymentReceiptSignedUrl = async (path: string) => {
+    for (const candidate of getPaymentReceiptPathCandidates(path)) {
+      const { data, error } = await supabase.storage.from(PAYMENT_RECEIPT_BUCKET).createSignedUrl(candidate, 3600)
+      if (!error && data?.signedUrl) {
+        return data.signedUrl
+      }
+    }
+
+    throw new Error('Unable to create signed URL for receipt.')
+  }
+
+  const handleViewReceipt = async (paymentId: string, path: string) => {
+    await openFile({
+      id: paymentId,
+      path,
+      alt: 'Payment receipt',
+      resolveUrl: getPaymentReceiptSignedUrl,
+    })
+  }
+
   const uploadReceipt = async (file: File | null) => {
     if (!file) return undefined
 
     const ext = file.name.split('.').pop()
-    const path = `payment-receipts/${booking.id}/${Date.now()}.${ext}`
-    const { error: uploadError } = await supabase.storage.from('payment-receipts').upload(path, file)
+    const path = `${booking.id}/${Date.now()}.${ext}`
+    const { error: uploadError } = await supabase.storage.from(PAYMENT_RECEIPT_BUCKET).upload(path, file)
 
     if (uploadError) throw uploadError
 
-    const { data: { publicUrl } } = supabase.storage.from('payment-receipts').getPublicUrl(path)
-    return publicUrl
+    return path
   }
 
   const handleStartTrip = async () => {
@@ -344,8 +380,8 @@ export default function BookingDetail() {
                             <p className="mt-1 text-xs font-medium text-[#071f52]/40">{formatDateTime(payment.paid_at || payment.created_at)}</p>
 
                             {payment.receipt_path ? (
-                              <a href={payment.receipt_path} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[#4f46e5] transition-colors hover:text-[#3639d4]">
-                                <FileText className="h-4 w-4" /> View receipt
+                              <a href="#" onClick={(e) => { e.preventDefault(); handleViewReceipt(payment.id, payment.receipt_path!) }} className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[#4f46e5] transition-colors hover:text-[#3639d4]">
+                                <FileText className="h-4 w-4" /> {openingId === payment.id ? 'Opening...' : 'View receipt'}
                               </a>
                             ) : null}
                           </div>
@@ -544,6 +580,7 @@ export default function BookingDetail() {
       <CompleteModal open={activeModal === 'complete'} onClose={() => setActiveModal(null)} onSubmit={handleCompleteBooking} isPending={bookingAction.isPending} />
       <CancelModal open={activeModal === 'cancel'} onClose={() => setActiveModal(null)} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} onSubmit={(cancellationType) => runAction({ type: 'cancel', bookingId: booking.id, cancellationType, reason: modalForm.reason.trim() }, 'Booking canceled.')} isPending={bookingAction.isPending} />
       <DeleteModal open={activeModal === 'delete'} onClose={() => setActiveModal(null)} onSubmit={handleDeleteBooking} isPending={bookingAction.isPending} />
+      <ImageViewer open={!!viewing} onClose={closeViewer} src={viewing?.src || ''} alt={viewing?.alt || ''} />
       </div>
     </main>
   )

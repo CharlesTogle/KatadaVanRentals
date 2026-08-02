@@ -56,13 +56,13 @@ export default function CustomerDashboard() {
         <h2 className="text-lg font-black tracking-[-0.02em] text-[#071f52]">Recent Bookings</h2>
         <div className="mt-3 rounded-2xl border border-[#071f52]/10 bg-white p-8 shadow-[0_8px_24px_rgba(7,31,82,0.06)]">
           {!recentBookings.length ? (
-            <>
-          <CalendarDays size={36} className="mx-auto text-[#071f52]/20" />
-          <p className="mt-3 text-sm font-medium text-[#071f52]/48">No bookings yet. Ready to hit the road?</p>
-          <Button asChild size="lg" className="mt-5 gap-2 bg-[#071f52] text-white hover:bg-[#112458]">
-            <Link to="/our-fleet">Browse Fleet</Link>
-          </Button>
-            </>
+            <div className="flex flex-col items-center text-center">
+              <CalendarDays size={36} className="text-[#071f52]/20" />
+              <p className="mt-3 text-sm font-medium text-[#071f52]/48">No bookings yet. Ready to hit the road?</p>
+              <Button asChild size="lg" className="mt-5 gap-2 bg-[#071f52] text-white hover:bg-[#112458]">
+                <Link to="/our-fleet">Browse Fleet</Link>
+              </Button>
+            </div>
           ) : (
             <div className="space-y-3">
               {recentBookings.map((booking: any) => (

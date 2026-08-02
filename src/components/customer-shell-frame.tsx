@@ -1,10 +1,19 @@
 import type { ReactNode } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { Home, BookCopy, FileText, UserRound, LogOut } from 'lucide-react'
 import { customerAccountLinks } from '@/config/navigation'
 import { useAuth } from '@/contexts/useAuth'
 import { useProfile } from '@/hooks/use-profile'
 import { cn } from '@/lib/utils'
+
+function sidebarLinkClasses(isActive: boolean) {
+  return cn(
+    'flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium transition-colors',
+    isActive
+      ? 'bg-[#eef2fb] text-[#071f52]'
+      : 'text-[#071f52]/72 hover:bg-[#f7f9ff] hover:text-[#071f52]',
+  )
+}
 
 const navIcons = {
   '/dashboard': Home,
@@ -56,14 +65,7 @@ export function CustomerShellFrame({ children }: { children: ReactNode }) {
                     key={item.to}
                     to={item.to}
                     end={item.end}
-                    className={({ isActive }) =>
-                      cn(
-                        'flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium transition-colors',
-                        isActive
-                          ? 'bg-[#eef2fb] text-[#071f52] shadow-[inset_-3px_0_0_0_#1e3a8a]'
-                          : 'text-[#071f52]/72 hover:bg-[#f7f9ff] hover:text-[#071f52]',
-                      )
-                    }
+                    className={({ isActive }) => sidebarLinkClasses(isActive)}
                   >
                     <Icon size={18} />
                     {item.label}
@@ -72,30 +74,34 @@ export function CustomerShellFrame({ children }: { children: ReactNode }) {
               })}
 
               <div className="mt-3 border-t border-[#071f52]/10 pt-3">
-                <Link
+                <NavLink
                   to="/our-fleet"
-                  className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-[#071f52]/72 transition-colors hover:bg-[#f7f9ff] hover:text-[#071f52]"
+                  end
+                  className={({ isActive }) => sidebarLinkClasses(isActive)}
                 >
                   Our Fleet
-                </Link>
-                <Link
+                </NavLink>
+                <NavLink
                   to="/contact"
-                  className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-[#071f52]/72 transition-colors hover:bg-[#f7f9ff] hover:text-[#071f52]"
+                  end
+                  className={({ isActive }) => sidebarLinkClasses(isActive)}
                 >
                   Contact
-                </Link>
-                <Link
+                </NavLink>
+                <NavLink
                   to="/terms"
-                  className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-[#071f52]/72 transition-colors hover:bg-[#f7f9ff] hover:text-[#071f52]"
+                  end
+                  className={({ isActive }) => sidebarLinkClasses(isActive)}
                 >
                   Terms
-                </Link>
-                <Link
+                </NavLink>
+                <NavLink
                   to="/privacy"
-                  className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-[#071f52]/72 transition-colors hover:bg-[#f7f9ff] hover:text-[#071f52]"
+                  end
+                  className={({ isActive }) => sidebarLinkClasses(isActive)}
                 >
                   Privacy
-                </Link>
+                </NavLink>
               </div>
 
               <div className="mt-3 border-t border-[#071f52]/10 pt-3">
