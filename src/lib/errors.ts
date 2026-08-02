@@ -23,6 +23,7 @@ const authMap: Record<string, string> = {
   'Invalid email or password': 'Incorrect email or password. Check your credentials and try again.',
   'For security purposes, you can only request this after': 'Please wait before trying again. This is a security measure.',
   'Too many requests': 'Too many requests. Please wait a moment before trying again.',
+  'Invalid toll plaza selection': 'We can\'t compute the toll price yet. We\'ll confirm the toll after the trip.',
 }
 
 export function showError(error: PostgrestError | AuthError | Error | null): string {

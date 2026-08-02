@@ -7,9 +7,10 @@ interface BookingPricePreviewProps {
   startAt: string
   endAt: string
   routeQuote: RouteQuoteResponse | null
+  tollMessage?: string
 }
 
-export function BookingPricePreview({ vehicle, rentalModel, startAt, endAt, routeQuote }: BookingPricePreviewProps) {
+export function BookingPricePreview({ vehicle, rentalModel, startAt, endAt, routeQuote, tollMessage }: BookingPricePreviewProps) {
   const startDate = startAt ? new Date(startAt) : null
   const endDate = endAt ? new Date(endAt) : null
   const hasRequired = !!vehicle && !!rentalModel && !!startDate && !!endDate && endDate > startDate
@@ -58,11 +59,14 @@ export function BookingPricePreview({ vehicle, rentalModel, startAt, endAt, rout
             <span className="font-bold">₱{fuelTotal.toLocaleString()}.00</span>
           </div>
         )}
-        {tollTotal > 0 && (
-          <div className="flex justify-between">
-            <span className="text-[#071f52]/66">Toll Estimate</span>
-            <span className="font-bold">₱{tollTotal.toLocaleString()}.00</span>
-          </div>
+        {rentalModel === 'all_in' && (
+          <>
+            <div className="flex justify-between">
+              <span className="text-[#071f52]/66">Toll Estimate</span>
+              <span className="font-bold">₱{tollTotal.toLocaleString()}.00</span>
+            </div>
+            {tollMessage ? <p className="text-xs font-semibold leading-5 text-[#e92935]">{tollMessage}</p> : null}
+          </>
         )}
         <div className="flex justify-between border-t border-[#071f52]/10 pt-2 text-base">
           <span className="font-black">Total</span>

@@ -191,7 +191,7 @@ export default function BookingForm() {
     }
 
     const hasPickup = routeSelections.pickup.lat != null && routeSelections.pickup.lng != null
-    const needsDestination = rentalType === 'all-in'
+    const needsDestination = rentalType === 'all-in' && mode === 'keep'
     const hasDestination = !needsDestination || (routeSelections.destination.lat != null && routeSelections.destination.lng != null)
     const hasDropoff = routeSelections.dropoff.lat != null && routeSelections.dropoff.lng != null
     if (!hasPickup || !hasDestination || !hasDropoff) {
@@ -283,7 +283,7 @@ export default function BookingForm() {
 
     void getNearestTollPlazas({
       pickup: routeSelections.pickup,
-      destination: routeSelections.destination,
+      destination: mode === 'keep' ? routeSelections.destination : undefined,
       dropoff: routeSelections.dropoff,
       routeGeometry: routeQuote?.routeGeometry,
     }).then((result) => {
@@ -299,7 +299,7 @@ export default function BookingForm() {
     return () => {
       cancelled = true
     }
-  }, [routeQuote?.routeGeometry, routeSelections.dropoff, routeSelections.pickup, rentalType, setTollCandidates])
+  }, [mode, routeQuote?.routeGeometry, routeSelections.destination, routeSelections.dropoff, routeSelections.pickup, rentalType, setTollCandidates])
 
   useEffect(() => {
     if (rentalType !== 'all-in' || !routeQuote || !tollSelections.entry || !tollSelections.exit) {
@@ -310,12 +310,7 @@ export default function BookingForm() {
 
     const entryPlaza = tollSelections.entry
     const exitPlaza = tollSelections.exit
-    const hasComputedToll = routeQuote.tollSegments.length > 0
-      || routeQuote.tollEstimateAmount > 0
-      || routeQuote.tollRfidBreakdown.length > 0
-
-    const matchesCurrentSelection = hasComputedToll
-      && routeQuote.tollEntryPlaza === entryPlaza.name
+    const matchesCurrentSelection = routeQuote.tollEntryPlaza === entryPlaza.name
       && routeQuote.tollEntryExpressway === entryPlaza.expressway
       && routeQuote.tollExitPlaza === exitPlaza.name
       && routeQuote.tollExitExpressway === exitPlaza.expressway
@@ -323,7 +318,6 @@ export default function BookingForm() {
 
     if (matchesCurrentSelection) {
       setTollLoading(false)
-      setTollError('')
       return
     }
 
@@ -332,7 +326,7 @@ export default function BookingForm() {
 
     void calculateToll({
       pickup: routeSelections.pickup,
-      destination: routeSelections.destination,
+      destination: mode === 'keep' ? routeSelections.destination : undefined,
       dropoff: routeSelections.dropoff,
       entryPlaza: entryPlaza.id,
       exitPlaza: exitPlaza.id,
@@ -368,8 +362,10 @@ export default function BookingForm() {
     }
   }, [
     rentalType,
+    mode,
     routeQuote,
     routeSelections.dropoff,
+    routeSelections.destination,
     routeSelections.pickup,
     setRouteQuote,
     setTollRfidBreakdown,
@@ -407,16 +403,12 @@ export default function BookingForm() {
   const basePriceLoading = routeLoading && mode === 'dropoff' && rentalType !== 'self-drive'
   const fuelPriceLoading = routeLoading && rentalType === 'all-in'
   const tollPriceLoading = rentalType === 'all-in' && (routeLoading || tollLoading)
-  const hasComputedToll = !!routeQuote
-    && (routeQuote.tollSegments.length > 0 || routeQuote.tollEstimateAmount > 0 || routeQuote.tollRfidBreakdown.length > 0)
   const tollQuoteReady = !!routeQuote
     && !!tollSelections.entry
     && !!tollSelections.exit
     && routeQuote.tollEntryPlaza === tollSelections.entry.name
     && routeQuote.tollExitPlaza === tollSelections.exit.name
     && routeQuote.tollVehicleClass === tollSelections.vehicleClass
-    && hasComputedToll
-    && !tollError
   const needsTollEstimate = rentalType === 'all-in' && !tollQuoteReady
   const selectedPaymentMethod = paymentMethodsQuery.data?.find((method) => method.id === payment.method)
 
@@ -442,7 +434,7 @@ export default function BookingForm() {
       return
     }
 
-    if (needsRouteQuote && (routeSelections.pickup.lat == null || (rentalType === 'all-in' && routeSelections.destination.lat == null) || routeSelections.dropoff.lat == null || !routeQuote)) {
+    if (needsRouteQuote && (routeSelections.pickup.lat == null || (rentalType === 'all-in' && mode === 'keep' && routeSelections.destination.lat == null) || routeSelections.dropoff.lat == null || !routeQuote)) {
       setError(routeError || 'Choose suggested pickup, destination, and drop-off locations so we can compute your route estimate.')
       return
     }
@@ -488,8 +480,8 @@ export default function BookingForm() {
         p_duration_days: pricing.days || 1,
         p_pickup_location: locations.pickup || null,
         p_dropoff_location: locations.dropoff || null,
-        p_destination: rentalType === 'all-in' || mode !== 'dropoff' ? locations.destination || null : null,
-        p_purpose_of_travel: mode === 'dropoff' ? null : purpose || null,
+        p_destination: mode === 'keep' ? locations.destination || null : null,
+        p_purpose_of_travel: mode === 'keep' ? purpose || null : null,
         p_notes: bookingNotes || null,
         p_idempotency_key: idempotencyKey,
         p_pickup_lat: routeSelections.pickup.lat,
@@ -737,6 +729,7 @@ export default function BookingForm() {
               driverTotal={pricing.driverTotal}
               fuelEstimateAmount={pricing.fuelEstimateAmount}
               tollEstimateAmount={pricing.tollEstimateAmount}
+              tollMessage={tollError}
               distanceKm={pricing.distanceKm}
               baseLoading={basePriceLoading}
               fuelLoading={fuelPriceLoading}

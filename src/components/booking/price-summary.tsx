@@ -11,6 +11,7 @@ interface PriceSummaryProps {
   driverTotal: number
   fuelEstimateAmount?: number
   tollEstimateAmount?: number
+  tollMessage?: string
   distanceKm?: number
   baseLoading?: boolean
   fuelLoading?: boolean
@@ -23,7 +24,7 @@ interface PriceSummaryProps {
   disabledMessage?: React.ReactNode
 }
 
-export function PriceSummary({ rentalType, days, basePricePerDay, driverRatePerDay, baseTotal, driverTotal, fuelEstimateAmount = 0, tollEstimateAmount = 0, distanceKm = 0, baseLoading = false, fuelLoading = false, tollLoading = false, grandTotal, deposit, remaining, submitting, disabled = false, disabledMessage }: PriceSummaryProps) {
+export function PriceSummary({ rentalType, days, basePricePerDay, driverRatePerDay, baseTotal, driverTotal, fuelEstimateAmount = 0, tollEstimateAmount = 0, tollMessage, distanceKm = 0, baseLoading = false, fuelLoading = false, tollLoading = false, grandTotal, deposit, remaining, submitting, disabled = false, disabledMessage }: PriceSummaryProps) {
   const amount = (value: number, loading?: boolean) => loading
     ? <span className="font-bold text-[#071f52]/48">Computing...</span>
     : <span className="font-bold">₱{value.toLocaleString()}.00</span>
@@ -50,10 +51,13 @@ export function PriceSummary({ rentalType, days, basePricePerDay, driverRatePerD
           </div>
         )}
         {rentalType === 'all-in' && (
-          <div className="flex justify-between">
-            <span className="text-[#071f52]/66">Toll Estimate</span>
-            {amount(tollEstimateAmount, tollLoading)}
-          </div>
+          <>
+            <div className="flex justify-between">
+              <span className="text-[#071f52]/66">Toll Estimate</span>
+              {amount(tollEstimateAmount, tollLoading)}
+            </div>
+            {tollMessage ? <p className="text-xs font-semibold leading-5 text-[#e92935]">{tollMessage}</p> : null}
+          </>
         )}
         <div className="flex justify-between border-t border-[#071f52]/10 pt-3 text-base">
           <span className="font-black">Total</span>
@@ -62,9 +66,9 @@ export function PriceSummary({ rentalType, days, basePricePerDay, driverRatePerD
         {deposit > 0 && (
           <>
             <div className="flex justify-between text-base text-[#e92935]">
-              <div>
+              <div className="max-w-[55%]">
                 <p>Security Deposit (10%)</p>
-                <p className="text-xs font-medium text-[#e92935]/72">due now, non-refundable</p>
+                <p className="text-xs font-medium text-[#e92935]/72">10% of base fare, excluding fuel &amp; toll estimates — non-refundable</p>
               </div>
               <span className="font-bold text-[#e92935]">− ₱{deposit.toLocaleString()}.00</span>
             </div>

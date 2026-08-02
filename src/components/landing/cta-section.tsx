@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button'
 
 export function CTASection() {
   return (
-    <section className="px-4 pb-20 sm:px-6 md:pb-28">
+    <section className="px-4 py-20 sm:px-6 md:py-28">
       <div className="mx-auto grid max-w-[1180px] overflow-hidden rounded-[34px] bg-[#e92935] text-white shadow-[0_26px_70px_rgba(233,41,53,0.25)] lg:grid-cols-[1fr_0.8fr]">
         <div className="p-6 pb-5 sm:p-10 lg:p-12">
           <h2 className="max-w-[620px] text-[2.25rem] font-black leading-tight tracking-[-0.04em] md:text-5xl">

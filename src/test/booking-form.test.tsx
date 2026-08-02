@@ -202,6 +202,22 @@ describe('BookingForm', () => {
     expect(navigate).toHaveBeenCalledWith('/our-fleet')
   })
 
+  it('shows drop-off fields only for Just a Drop Off and trip details for Keep the Car', () => {
+    useCustomerDocuments.mockReturnValue({ data: [], isLoading: false })
+
+    renderBookingForm('/dashboard/book/vehicle-1?type=all-in&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
+
+    expect(screen.getByLabelText(/Pickup Location/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Drop-off Location/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Destination/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/Purpose of Travel/i)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Keep the Car/i }))
+
+    expect(screen.getByLabelText(/Destination/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Purpose of Travel/i)).toBeInTheDocument()
+  })
+
   it('blocks self-drive submission when required documents are missing', () => {
     useCustomerDocuments.mockReturnValue({ data: [], isLoading: false })
 
@@ -315,7 +331,7 @@ describe('BookingForm', () => {
         p_duration_minutes: 95,
         p_fuel_estimate_liters: 5.25,
         p_fuel_estimate_amount: 315,
-        p_destination: 'NAIA Terminal 3',
+        p_destination: null,
         p_toll_estimate_amount: 105,
         p_toll_entry_plaza: 'Balintawak',
         p_toll_exit_plaza: 'Bocaue',
@@ -326,6 +342,78 @@ describe('BookingForm', () => {
       reference_number: 'REF-123',
       status: 'submitted',
     }))
+  })
+
+  it('does not loop toll calculation after a rejected plaza selection', async () => {
+    useCustomerDocuments.mockReturnValue({ data: [], isLoading: false })
+    useBookingStore.getState().setLocations({
+      pickup: 'Makati City',
+      dropoff: 'Pasay City',
+      destination: 'NAIA Terminal 3',
+    })
+    useBookingStore.getState().setRouteSelection('pickup', {
+      address: 'Makati City',
+      lat: 14.5547,
+      lng: 121.0244,
+    })
+    useBookingStore.getState().setRouteSelection('destination', {
+      address: 'NAIA Terminal 3',
+      lat: 14.5191,
+      lng: 121.0136,
+    })
+    useBookingStore.getState().setRouteSelection('dropoff', {
+      address: 'Pasay City',
+      lat: 14.5378,
+      lng: 121.0014,
+    })
+    functionsInvoke.mockImplementation((name: string, options?: { body?: { entryPlaza?: string } }) => {
+      if (name === 'route-quote') {
+        return Promise.resolve({
+          data: {
+            distanceKm: 42,
+            durationMinutes: 95,
+            tollEstimateAmount: 0,
+            tollSegments: [],
+            fuelEstimateLiters: 5.25,
+            fuelEstimateAmount: 315,
+            tollEntryPlaza: null,
+            tollEntryExpressway: null,
+            tollExitPlaza: null,
+            tollExitExpressway: null,
+            tollVehicleClass: 1,
+            tollRfidBreakdown: [],
+          },
+          error: null,
+        })
+      }
+
+      if (name === 'toll-estimate' && options?.body?.entryPlaza) {
+        return Promise.resolve({ data: { error: 'Invalid toll plaza selection' }, error: new Error('Edge Function returned a non-2xx status code') })
+      }
+
+      if (name === 'toll-estimate') {
+        return Promise.resolve({
+          data: {
+            entryCandidates: [{ id: 'nlex-balintawak', name: 'Balintawak', expressway: 'NLEX', label: 'Balintawak (NLEX)', distanceKm: 1.2 }],
+            exitCandidates: [{ id: 'nlex-bocaue', name: 'Bocaue', expressway: 'NLEX', label: 'Bocaue (NLEX)', distanceKm: 2.4 }],
+          },
+          error: null,
+        })
+      }
+
+      return Promise.resolve({ error: null })
+    })
+
+    renderBookingForm('/dashboard/book/vehicle-1?type=all-in&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
+
+    await waitFor(() => {
+      expect(functionsInvoke.mock.calls.filter(([name, options]) => name === 'toll-estimate' && options?.body?.entryPlaza)).toHaveLength(1)
+    })
+    expect(screen.getByText(/We can't compute the toll price yet/)).toBeInTheDocument()
+
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(functionsInvoke.mock.calls.filter(([name, options]) => name === 'toll-estimate' && options?.body?.entryPlaza)).toHaveLength(1)
   })
 
   it('does not block booking when the profile is complete', () => {

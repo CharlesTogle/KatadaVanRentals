@@ -1,4 +1,4 @@
-import { CalendarCheck, ShieldCheck } from 'lucide-react'
+import { CalendarCheck, CircleDollarSign, MessageCircle, Navigation, Sparkles } from 'lucide-react'
 
 export function WhySection() {
   return (
@@ -15,13 +15,13 @@ export function WhySection() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         {[
-          ['Clear rates', 'Pricing is shared before confirmation, with route and schedule details included.'],
-          ['Clean interiors', 'Vans are cleaned before trips, with comfortable seating for long rides.'],
-          ['Route-ready drivers', 'Drivers know common pickup points, highway routes, and airport timing.'],
-          ['Trip support', 'Need to adjust pickup or stops? Message the team and keep the trip moving.'],
-        ].map(([title, body]) => (
+          { title: 'Clear rates', body: 'Pricing is shared before confirmation, with route and schedule details included.', icon: CircleDollarSign },
+          { title: 'Clean interiors', body: 'Vans are cleaned before trips, with comfortable seating for long rides.', icon: Sparkles },
+          { title: 'Route-ready drivers', body: 'Drivers know common pickup points, highway routes, and airport timing.', icon: Navigation },
+          { title: 'Trip support', body: 'Need to adjust pickup or stops? Message the team and keep the trip moving.', icon: MessageCircle },
+        ].map(({ title, body, icon: Icon }) => (
           <article key={title} className="rounded-[28px] border border-[#071f52]/10 bg-white p-6 shadow-[0_14px_40px_rgba(7,31,82,0.07)]">
-            <ShieldCheck className="text-[#e92935]" size={24} strokeWidth={1.8} aria-hidden="true" />
+            <Icon className="text-[#e92935]" size={24} strokeWidth={1.8} aria-hidden="true" />
             <h3 className="mt-5 text-xl font-black tracking-[-0.03em] text-[#071f52]">{title}</h3>
             <p className="mt-2 text-sm leading-6 text-[#071f52]/64">{body}</p>
           </article>

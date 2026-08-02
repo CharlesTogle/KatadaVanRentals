@@ -59,4 +59,19 @@ describe('suggestLocations', () => {
     expect(invoke).toHaveBeenNthCalledWith(1, 'toll-estimate', expect.any(Object))
     expect(invoke).toHaveBeenNthCalledWith(2, 'toll-estimate', expect.any(Object))
   })
+
+  it('uses a toll-specific message when Supabase hides the edge function error body', async () => {
+    invoke.mockResolvedValueOnce({
+      data: null,
+      error: new Error('Edge Function returned a non-2xx status code'),
+    })
+
+    await expect(calculateToll({
+      pickup: { lat: 14.6, lng: 121.0 },
+      dropoff: { lat: 14.7, lng: 120.9 },
+      entryPlaza: 'nlex-balintawak',
+      exitPlaza: 'nlex-bocaue',
+      vehicleClass: 1,
+    })).rejects.toThrow('Invalid toll plaza selection')
+  })
 })

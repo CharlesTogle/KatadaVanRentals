@@ -3,7 +3,7 @@ import { FaqItem } from '@/components/landing/faq-item'
 
 export function FAQSection() {
   return (
-    <section id="faq" className="mx-auto max-w-[1180px] px-4 pb-16 sm:px-6 md:pb-24">
+    <section id="faq" className="mx-auto max-w-[1180px] px-4 py-20 sm:px-6 md:py-28">
       <h2 className="text-4xl font-black tracking-[-0.04em] text-[#071f52] sm:text-5xl">
         Frequently asked questions
       </h2>

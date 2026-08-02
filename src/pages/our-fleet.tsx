@@ -253,7 +253,7 @@ export default function OurFleet() {
             return (
               <article
                 key={v.id}
-                className="group overflow-hidden rounded-[28px] border border-[#071f52]/10 bg-white shadow-[0_14px_40px_rgba(7,31,82,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(7,31,82,0.14)]"
+                className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-[#071f52]/10 bg-white shadow-[0_14px_40px_rgba(7,31,82,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(7,31,82,0.14)]"
               >
                 <div className="relative overflow-hidden">
                   <img
@@ -268,7 +268,7 @@ export default function OurFleet() {
                     Van
                   </Badge>
                 </div>
-                <div className="p-5 sm:p-6">
+                <div className="flex flex-1 flex-col p-5 sm:p-6">
                   <h3 className="text-xl font-black tracking-[-0.03em] text-[#071f52]">{v.name}</h3>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {['Aircon', `${v.passenger_count} Seats`, 'Diesel'].map((f) => (
@@ -278,7 +278,7 @@ export default function OurFleet() {
                     ))}
                   </div>
                   <p className="mt-3 text-xs font-bold text-[#071f52]/48">Self-Drive & Driver</p>
-                  <div className="mt-4 flex items-center justify-between border-t border-[#071f52]/8 pt-4">
+                  <div className="mt-auto flex items-center justify-between border-t border-[#071f52]/8 pt-4">
                     <div>
                       <span className="text-2xl font-black tracking-[-0.03em] text-[#071f52]">₱{v.base_price_per_day.toLocaleString()}</span>
                       <span className="text-sm font-bold text-[#071f52]/48">/day</span>

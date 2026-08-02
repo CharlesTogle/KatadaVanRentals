@@ -5,7 +5,7 @@ export function ContactSection() {
   const business = useBusinessInfo()
 
   return (
-    <section id="contact" className="px-4 pb-16 sm:px-6 md:pb-24">
+    <section id="contact" className="px-4 py-20 sm:px-6 md:py-28">
       <div className="mx-auto grid max-w-[1180px] gap-6 rounded-[34px] border border-[#071f52]/10 bg-white p-6 shadow-[0_18px_48px_rgba(7,31,82,0.08)] sm:p-8 lg:grid-cols-[0.95fr_1.05fr] lg:p-10">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#e92935]">Contact</p>

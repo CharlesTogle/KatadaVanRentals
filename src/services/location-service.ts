@@ -32,21 +32,23 @@ export async function getRouteQuote(input: RouteQuoteRequest): Promise<RouteQuot
 }
 
 export async function getNearestTollPlazas(input: TollEstimateRequest): Promise<TollEstimateCandidatesResponse> {
-  const { data, error } = await supabase.functions.invoke<TollEstimateCandidatesResponse>('toll-estimate', {
+  const { data, error } = await supabase.functions.invoke<TollEstimateCandidatesResponse | { error?: string }>('toll-estimate', {
     body: input,
   })
 
-  if (error) throw error
+  if (error) throw new Error((data as { error?: string } | null)?.error || 'Invalid toll plaza selection')
   if (!data) throw new Error('Failed to look up toll plazas')
-  return data
+  if ('error' in data && data.error) throw new Error(data.error)
+  return data as TollEstimateCandidatesResponse
 }
 
 export async function calculateToll(input: TollEstimateRequest): Promise<TollEstimateResponse> {
-  const { data, error } = await supabase.functions.invoke<TollEstimateResponse>('toll-estimate', {
+  const { data, error } = await supabase.functions.invoke<TollEstimateResponse | { error?: string }>('toll-estimate', {
     body: input,
   })
 
-  if (error) throw error
+  if (error) throw new Error((data as { error?: string } | null)?.error || 'Invalid toll plaza selection')
   if (!data) throw new Error('Failed to compute toll estimate')
-  return data
+  if ('error' in data && data.error) throw new Error(data.error)
+  return data as TollEstimateResponse
 }

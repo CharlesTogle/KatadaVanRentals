@@ -110,12 +110,7 @@ export function BookingCreateForm() {
       return
     }
 
-    const hasComputedToll = routeQuote.tollSegments.length > 0
-      || routeQuote.tollEstimateAmount > 0
-      || routeQuote.tollRfidBreakdown.length > 0
-
-    const matchesCurrentSelection = hasComputedToll
-      && routeQuote.tollEntryPlaza === entryPlaza.name
+    const matchesCurrentSelection = routeQuote.tollEntryPlaza === entryPlaza.name
       && routeQuote.tollEntryExpressway === entryPlaza.expressway
       && routeQuote.tollExitPlaza === exitPlaza.name
       && routeQuote.tollExitExpressway === exitPlaza.expressway
@@ -123,7 +118,6 @@ export function BookingCreateForm() {
 
     if (matchesCurrentSelection) {
       setTollLoading(false)
-      setTollError('')
       return
     }
 
@@ -389,6 +383,7 @@ export function BookingCreateForm() {
           startAt={startAt}
           endAt={endAt}
           routeQuote={routeQuote}
+          tollMessage={tollError}
         />
 
         {conflictError && (

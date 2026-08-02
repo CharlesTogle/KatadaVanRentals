@@ -102,21 +102,7 @@ export function LocationsFields() {
             )}
           </>
         )}
-        {rentalType === 'all-in' ? (
-          <LocationSelector
-            id="booking-destination"
-            label="Destination"
-            required
-            value={locations.destination}
-            placeholder="e.g. Baguio City, Benguet"
-            onChange={(value) => setLocations({ destination: value })}
-            onSelect={(selection) => setRouteSelection('destination', selection)}
-          />
-        ) : null}
-        {(rentalType === 'all-in' || (mode === 'dropoff' && rentalType !== 'self-drive')) && (routeSelections.pickup.lat == null || (rentalType === 'all-in' && routeSelections.destination.lat == null) || routeSelections.dropoff.lat == null) ? (
-          <p className="text-sm font-semibold text-[#e92935]">Choose suggested pickup, destination, and drop-off locations so we can compute the route estimate.</p>
-        ) : null}
-        {(mode === 'keep' && rentalType !== 'all-in') || rentalType === 'self-drive' ? (
+        {mode === 'keep' || rentalType === 'self-drive' ? (
           <>
             <LocationSelector
               id="booking-destination"
@@ -125,7 +111,7 @@ export function LocationsFields() {
               value={locations.destination}
               placeholder="e.g. Quezon City, Metro Manila"
               onChange={(value) => setLocations({ destination: value })}
-              onSelect={() => {}}
+              onSelect={(selection) => setRouteSelection('destination', selection)}
             />
             <div className="space-y-1.5">
               <label htmlFor="booking-purpose" className="text-sm font-bold text-[#071f52]">Purpose of Travel <span className="text-[#e92935]">*</span></label>
@@ -137,6 +123,9 @@ export function LocationsFields() {
               </select>
             </div>
           </>
+        ) : null}
+        {(rentalType === 'all-in' || (mode === 'dropoff' && rentalType !== 'self-drive')) && (routeSelections.pickup.lat == null || (rentalType === 'all-in' && mode === 'keep' && routeSelections.destination.lat == null) || routeSelections.dropoff.lat == null) ? (
+          <p className="text-sm font-semibold text-[#e92935]">{mode === 'keep' ? 'Choose suggested pickup, drop-off, and destination locations so we can compute the route estimate.' : 'Choose suggested pickup and drop-off locations so we can compute the route estimate.'}</p>
         ) : null}
       </div>
     </>

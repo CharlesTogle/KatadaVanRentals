@@ -74,7 +74,8 @@ export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, e
   const fuelEstimateAmount = rentalType === 'all-in' ? Math.round(routeQuote?.fuelEstimateAmount ?? 0) : 0
   const tollEstimateAmount = rentalType === 'all-in' ? Math.round(routeQuote?.tollEstimateAmount ?? 0) : 0
   const grandTotal = baseTotal + driverTotal + fuelEstimateAmount + tollEstimateAmount
-  const deposit = Math.round(grandTotal * 0.1)
+  const subtotalExcludingEstimates = baseTotal + driverTotal
+  const deposit = Math.round(subtotalExcludingEstimates * 0.1)
   const remaining = Math.max(0, grandTotal - deposit)
 
   return {
