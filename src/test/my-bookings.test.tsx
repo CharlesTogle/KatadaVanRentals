@@ -42,8 +42,8 @@ describe('MyBookings', () => {
     expect(screen.getByText('CR-260723-ABCD')).toBeInTheDocument()
     expect(screen.getByText('Toyota Commuter')).toBeInTheDocument()
     expect(screen.getByText('₱4,500.00')).toBeInTheDocument()
-    expect(screen.getByText('₱450.00')).toBeInTheDocument()
-    expect(screen.getByText('₱4,050.00')).toBeInTheDocument()
+    expect(screen.queryByText('Paid')).not.toBeInTheDocument()
+    expect(screen.queryByText('Remaining')).not.toBeInTheDocument()
   })
 
   it('requests the chosen status filter from the hook', () => {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAdminBooking, useAdminBookingAction } from '@/hooks/use-bookings'
 import { useFileViewer } from '@/hooks/use-file-viewer'
+import { getCustomerDocumentSignedUrl } from '@/services/document-service'
 import { usePaymentMethods } from '@/hooks/use-payment-methods'
 import { formatBookingStatus, getAdminBookingDetailActions, type AdminActionType } from '@/lib/booking-utils'
 import { STATUS_COLORS } from '@/config/constants'
@@ -129,8 +130,14 @@ export default function BookingDetail() {
         customer.country as string | null | undefined,
       ])
     : ''
+  const rejectionReason = booking.status === 'rejected'
+    ? status_events.find((e) => e.to_status === 'rejected' && e.note)?.note || null
+    : null
+  const cancellationReason = booking.status === 'canceled'
+    ? status_events.find((e) => e.to_status === 'canceled' && e.note)?.note || null
+    : null
   const statusTone = getStatusTone(booking.status)
-  const statusMessage = getStatusMessage(booking.status)
+  const statusMessage = getStatusMessage(booking.status, rejectionReason, cancellationReason)
   const bookingSummary = [vehicle?.name || 'Vehicle pending', customerName, formatDateRange(booking.start_at, booking.end_at)]
     .filter(Boolean)
     .join('  ·  ')
@@ -174,6 +181,16 @@ export default function BookingDetail() {
       path,
       alt: 'Payment receipt',
       resolveUrl: getPaymentReceiptSignedUrl,
+    })
+  }
+
+  const handleViewDocument = async (doc: { id: string; file_path: string; document_type: string; mime_type?: string | null }) => {
+    await openFile({
+      id: doc.id,
+      path: doc.file_path,
+      alt: toLabel(doc.document_type),
+      resolveUrl: getCustomerDocumentSignedUrl,
+      isPdf: doc.mime_type === 'application/pdf',
     })
   }
 
@@ -299,7 +316,9 @@ export default function BookingDetail() {
               <div className="px-6 py-6">
                 <div className={cn('mb-6 rounded-2xl border px-4 py-4', statusTone.wrapper)}>
                   <div className="flex items-start gap-3">
-                    <CheckCircle2 className={cn('mt-0.5 h-4 w-4 shrink-0', statusTone.icon)} />
+                    {booking.status !== 'rejected' && booking.status !== 'canceled' ? (
+                      <CheckCircle2 className={cn('mt-0.5 h-4 w-4 shrink-0', statusTone.icon)} />
+                    ) : null}
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#071f52]/46">{statusMessage.title}</p>
                       <p className={cn('mt-1 text-sm font-medium leading-6', statusTone.text)}>{statusMessage.body}</p>
@@ -309,7 +328,11 @@ export default function BookingDetail() {
 
                 <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
                   <Spec label="Vehicle" value={vehicle?.name || '—'} />
-                  <Spec label="Rental Type" value={toLabel(booking.rental_model)} />
+                  <Spec label="Service" value={booking.rental_model === 'self_drive' ? 'Self Drive' : 'With Driver'} />
+                  <Spec label="Rental Model" value={toLabel(booking.rental_model)} />
+                  {booking.rental_model !== 'self_drive' ? (
+                    <Spec label="Booking Mode" value={formatBookingMode(booking.booking_mode)} />
+                  ) : null}
                   <Spec label="Duration" value={`${booking.duration_days} day${booking.duration_days === 1 ? '' : 's'}`} />
                   <Spec label="Start Date" value={formatDateTime(booking.start_at)} />
                   <Spec label="End Date" value={booking.end_at ? formatDateTime(booking.end_at) : '—'} />
@@ -451,9 +474,9 @@ export default function BookingDetail() {
                           </div>
                         </div>
 
-                        <a href={document.file_path} target="_blank" rel="noopener noreferrer" className="shrink-0 text-sm font-bold text-[#4f46e5] transition-colors hover:text-[#3639d4]">
-                          View
-                        </a>
+                        <button type="button" onClick={() => handleViewDocument(document)} disabled={openingId === document.id} className="shrink-0 text-sm font-bold text-[#4f46e5] transition-colors hover:text-[#3639d4] disabled:opacity-50">
+                          {openingId === document.id ? 'Opening...' : 'View'}
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -865,11 +888,43 @@ function formatDateRange(startAt: string, endAt: string | null) {
   return `${start} – ${end}`
 }
 
+function formatBookingMode(mode?: string) {
+  if (mode === 'dropoff') return 'Just a Drop Off'
+  if (mode === 'keep') return 'Keep the Car'
+  return '—'
+}
+
 function toLabel(value: string) {
   return value
     .split('_')
     .join(' ')
     .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function formatCancellationReason(note?: string | null) {
+  if (!note) return 'No cancellation reason recorded.'
+
+  const match = note.match(/^Type:\s*(.+?)\.\s*Reason:\s*(.+)$/i)
+  if (!match) return note
+
+  const [, rawType, rawReason] = match
+  const type = rawType.trim()
+  const reason = rawReason.trim()
+
+  const label = (() => {
+    switch (type) {
+      case 'customer_request':
+        return 'Canceled at the customer\'s request'
+      case 'admin_refund':
+        return 'Canceled by admin with a refund'
+      case 'admin_no_refund':
+        return 'Canceled by admin without a refund'
+      default:
+        return `Canceled: ${toLabel(type)}`
+    }
+  })()
+
+  return reason ? `${label}. Reason: ${reason}` : label
 }
 
 function formatAddress(parts: Array<string | null | undefined>) {
@@ -901,7 +956,7 @@ function getStatusTone(status: string) {
   }
 }
 
-function getStatusMessage(status: string) {
+function getStatusMessage(status: string, rejectionReason?: string | null, cancellationReason?: string | null) {
   switch (status) {
     case 'for_review':
       return {
@@ -931,12 +986,12 @@ function getStatusMessage(status: string) {
     case 'rejected':
       return {
         title: 'Booking rejected',
-        body: 'This request was rejected and should remain available only for history and customer follow-up.',
+        body: rejectionReason ? `Rejected Reason: ${rejectionReason}` : 'No rejection reason recorded.',
       }
     case 'canceled':
       return {
         title: 'Booking canceled',
-        body: 'This booking was canceled. Review the cancellation note and any recorded payments before removing it.',
+        body: formatCancellationReason(cancellationReason),
       }
     default:
       return {

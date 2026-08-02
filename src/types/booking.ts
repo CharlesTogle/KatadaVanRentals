@@ -42,6 +42,7 @@ export interface Booking {
   paid_amount: number
   remaining_amount: number
   price_line_items: PriceLineItem[]
+  booking_mode?: 'dropoff' | 'keep'
   idempotency_key: string | null
   created_by: string | null
   created_at: string

@@ -10,8 +10,9 @@ const mocks = vi.hoisted(() => {
   const paymentsEq = vi.fn(() => ({ order: paymentsOrder }))
   const paymentsSelect = vi.fn(() => ({ eq: paymentsEq }))
 
-  const bookingDocumentsEq = vi.fn()
-  const bookingDocumentsSelect = vi.fn(() => ({ eq: bookingDocumentsEq }))
+  const customerDocumentsOrder = vi.fn()
+  const customerDocumentsEq = vi.fn(() => ({ order: customerDocumentsOrder }))
+  const customerDocumentsSelect = vi.fn(() => ({ eq: customerDocumentsEq }))
 
   const statusEventsOrder = vi.fn()
   const statusEventsEq = vi.fn(() => ({ order: statusEventsOrder }))
@@ -29,7 +30,7 @@ const mocks = vi.hoisted(() => {
   const from = vi.fn((table: string) => {
     if (table === 'bookings') return { select: bookingsSelect }
     if (table === 'payments') return { select: paymentsSelect }
-    if (table === 'booking_documents') return { select: bookingDocumentsSelect }
+    if (table === 'customer_documents') return { select: customerDocumentsSelect }
     if (table === 'booking_status_events') return { select: statusEventsSelect }
     if (table === 'booking_extensions') return { select: extensionsSelect }
     if (table === 'invoices') return { select: invoicesSelect }
@@ -44,8 +45,9 @@ const mocks = vi.hoisted(() => {
     paymentsOrder,
     paymentsEq,
     paymentsSelect,
-    bookingDocumentsEq,
-    bookingDocumentsSelect,
+    customerDocumentsOrder,
+    customerDocumentsEq,
+    customerDocumentsSelect,
     statusEventsOrder,
     statusEventsEq,
     statusEventsSelect,
@@ -68,7 +70,7 @@ describe('booking-service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.paymentsOrder.mockResolvedValue({ data: [], error: null })
-    mocks.bookingDocumentsEq.mockResolvedValue({ data: [], error: null })
+    mocks.customerDocumentsOrder.mockResolvedValue({ data: [], error: null })
     mocks.statusEventsOrder.mockResolvedValue({ data: [], error: null })
     mocks.extensionsOrder.mockResolvedValue({ data: [], error: null })
     mocks.invoicesMaybeSingle.mockResolvedValue({ data: null, error: null })

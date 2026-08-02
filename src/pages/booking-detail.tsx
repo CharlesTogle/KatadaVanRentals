@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
 import { useBooking, useCancelOwnBooking } from '@/hooks/use-bookings'
@@ -28,6 +29,23 @@ export default function BookingDetail() {
   const { data: booking, isLoading: loading } = useBooking(id)
   const { data: vehicle } = useVehicleById(booking?.vehicle_id)
   const cancelBooking = useCancelOwnBooking()
+
+  const { data: statusReason } = useQuery({
+    queryKey: ['booking', id, 'status-reason'],
+    queryFn: async () => {
+      if (!id || !booking) return null
+      if (booking.status === 'rejected') {
+        const { data: d } = await supabase.from('booking_status_events').select('note').eq('booking_id', id).eq('to_status', 'rejected').not('note', 'is', null).order('created_at', { ascending: false }).limit(1).maybeSingle()
+        return d?.note || null
+      }
+      if (booking.status === 'canceled') {
+        const { data: d } = await supabase.from('booking_cancellations').select('reason').eq('booking_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle()
+        return d?.reason || null
+      }
+      return null
+    },
+    enabled: !!id && !!booking && ['rejected', 'canceled'].includes(booking.status),
+  })
 
   const [rating, setRating] = useState(0)
   const [feedback, setFeedback] = useState('')
@@ -118,6 +136,12 @@ export default function BookingDetail() {
             {displayStatus}
           </Badge>
         </div>
+
+        {statusReason ? (
+          <p className="mt-3 rounded-2xl border border-[#fecdd3] bg-[#fff1f2] px-4 py-3 text-sm font-medium leading-6 text-[#9f1239]">
+            {booking.status === 'rejected' ? 'Rejection Reason: ' : 'Cancellation Reason: '}{statusReason}
+          </p>
+        ) : null}
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_0.6fr]">
           <div className="space-y-6">

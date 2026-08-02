@@ -412,10 +412,21 @@ export default function BookingForm() {
   const needsTollEstimate = rentalType === 'all-in' && !tollQuoteReady
   const selectedPaymentMethod = paymentMethodsQuery.data?.find((method) => method.id === payment.method)
 
+  const selfDriveAddressIncomplete = rentalType === 'self-drive' && !formatSelfDriveAddress(completeAddress)
+  const routeIncomplete = needsRouteQuote && (routeSelections.pickup.lat == null || (rentalType === 'all-in' && mode === 'keep' && routeSelections.destination.lat == null) || routeSelections.dropoff.lat == null || !routeQuote)
+  const paymentIncomplete = requiresPayment && (!payment.method || !payment.reference.trim() || !receiptFile)
+  const formIncomplete = !startParam || !endParam || profileBlocked || selfDriveBlocked || documentsQuery.isLoading || (requiresPayment && paymentMethodsQuery.isLoading) || selfDriveAddressIncomplete || routeIncomplete || needsTollEstimate || tollLoading || paymentIncomplete
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!user) return
+
+    if (!startParam && !endParam) {
+      // ponytail: block submit when neither date is set (nothing filled in)
+      setError('Please fill in the required booking details before submitting.')
+      return
+    }
 
     if (profileBlocked) {
       setError('Complete your profile before submitting a booking.')
@@ -584,12 +595,6 @@ export default function BookingForm() {
         Fill in all details below. Your booking will be reviewed by our team.
       </p>
 
-      {error ? (
-        <div className="mb-4 mt-6 rounded-2xl border border-[#e92935]/30 bg-[#e92935]/8 px-4 py-3 text-sm font-bold text-[#b91c1c]">
-          {error}
-        </div>
-      ) : null}
-
       {selfDriveBlocked ? (
         <div className="mt-8 rounded-[24px] border border-[#e92935]/24 bg-[#fff5f5] px-5 py-5 text-[#b91c1c] sm:px-6">
           <p className="text-lg font-black">Profile documents required for Self-Drive</p>
@@ -722,6 +727,7 @@ export default function BookingForm() {
           <div className="lg:sticky lg:top-6 lg:self-start">
             <PriceSummary
               rentalType={rentalType}
+              bookingMode={mode}
               days={pricing.days}
               basePricePerDay={bookingVehicle.base_price_per_day}
               driverRatePerDay={bookingVehicle.driver_rate_per_day}
@@ -738,8 +744,9 @@ export default function BookingForm() {
               deposit={pricing.deposit}
               remaining={pricing.remaining}
               submitting={submitting}
-              disabled={profileBlocked || selfDriveBlocked || documentsQuery.isLoading || (requiresPayment && paymentMethodsQuery.isLoading) || (needsRouteQuote && (!routeQuote || routeLoading || needsTollEstimate || tollLoading))}
-              disabledMessage={profileBlocked ? 'Complete your profile to enable booking.' : selfDriveBlocked ? 'Complete your profile documents to enable booking.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : undefined))}
+              disabled={formIncomplete}
+              disabledMessage={profileBlocked ? 'Complete your profile to enable booking.' : selfDriveBlocked ? 'Complete your profile documents to enable booking.' : (!startParam || !endParam) ? 'Pick-up and drop-off dates are required.' : selfDriveAddressIncomplete ? 'Enter your complete address for this self-drive booking.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : paymentIncomplete ? 'Complete payment details to enable booking.' : undefined))}
+              error={error}
             />
           </div>
         </div>

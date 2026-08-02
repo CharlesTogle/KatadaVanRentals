@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 
 interface PriceSummaryProps {
   rentalType: CustomerRentalType
+  bookingMode?: 'dropoff' | 'keep'
   days: number
   basePricePerDay: number
   driverRatePerDay: number
@@ -22,9 +23,10 @@ interface PriceSummaryProps {
   submitting: boolean
   disabled?: boolean
   disabledMessage?: React.ReactNode
+  error?: string
 }
 
-export function PriceSummary({ rentalType, days, basePricePerDay, driverRatePerDay, baseTotal, driverTotal, fuelEstimateAmount = 0, tollEstimateAmount = 0, tollMessage, distanceKm = 0, baseLoading = false, fuelLoading = false, tollLoading = false, grandTotal, deposit, remaining, submitting, disabled = false, disabledMessage }: PriceSummaryProps) {
+export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, driverRatePerDay, baseTotal, driverTotal, fuelEstimateAmount = 0, tollEstimateAmount = 0, tollMessage, distanceKm = 0, baseLoading = false, fuelLoading = false, tollLoading = false, grandTotal, deposit, remaining, submitting, disabled = false, disabledMessage, error }: PriceSummaryProps) {
   const amount = (value: number, loading?: boolean) => loading
     ? <span className="font-bold text-[#071f52]/48">Computing...</span>
     : <span className="font-bold">₱{value.toLocaleString()}.00</span>
@@ -80,7 +82,9 @@ export function PriceSummary({ rentalType, days, basePricePerDay, driverRatePerD
         )}
         {rentalType === 'all-in' ? (
           <p className="text-xs font-semibold leading-5 text-[#071f52]/48">
-            Computed as Pickup -&gt; Destination -&gt; Return. Fuel and toll are estimates. Final actuals are reconciled after the trip.
+            {bookingMode === 'dropoff'
+              ? 'Computed as Pickup &#8594; Destination. Fuel and toll are estimates. Final actuals are reconciled after the trip.'
+              : 'Computed as Pickup &#8594; Destination &#8594; Return. Fuel and toll are estimates. Final actuals are reconciled after the trip.'}
           </p>
         ) : null}
       </div>
@@ -94,6 +98,10 @@ export function PriceSummary({ rentalType, days, basePricePerDay, driverRatePerD
 
       {disabled && disabledMessage ? (
         <div className="text-center text-sm font-medium leading-5 text-[#e92935]">{disabledMessage}</div>
+      ) : null}
+
+      {error ? (
+        <div className="text-center text-sm font-medium leading-5 text-[#e92935]">{error}</div>
       ) : null}
 
       <p className="text-center text-sm font-medium leading-5 text-[#071f52]/48">

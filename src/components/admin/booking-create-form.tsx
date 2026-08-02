@@ -44,6 +44,7 @@ export function BookingCreateForm() {
   const [tollError, setTollError] = useState('')
   const [depositAmount, setDepositAmount] = useState('')
   const [conflictError, setConflictError] = useState('')
+  const [formError, setFormError] = useState('')
 
   const selectedVehicle = vehicles.find((v) => v.id === vehicleId) ?? null
 
@@ -157,6 +158,10 @@ export function BookingCreateForm() {
     }
   }, [dropoffSelection, entryPlaza, exitPlaza, pickupSelection, rentalModel, routeQuote])
 
+  const allFieldsEmpty = !startAt && !endAt && !vehicleId && !rentalModel
+    && (customer.mode === 'existing' ? !customer.existingCustomer?.id
+      : !customer.newCustomer.firstName.trim() && !customer.newCustomer.lastName.trim() && !customer.newCustomer.email.trim())
+
   const validate = (): string | null => {
     if (customer.mode === 'existing' && !customer.existingCustomer?.id) {
       return 'Please select a customer.'
@@ -187,6 +192,12 @@ export function BookingCreateForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setConflictError('')
+    setFormError('')
+
+    if (allFieldsEmpty) {
+      setFormError('Please fill in the required booking details before submitting.')
+      return
+    }
 
     const error = validate()
     if (error) {
@@ -396,10 +407,14 @@ export function BookingCreateForm() {
           <Button type="button" variant="outline" onClick={() => navigate('/admin/bookings')} className="flex-1">
             Cancel
           </Button>
-          <Button type="submit" disabled={createBooking.isPending} className="flex-1">
+          <Button type="submit" disabled={createBooking.isPending || allFieldsEmpty} className="flex-1">
             {createBooking.isPending ? 'Confirming...' : 'Record deposit & Confirm booking'}
           </Button>
         </div>
+
+        {formError ? (
+          <div className="mt-4 text-center text-sm font-medium text-[#e92935]">{formError}</div>
+        ) : null}
       </div>
     </form>
   )

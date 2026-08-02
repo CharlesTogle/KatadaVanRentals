@@ -70,7 +70,7 @@ export interface AdminBookingDetail {
   } | null
   vehicle: { id: string; name: string; plate_number: string; image_paths: string[] } | null
   payments: Array<{ id: string; channel: string; status: string; amount: number; reference_number: string | null; receipt_path: string | null; paid_at: string | null; created_at: string }>
-  documents: Array<{ id: string; document_type: string; status: string; file_path: string; original_filename: string | null; created_at: string }>
+  documents: Array<{ id: string; document_type: string; status: string; file_path: string; original_filename: string | null; mime_type: string | null; created_at: string }>
   status_events: Array<{ id: string; from_status: string | null; to_status: string; note: string | null; created_at: string }>
   extensions: Array<{ id: string; previous_end_at: string | null; new_end_at: string; extension_amount: number; reason: string | null; created_at: string }>
   invoice: { id: string; invoice_number: string; status: string; total_amount: number; file_path: string | null; issued_at: string } | null
@@ -191,10 +191,9 @@ export async function getAdminBookingByNumber(bookingNumber: string): Promise<Ad
 
   const [payRes, docRes, eventRes, extRes, invRes] = await Promise.all([
     supabase.from('payments').select('id,channel,status,amount,reference_number,receipt_path,paid_at,created_at').eq('booking_id', booking.id).order('created_at', { ascending: false }),
-    supabase
-      .from('booking_documents')
-      .select('required, customer_documents!inner(id,document_type,status,file_path,original_filename,created_at)')
-      .eq('booking_id', booking.id),
+    booking.customer_id
+      ? supabase.from('customer_documents').select('id,document_type,status,file_path,original_filename,mime_type,created_at').eq('customer_id', booking.customer_id).order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
     supabase.from('booking_status_events').select('id,from_status,to_status,note,created_at').eq('booking_id', booking.id).order('created_at', { ascending: false }),
     supabase.from('booking_extensions').select('id,previous_end_at,new_end_at,extension_amount,reason,created_at').eq('booking_id', booking.id).order('created_at', { ascending: false }),
     supabase.from('invoices').select('id,invoice_number,status,total_amount,file_path,issued_at').eq('booking_id', booking.id).order('created_at', { ascending: false }).maybeSingle(),
@@ -205,14 +204,7 @@ export async function getAdminBookingByNumber(bookingNumber: string): Promise<Ad
     customer,
     vehicle,
     payments: payRes.data || [],
-    documents: (docRes.data || []).map((d: Record<string, unknown>) => ({
-      id: (d.customer_documents as Record<string, unknown>).id as string,
-      document_type: (d.customer_documents as Record<string, unknown>).document_type as string,
-      status: (d.customer_documents as Record<string, unknown>).status as string,
-      file_path: (d.customer_documents as Record<string, unknown>).file_path as string,
-      original_filename: (d.customer_documents as Record<string, unknown>).original_filename as string | null,
-      created_at: (d.customer_documents as Record<string, unknown>).created_at as string,
-    })),
+    documents: (docRes.data || []) as AdminBookingDetail['documents'],
     status_events: eventRes.data || [],
     extensions: extRes.data || [],
     invoice: invRes.data,

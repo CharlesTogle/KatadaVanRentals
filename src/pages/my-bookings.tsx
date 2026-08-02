@@ -90,19 +90,23 @@ export default function MyBookings() {
                   {formatBookingStatus(booking.status)}
                 </span>
               </div>
-              <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+              <div className={cn('mt-4 grid gap-3 text-sm', booking.status === 'for_review' ? 'sm:grid-cols-1' : 'sm:grid-cols-3')}>
                 <div>
                   <p className="text-xs font-bold text-[#071f52]/48">Total</p>
                   <p className="font-bold text-[#071f52]">₱{Number(booking.total_amount || 0).toLocaleString()}.00</p>
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-[#071f52]/48">Paid</p>
-                  <p className="font-bold text-[#16a34a]">₱{Number(booking.paid_amount || 0).toLocaleString()}.00</p>
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-[#071f52]/48">Remaining</p>
-                  <p className="font-bold text-[#e92935]">₱{Number(booking.remaining_amount || 0).toLocaleString()}.00</p>
-                </div>
+                {booking.status !== 'for_review' && (
+                  <>
+                    <div>
+                      <p className="text-xs font-bold text-[#071f52]/48">Paid</p>
+                      <p className="font-bold text-[#16a34a]">₱{Number(booking.paid_amount || 0).toLocaleString()}.00</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-[#071f52]/48">Remaining</p>
+                      <p className="font-bold text-[#e92935]">₱{Number(booking.remaining_amount || 0).toLocaleString()}.00</p>
+                    </div>
+                  </>
+                )}
               </div>
             </Link>
           ))}

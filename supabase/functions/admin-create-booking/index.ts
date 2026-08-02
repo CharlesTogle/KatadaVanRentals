@@ -267,13 +267,14 @@ serve(async (req) => {
     return json(req, { error: 'Failed to create booking' }, 500)
   }
 
-  // Insert deposit payment if amount > 0
-  if (depositAmount && depositAmount > 0) {
+  // Insert deposit payment — use trigger-computed amount as fallback
+  const effectiveDeposit = Number(depositAmount) || booking.deposit_amount || 0
+  if (effectiveDeposit > 0) {
     await supabase.from('payments').insert({
       booking_id: booking.id,
       channel: 'cash',
       status: 'verified',
-      amount: depositAmount,
+      amount: effectiveDeposit,
       paid_at: new Date().toISOString(),
       submitted_by: user.id,
       verified_by: user.id,

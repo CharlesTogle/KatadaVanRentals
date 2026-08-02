@@ -385,6 +385,29 @@ describe('AdminBookingDetail', () => {
     })
   })
 
+  it('formats canceled booking notes into plain language', async () => {
+    useAdminBooking.mockReturnValue({
+      data: {
+        booking: { ...mockBooking, status: 'canceled' },
+        customer: mockCustomer,
+        vehicle: mockVehicle,
+        payments: [],
+        documents: [],
+        status_events: [{ id: 'event-1', from_status: 'confirmed', to_status: 'canceled', note: 'Type: customer_request. Reason: Cinancel eh', created_at: '2026-07-23T10:00:00Z' }],
+        extensions: [],
+        invoice: null,
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    await waitFor(() => {
+      expect(screen.getByText("Canceled at the customer's request. Reason: Cinancel eh")).toBeInTheDocument()
+    })
+  })
+
   it('shows payment receipts inline when the stored path includes the bucket prefix', async () => {
     const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
 

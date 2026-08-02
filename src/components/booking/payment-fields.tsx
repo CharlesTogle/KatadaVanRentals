@@ -58,7 +58,7 @@ export function PaymentFields({ depositAmount }: { depositAmount: number }) {
           ))}
         </select>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-1.5">
           <label className="text-sm font-bold text-[#071f52]">Security Deposit (downpayment) 10% <span className="text-[#e92935]">*</span></label>
           <input value={`₱ ${depositAmount.toLocaleString()}`} readOnly
