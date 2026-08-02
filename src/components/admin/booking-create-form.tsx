@@ -1,13 +1,18 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCreateAdminBooking } from '@/hooks/use-admin-booking'
 import { useAdminVehicles } from '@/hooks/use-vehicles'
 import { CustomerPicker, type CustomerPickerValue } from '@/components/admin/customer-picker'
+import { LocationSelector } from '@/components/booking/location-selector'
+import { TollPlazaConfirmation } from '@/components/booking/toll-plaza-confirmation'
 import { BookingPricePreview } from '@/components/admin/booking-price-preview'
 import { Button } from '@/components/ui/button'
+import { DateTimePicker } from '@/components/ui/date-time-picker'
+import { calculateToll, getNearestTollPlazas, getRouteQuote } from '@/services/location-service'
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
 import type { AdminBookingCreateInput } from '@/types/admin-booking'
+import type { RouteQuoteResponse, SelectedLocation, TollPlazaOption } from '@/types/location'
 
 const inputClass = 'w-full rounded-xl border border-[#071f52]/14 bg-white py-2 px-3 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 focus:border-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60'
 const labelClass = 'text-xs font-bold text-[#071f52]/58 mb-1 block'
@@ -28,10 +33,135 @@ export function BookingCreateForm() {
   const [endAt, setEndAt] = useState('')
   const [pickupLocation, setPickupLocation] = useState('')
   const [dropoffLocation, setDropoffLocation] = useState('')
+  const [pickupSelection, setPickupSelection] = useState<SelectedLocation>({ address: '', lat: null, lng: null })
+  const [dropoffSelection, setDropoffSelection] = useState<SelectedLocation>({ address: '', lat: null, lng: null })
+  const [routeQuote, setRouteQuote] = useState<RouteQuoteResponse | null>(null)
+  const [entryCandidates, setEntryCandidates] = useState<TollPlazaOption[]>([])
+  const [exitCandidates, setExitCandidates] = useState<TollPlazaOption[]>([])
+  const [entryPlaza, setEntryPlaza] = useState<TollPlazaOption | null>(null)
+  const [exitPlaza, setExitPlaza] = useState<TollPlazaOption | null>(null)
+  const [tollLoading, setTollLoading] = useState(false)
+  const [tollError, setTollError] = useState('')
   const [depositAmount, setDepositAmount] = useState('')
   const [conflictError, setConflictError] = useState('')
 
   const selectedVehicle = vehicles.find((v) => v.id === vehicleId) ?? null
+
+  useEffect(() => {
+    if (rentalModel !== 'all_in') {
+      setRouteQuote(null)
+      setEntryCandidates([])
+      setExitCandidates([])
+      setEntryPlaza(null)
+      setExitPlaza(null)
+      setTollError('')
+      return
+    }
+
+    if (pickupSelection.lat == null || pickupSelection.lng == null || dropoffSelection.lat == null || dropoffSelection.lng == null) {
+      setRouteQuote(null)
+      setEntryCandidates([])
+      setExitCandidates([])
+      setEntryPlaza(null)
+      setExitPlaza(null)
+      setTollError('')
+      return
+    }
+
+    let cancelled = false
+
+    void Promise.all([
+      getRouteQuote({
+        pickup: pickupSelection,
+        dropoff: dropoffSelection,
+        vehicleId,
+        rentalModel: 'all_in',
+      }),
+      getNearestTollPlazas({
+        pickup: pickupSelection,
+        dropoff: dropoffSelection,
+      }),
+    ]).then(([quote, plazas]) => {
+      if (cancelled) return
+      setRouteQuote(quote)
+      setEntryCandidates(plazas.entryCandidates)
+      setExitCandidates(plazas.exitCandidates)
+      setEntryPlaza((current) => plazas.entryCandidates.find((candidate) => candidate.id === current?.id) ?? null)
+      setExitPlaza((current) => plazas.exitCandidates.find((candidate) => candidate.id === current?.id) ?? null)
+      setTollError('')
+    }).catch((err) => {
+      if (cancelled) return
+      setRouteQuote(null)
+      setEntryCandidates([])
+      setExitCandidates([])
+      setEntryPlaza(null)
+      setExitPlaza(null)
+      setTollError(showError(err instanceof Error ? err : null))
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [dropoffSelection, pickupSelection, rentalModel, vehicleId])
+
+  useEffect(() => {
+    if (rentalModel !== 'all_in' || !routeQuote || !entryPlaza || !exitPlaza) {
+      setTollLoading(false)
+      return
+    }
+
+    const hasComputedToll = routeQuote.tollSegments.length > 0
+      || routeQuote.tollEstimateAmount > 0
+      || routeQuote.tollRfidBreakdown.length > 0
+
+    const matchesCurrentSelection = hasComputedToll
+      && routeQuote.tollEntryPlaza === entryPlaza.name
+      && routeQuote.tollEntryExpressway === entryPlaza.expressway
+      && routeQuote.tollExitPlaza === exitPlaza.name
+      && routeQuote.tollExitExpressway === exitPlaza.expressway
+      && routeQuote.tollVehicleClass === 1
+
+    if (matchesCurrentSelection) {
+      setTollLoading(false)
+      setTollError('')
+      return
+    }
+
+    let cancelled = false
+    setTollLoading(true)
+
+    void calculateToll({
+      pickup: pickupSelection,
+      dropoff: dropoffSelection,
+      entryPlaza: entryPlaza.id,
+      exitPlaza: exitPlaza.id,
+      vehicleClass: 1,
+    }).then((result) => {
+      if (cancelled) return
+      setRouteQuote((current) => current ? { ...current, ...result } : current)
+      setTollError('')
+    }).catch((err) => {
+      if (cancelled) return
+      setRouteQuote((current) => current ? {
+        ...current,
+        tollEstimateAmount: 0,
+        tollSegments: [],
+        tollEntryPlaza: entryPlaza.name,
+        tollEntryExpressway: entryPlaza.expressway,
+        tollExitPlaza: exitPlaza.name,
+        tollExitExpressway: exitPlaza.expressway,
+        tollVehicleClass: 1,
+        tollRfidBreakdown: [],
+      } : current)
+      setTollError(showError(err instanceof Error ? err : null))
+    }).finally(() => {
+      if (!cancelled) setTollLoading(false)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [dropoffSelection, entryPlaza, exitPlaza, pickupSelection, rentalModel, routeQuote])
 
   const validate = (): string | null => {
     if (customer.mode === 'existing' && !customer.existingCustomer?.id) {
@@ -47,6 +177,15 @@ export function BookingCreateForm() {
     if (!startAt) return 'Pick-up date & time is required.'
     if (!endAt) return 'Drop-off date & time is required.'
     if (new Date(endAt) <= new Date(startAt)) return 'Drop-off must be after pick-up.'
+    if (rentalModel === 'all_in' && (pickupSelection.lat == null || dropoffSelection.lat == null)) {
+      return 'Choose a suggested pickup and drop-off location for All In bookings.'
+    }
+    if (rentalModel === 'all_in' && (!entryPlaza || !exitPlaza)) {
+      return 'Confirm the toll plazas for this All In booking.'
+    }
+    if (rentalModel === 'all_in' && tollError) {
+      return tollError
+    }
     if (depositAmount && (Number(depositAmount) < 0)) return 'Deposit cannot be negative.'
     return null
   }
@@ -61,6 +200,31 @@ export function BookingCreateForm() {
       return
     }
 
+    let nextRouteQuote = routeQuote
+
+    if (rentalModel === 'all_in') {
+      try {
+        const baseQuote = await getRouteQuote({
+          pickup: pickupSelection,
+          dropoff: dropoffSelection,
+          vehicleId,
+          rentalModel: 'all_in',
+        })
+        const tollQuote = await calculateToll({
+          pickup: pickupSelection,
+          dropoff: dropoffSelection,
+          entryPlaza: entryPlaza!.id,
+          exitPlaza: exitPlaza!.id,
+          vehicleClass: 1,
+        })
+        nextRouteQuote = { ...baseQuote, ...tollQuote }
+        setRouteQuote(nextRouteQuote)
+      } catch (err) {
+        toast.error(showError(err instanceof Error ? err : null))
+        return
+      }
+    }
+
     const input: AdminBookingCreateInput = {
       customerMode: customer.mode,
       existingCustomerId: customer.existingCustomer?.id ?? null,
@@ -72,6 +236,22 @@ export function BookingCreateForm() {
       pickupLocation,
       dropoffLocation,
       depositAmount,
+      pickupLat: pickupSelection.lat,
+      pickupLng: pickupSelection.lng,
+      dropoffLat: dropoffSelection.lat,
+      dropoffLng: dropoffSelection.lng,
+      distanceKm: nextRouteQuote?.distanceKm ?? null,
+      durationMinutes: nextRouteQuote?.durationMinutes ?? null,
+      fuelEstimateLiters: nextRouteQuote?.fuelEstimateLiters ?? 0,
+      fuelEstimateAmount: nextRouteQuote?.fuelEstimateAmount ?? 0,
+      tollEstimateAmount: nextRouteQuote?.tollEstimateAmount ?? 0,
+      tollSegments: nextRouteQuote?.tollSegments ?? [],
+      tollEntryPlaza: nextRouteQuote?.tollEntryPlaza ?? null,
+      tollEntryExpressway: nextRouteQuote?.tollEntryExpressway ?? null,
+      tollExitPlaza: nextRouteQuote?.tollExitPlaza ?? null,
+      tollExitExpressway: nextRouteQuote?.tollExitExpressway ?? null,
+      tollVehicleClass: nextRouteQuote?.tollVehicleClass ?? 1,
+      tollRfidBreakdown: nextRouteQuote?.tollRfidBreakdown ?? [],
     }
 
     try {
@@ -120,21 +300,65 @@ export function BookingCreateForm() {
             </div>
             <div />
             <div>
-              <label className={labelClass}>Pick-up date & time *</label>
-              <input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={inputClass} />
+              <DateTimePicker
+                id="admin-booking-start-at"
+                label="Pick-up date & time"
+                required
+                value={startAt}
+                placeholder="Select date & time"
+                onChange={setStartAt}
+                labelClassName={labelClass}
+                triggerClassName="min-h-[42px] rounded-xl bg-white px-3 py-2 text-sm"
+              />
             </div>
             <div>
-              <label className={labelClass}>Drop-off date & time *</label>
-              <input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={inputClass} />
+              <DateTimePicker
+                id="admin-booking-end-at"
+                label="Drop-off date & time"
+                required
+                value={endAt}
+                placeholder="Select date & time"
+                onChange={setEndAt}
+                labelClassName={labelClass}
+                triggerClassName="min-h-[42px] rounded-xl bg-white px-3 py-2 text-sm"
+              />
             </div>
             <div>
-              <label className={labelClass}>Pick-up location</label>
-              <input value={pickupLocation} onChange={(e) => setPickupLocation(e.target.value)} className={inputClass} placeholder="Optional" />
+              <LocationSelector
+                id="admin-booking-pickup-location"
+                label="Pick-up location"
+                value={pickupLocation}
+                placeholder="Search pickup address"
+                onChange={setPickupLocation}
+                onSelect={setPickupSelection}
+              />
             </div>
             <div>
-              <label className={labelClass}>Drop-off location</label>
-              <input value={dropoffLocation} onChange={(e) => setDropoffLocation(e.target.value)} className={inputClass} placeholder="Optional" />
+              <LocationSelector
+                id="admin-booking-dropoff-location"
+                label="Drop-off location"
+                value={dropoffLocation}
+                placeholder="Search drop-off address"
+                onChange={setDropoffLocation}
+                onSelect={setDropoffSelection}
+              />
             </div>
+            {rentalModel === 'all_in' ? (
+              <div className="sm:col-span-2">
+                <TollPlazaConfirmation
+                  entryCandidates={entryCandidates}
+                  exitCandidates={exitCandidates}
+                  selectedEntry={entryPlaza}
+                  selectedExit={exitPlaza}
+                  loading={tollLoading}
+                  error={tollError}
+                  tollEstimateAmount={routeQuote?.tollEstimateAmount ?? 0}
+                  rfidBreakdown={routeQuote?.tollRfidBreakdown ?? []}
+                  onEntrySelect={setEntryPlaza}
+                  onExitSelect={setExitPlaza}
+                />
+              </div>
+            ) : null}
           </div>
         </section>
 
@@ -164,6 +388,7 @@ export function BookingCreateForm() {
           rentalModel={rentalModel}
           startAt={startAt}
           endAt={endAt}
+          routeQuote={routeQuote}
         />
 
         {conflictError && (

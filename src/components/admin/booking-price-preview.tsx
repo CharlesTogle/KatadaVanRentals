@@ -1,13 +1,15 @@
 import type { Vehicle } from '@/types/vehicle'
+import type { RouteQuoteResponse } from '@/types/location'
 
 interface BookingPricePreviewProps {
   vehicle: Vehicle | null
   rentalModel: 'all_out' | 'self_drive' | 'all_in' | ''
   startAt: string
   endAt: string
+  routeQuote: RouteQuoteResponse | null
 }
 
-export function BookingPricePreview({ vehicle, rentalModel, startAt, endAt }: BookingPricePreviewProps) {
+export function BookingPricePreview({ vehicle, rentalModel, startAt, endAt, routeQuote }: BookingPricePreviewProps) {
   const startDate = startAt ? new Date(startAt) : null
   const endDate = endAt ? new Date(endAt) : null
   const hasRequired = !!vehicle && !!rentalModel && !!startDate && !!endDate && endDate > startDate
@@ -28,7 +30,9 @@ export function BookingPricePreview({ vehicle, rentalModel, startAt, endAt }: Bo
   const driverTotal = (rentalModel === 'all_in' || rentalModel === 'all_out')
     ? durationDays * vehicle!.driver_rate_per_day
     : 0
-  const total = baseTotal + driverTotal
+  const fuelTotal = rentalModel === 'all_in' ? Math.round(routeQuote?.fuelEstimateAmount ?? 0) : 0
+  const tollTotal = rentalModel === 'all_in' ? Math.round(routeQuote?.tollEstimateAmount ?? 0) : 0
+  const total = baseTotal + driverTotal + fuelTotal + tollTotal
 
   return (
     <div className="rounded-2xl border border-[#071f52]/10 bg-white p-5">
@@ -46,6 +50,18 @@ export function BookingPricePreview({ vehicle, rentalModel, startAt, endAt }: Bo
           <div className="flex justify-between">
             <span className="text-[#071f52]/66">Driver ({durationDays}d × ₱{vehicle!.driver_rate_per_day.toLocaleString()})</span>
             <span className="font-bold">₱{driverTotal.toLocaleString()}.00</span>
+          </div>
+        )}
+        {fuelTotal > 0 && (
+          <div className="flex justify-between">
+            <span className="text-[#071f52]/66">Fuel Estimate</span>
+            <span className="font-bold">₱{fuelTotal.toLocaleString()}.00</span>
+          </div>
+        )}
+        {tollTotal > 0 && (
+          <div className="flex justify-between">
+            <span className="text-[#071f52]/66">Toll Estimate</span>
+            <span className="font-bold">₱{tollTotal.toLocaleString()}.00</span>
           </div>
         )}
         <div className="flex justify-between border-t border-[#071f52]/10 pt-2 text-base">
