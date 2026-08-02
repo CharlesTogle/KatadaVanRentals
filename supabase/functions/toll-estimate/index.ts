@@ -103,7 +103,17 @@ async function fetchToll(entryPlaza: { name: string }, exitPlaza: { name: string
   url.searchParams.set('class', String(vehicleClass))
 
   const response = await fetch(url)
-  if (response.status === 400) return { error: jsonError('Invalid toll plaza selection', 400) }
+  if (response.status === 400) {
+    const bodyText = await response.text()
+    console.error('[toll-estimate] External toll API 400', {
+      url: url.toString(),
+      entryName: entryPlaza.name,
+      exitName: exitPlaza.name,
+      vehicleClass,
+      responseBody: bodyText,
+    })
+    return { error: jsonError('Invalid toll plaza selection', 400) }
+  }
   if (response.status === 404) return { error: jsonError('No direct expressway route found between these points', 404) }
   if (!response.ok) return { error: jsonError('Toll calculation failed', 502) }
 
@@ -160,8 +170,19 @@ serve(async (req) => {
   const returnEntryPlaza = findPlaza(body.returnEntryPlaza)
   const pickupNearestPlaza = nearestPlazas({ lat: body.pickup.lat, lng: body.pickup.lng })[0]
   const dropoffNearestPlaza = nearestPlazas({ lat: body.dropoff.lat, lng: body.dropoff.lng })[0]
-  const returnExitPlaza = findPlaza(dropoffNearestPlaza?.id ?? body.returnExitPlaza)
+  const returnExitPlaza = findPlaza(body.returnExitPlaza ?? dropoffNearestPlaza?.id)
   if (!entryPlaza || !exitPlaza || (!!body.returnEntryPlaza && !returnEntryPlaza) || !returnExitPlaza) {
+    console.error('[toll-estimate] Invalid plaza selection', {
+      sentEntryPlaza: body.entryPlaza,
+      foundEntryPlaza: entryPlaza?.id ?? null,
+      sentExitPlaza: body.exitPlaza,
+      foundExitPlaza: exitPlaza?.id ?? null,
+      sentReturnEntryPlaza: body.returnEntryPlaza ?? null,
+      foundReturnEntryPlaza: returnEntryPlaza?.id ?? null,
+      sentReturnExitPlaza: body.returnExitPlaza ?? null,
+      foundReturnExitPlaza: returnExitPlaza?.id ?? null,
+      dropoffNearestId: dropoffNearestPlaza?.id ?? null,
+    })
     return json(req, { error: 'Invalid toll plaza selection' }, 400)
   }
 
