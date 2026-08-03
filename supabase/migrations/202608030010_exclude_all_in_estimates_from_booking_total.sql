@@ -8,6 +8,7 @@ declare
   v_base_price numeric(12,2);
   v_driver_rate numeric(12,2);
   v_reserve_pct numeric(5,2);
+  v_base_total numeric(12,2);
 begin
   select base_price_per_day, driver_rate_per_day
   into strict v_base_price, v_driver_rate
@@ -15,9 +16,11 @@ begin
   where id = new.vehicle_id;
 
   if new.booking_mode = 'dropoff' and new.rental_model in ('all_in', 'all_out') then
-    new.subtotal_amount := coalesce(new.distance_km, 0) * v_base_price;
+    v_base_total := coalesce(new.distance_km, 0) * v_base_price;
+    new.subtotal_amount := v_base_total;
   else
-    new.subtotal_amount := v_base_price * new.duration_days;
+    v_base_total := v_base_price * new.duration_days;
+    new.subtotal_amount := v_base_total;
   end if;
 
   if new.rental_model in ('all_in', 'all_out') and new.booking_mode = 'keep' then
@@ -31,7 +34,7 @@ begin
     into v_reserve_pct
     from public.app_settings
     where id = true;
-    new.deposit_amount := round((case when new.booking_mode = 'dropoff' and new.rental_model in ('all_in', 'all_out') then coalesce(new.distance_km, 0) * v_base_price else v_base_price * new.duration_days end) * v_reserve_pct, 2);
+    new.deposit_amount := round(v_base_total * v_reserve_pct, 2);
   elsif new.total_amount > 0 then
     select coalesce(reservation_percent, 10) / 100
     into v_reserve_pct
@@ -48,7 +51,7 @@ begin
     jsonb_build_object(
       'label', 'Base',
       'detail', case when new.booking_mode = 'dropoff' and new.rental_model in ('all_in', 'all_out') then coalesce(new.distance_km, 0) || 'km × ₱' || v_base_price else new.duration_days || 'd × ₱' || v_base_price end,
-      'amount', case when new.booking_mode = 'dropoff' and new.rental_model in ('all_in', 'all_out') then coalesce(new.distance_km, 0) * v_base_price else v_base_price * new.duration_days end
+      'amount', v_base_total
     )
   );
 

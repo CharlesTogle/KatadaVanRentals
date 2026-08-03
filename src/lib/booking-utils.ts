@@ -66,16 +66,19 @@ export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, e
       ? 1
       : 0
 
-  const distanceKm = Math.round(routeQuote?.distanceKm ?? 0)
+  const distanceKm = Number(routeQuote?.distanceKm ?? 0)
   const baseTotal = mode === 'dropoff' && usesDriver(rentalType)
     ? distanceKm * basePricePerDay
     : days * basePricePerDay
   const driverTotal = usesDriver(rentalType) && mode === 'keep' ? days * driverRatePerDay : 0
-  const fuelEstimateAmount = rentalType === 'all-in' ? Math.round(routeQuote?.fuelEstimateAmount ?? 0) : 0
-  const tollEstimateAmount = rentalType === 'all-in' ? Math.round(routeQuote?.tollEstimateAmount ?? 0) : 0
-  const grandTotal = baseTotal + driverTotal + fuelEstimateAmount + tollEstimateAmount
-  const subtotalExcludingEstimates = baseTotal + driverTotal
-  const deposit = Math.round(subtotalExcludingEstimates * 0.1)
+  const fuelEstimateAmount = rentalType === 'all-in' ? Number(routeQuote?.fuelEstimateAmount ?? 0) : 0
+  const tollEstimateAmount = rentalType === 'all-in' ? Number(routeQuote?.tollEstimateAmount ?? 0) : 0
+  const grandTotal = baseTotal + driverTotal
+  const deposit = rentalType === 'all-in'
+    ? Math.round(baseTotal * 0.1)
+    : rentalType === 'self-drive'
+      ? Math.round(grandTotal * 0.1)
+      : 0
   const remaining = Math.max(0, grandTotal - deposit)
 
   return {
@@ -92,7 +95,7 @@ export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, e
 }
 
 export function canCustomerCancelBooking(status: BookingStatus) {
-  return status === 'for_review' || status === 'confirmed'
+  return status === 'for_review' || status === 'pending_price_approval' || status === 'confirmed'
 }
 
 export type AdminActionType =
@@ -103,6 +106,7 @@ export type AdminActionType =
   | 'start_trip'
   | 'extend_rental'
   | 'complete'
+  | 'make_payment'
   | 'cancel'
   | 'delete'
 
@@ -118,7 +122,7 @@ export function getAdminBookingDetailActions(status: BookingStatus): AdminAction
       return [
         { type: 'confirm', label: 'Confirm', variant: 'primary' },
         { type: 'reject', label: 'Reject', variant: 'danger' },
-        { type: 'adjust_booking', label: 'Adjust Booking', variant: 'secondary' },
+        { type: 'adjust_booking', label: 'Confirm with Adjustment', variant: 'secondary' },
         { type: 'request_documents', label: 'Request Documents', variant: 'secondary' },
         { type: 'delete', label: 'Delete Booking', variant: 'danger' },
       ]
@@ -166,4 +170,24 @@ export function getAdminBookingActions(status: BookingStatus) {
 
 export function formatBookingStatus(status: string) {
   return status.replace(/_/g, ' ')
+}
+
+type BookingCadenceLike = {
+  rental_model: 'all_in' | 'all_out' | 'self_drive'
+  booking_mode?: 'dropoff' | 'keep'
+  distance_km?: number | null
+  duration_days: number
+}
+
+export function isDistanceBasedBooking(booking: Pick<BookingCadenceLike, 'rental_model' | 'booking_mode'>) {
+  return booking.rental_model !== 'self_drive' && booking.booking_mode === 'dropoff'
+}
+
+export function getBookingCadenceLabel(booking: Pick<BookingCadenceLike, 'rental_model' | 'booking_mode'>) {
+  return isDistanceBasedBooking(booking) ? 'Distance' : 'Duration'
+}
+
+export function getBookingCadenceValue(booking: BookingCadenceLike) {
+  if (isDistanceBasedBooking(booking)) return `${Number(booking.distance_km || 0)} km`
+  return `${booking.duration_days} day${booking.duration_days === 1 ? '' : 's'}`
 }
