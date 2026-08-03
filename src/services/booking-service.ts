@@ -298,6 +298,7 @@ export type AdminBookingActionType =
   | 'start_trip'
   | 'extend'
   | 'complete'
+  | 'make_payment'
   | 'cancel'
   | 'delete'
 

@@ -42,6 +42,7 @@ const invoiceData: BookingInvoiceData = {
     destination: 'Tagaytay',
     purpose_of_travel: 'Family trip',
     notes: null,
+    self_drive_address: null,
     distance_km: null,
     duration_minutes: null,
     toll_estimate_amount: 0,
