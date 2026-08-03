@@ -2,16 +2,58 @@ import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/types/booking'
 import type { BookingStatus } from '@/types/booking'
 
-export async function getBookingById(id: string): Promise<Booking> {
-  const { data, error } = await supabase.from('bookings').select('*').eq('id', id).single()
-  if (error) throw error
-  return data as Booking
+export interface CustomerBookingDetail {
+  booking: Booking
+  vehicle: AdminBookingDetail['vehicle']
+  payments: AdminBookingDetail['payments']
+  status_events: AdminBookingDetail['status_events']
+  cancellation: AdminBookingDetail['cancellation']
+  extensions: AdminBookingDetail['extensions']
+  invoice: AdminBookingDetail['invoice']
+}
+
+type BookingCancellation = {
+  cancellation_type: string
+  reason: string | null
+  created_at: string
+}
+
+export async function getBookingById(id: string): Promise<CustomerBookingDetail> {
+  const { data: booking, error: bookingError } = await supabase
+    .from('bookings')
+    .select('*, vehicles!vehicle_id(id,name,plate_number,image_paths)')
+    .eq('id', id)
+    .single()
+
+  if (bookingError) throw bookingError
+
+  const [paymentsRes, eventsRes, extensionsRes, invoiceRes, cancellationRes] = await Promise.all([
+    supabase.from('payments').select('id,channel,status,amount,reference_number,receipt_path,paid_at,created_at').eq('booking_id', id).order('created_at', { ascending: false }),
+    supabase.from('booking_status_events').select('id,from_status,to_status,note,created_at').eq('booking_id', id).order('created_at', { ascending: false }),
+    supabase.from('booking_extensions').select('id,previous_end_at,new_end_at,extension_amount,reason,payment_id,created_at').eq('booking_id', id).order('created_at', { ascending: false }),
+    supabase.from('invoices').select('id,invoice_number,status,total_amount,file_path,issued_at').eq('booking_id', id).order('created_at', { ascending: false }).maybeSingle(),
+    supabase.from('booking_cancellations').select('cancellation_type,reason,created_at').eq('booking_id', id).order('created_at', { ascending: false }).maybeSingle(),
+  ])
+
+  const vehicle = booking.vehicles && !Array.isArray(booking.vehicles)
+    ? booking.vehicles as AdminBookingDetail['vehicle']
+    : null
+
+  return {
+    booking: booking as Booking,
+    vehicle,
+    payments: paymentsRes.data || [],
+    status_events: eventsRes.data || [],
+    cancellation: cancellationRes.data,
+    extensions: extensionsRes.data || [],
+    invoice: invoiceRes.data,
+  }
 }
 
 export async function getMyBookings(status?: string) {
   let query = supabase
     .from('bookings')
-    .select('id, booking_number, vehicle_id, start_at, end_at, duration_days, total_amount, paid_amount, remaining_amount, status, created_at, rental_model, vehicles!vehicle_id(name,slug,image_paths)')
+    .select('id, booking_number, vehicle_id, start_at, end_at, duration_days, distance_km, booking_mode, total_amount, paid_amount, remaining_amount, status, created_at, rental_model, vehicles!vehicle_id(name,slug,image_paths)')
     .order('created_at', { ascending: false })
 
   if (status) query = query.eq('status', status)
@@ -54,6 +96,14 @@ export async function cancelOwnBooking(id: string, reason: string) {
   if (error) throw error
 }
 
+export async function acceptOwnPriceAdjustment(id: string) {
+  const { error } = await supabase.rpc('accept_own_price_adjustment', {
+    target_booking_id: id,
+  })
+
+  if (error) throw error
+}
+
 export interface AdminBookingDetail {
   booking: Booking
   customer: {
@@ -70,9 +120,10 @@ export interface AdminBookingDetail {
   } | null
   vehicle: { id: string; name: string; plate_number: string; image_paths: string[] } | null
   payments: Array<{ id: string; channel: string; status: string; amount: number; reference_number: string | null; receipt_path: string | null; paid_at: string | null; created_at: string }>
+  cancellation: BookingCancellation | null
   documents: Array<{ id: string; document_type: string; status: string; file_path: string; original_filename: string | null; mime_type: string | null; created_at: string }>
   status_events: Array<{ id: string; from_status: string | null; to_status: string; note: string | null; created_at: string }>
-  extensions: Array<{ id: string; previous_end_at: string | null; new_end_at: string; extension_amount: number; reason: string | null; created_at: string }>
+  extensions: Array<{ id: string; previous_end_at: string | null; new_end_at: string; extension_amount: number; reason: string | null; payment_id?: string | null; created_at: string }>
   invoice: { id: string; invoice_number: string; status: string; total_amount: number; file_path: string | null; issued_at: string } | null
 }
 
@@ -189,14 +240,15 @@ export async function getAdminBookingByNumber(bookingNumber: string): Promise<Ad
     ? booking.vehicles as AdminBookingDetail['vehicle']
     : null
 
-  const [payRes, docRes, eventRes, extRes, invRes] = await Promise.all([
+  const [payRes, docRes, eventRes, extRes, invRes, cancellationRes] = await Promise.all([
     supabase.from('payments').select('id,channel,status,amount,reference_number,receipt_path,paid_at,created_at').eq('booking_id', booking.id).order('created_at', { ascending: false }),
     booking.customer_id
       ? supabase.from('customer_documents').select('id,document_type,status,file_path,original_filename,mime_type,created_at').eq('customer_id', booking.customer_id).order('created_at', { ascending: false })
       : Promise.resolve({ data: [] }),
     supabase.from('booking_status_events').select('id,from_status,to_status,note,created_at').eq('booking_id', booking.id).order('created_at', { ascending: false }),
-    supabase.from('booking_extensions').select('id,previous_end_at,new_end_at,extension_amount,reason,created_at').eq('booking_id', booking.id).order('created_at', { ascending: false }),
+    supabase.from('booking_extensions').select('id,previous_end_at,new_end_at,extension_amount,reason,payment_id,created_at').eq('booking_id', booking.id).order('created_at', { ascending: false }),
     supabase.from('invoices').select('id,invoice_number,status,total_amount,file_path,issued_at').eq('booking_id', booking.id).order('created_at', { ascending: false }).maybeSingle(),
+    supabase.from('booking_cancellations').select('cancellation_type,reason,created_at').eq('booking_id', booking.id).order('created_at', { ascending: false }).maybeSingle(),
   ])
 
   return {
@@ -204,6 +256,7 @@ export async function getAdminBookingByNumber(bookingNumber: string): Promise<Ad
     customer,
     vehicle,
     payments: payRes.data || [],
+    cancellation: cancellationRes.data,
     documents: (docRes.data || []) as AdminBookingDetail['documents'],
     status_events: eventRes.data || [],
     extensions: extRes.data || [],
@@ -255,7 +308,8 @@ export type AdminBookingActionInput =
   | { type: 'adjust_price'; bookingId: string; adjustedTotal: number; reason: string }
   | { type: 'start_trip'; bookingId: string; collectedAmount: number; paymentMethodId?: string; paymentChannel?: string; referenceNumber?: string; receiptPath?: string }
   | { type: 'extend'; bookingId: string; newEndAt: string; extensionAmount: number; reason?: string; collectNow?: boolean; paymentMethodId?: string; paymentChannel?: string; referenceNumber?: string; receiptPath?: string }
-  | { type: 'complete'; bookingId: string; note?: string }
+  | { type: 'complete'; bookingId: string; collectedAmount?: number; paymentMethodId?: string; paymentChannel?: string; referenceNumber?: string; receiptPath?: string; actualTollAmount?: number; actualFuelAmount?: number; note?: string }
+  | { type: 'make_payment'; bookingId: string; collectedAmount: number; paymentMethodId?: string; paymentChannel?: string; referenceNumber?: string; receiptPath?: string }
   | { type: 'cancel'; bookingId: string; cancellationType: string; reason: string }
   | { type: 'delete'; bookingId: string }
 
@@ -292,7 +346,31 @@ export async function runAdminBookingAction(input: AdminBookingActionInput): Pro
         receipt_path: (params as { receiptPath?: string }).receiptPath ?? null,
       },
     },
-    complete: { fn: 'admin_complete_booking', args: { target_booking_id: bookingId, note: (params as { note?: string }).note ?? null } },
+    complete: {
+      fn: 'admin_complete_booking',
+      args: {
+        target_booking_id: bookingId,
+        collected_amount: (params as { collectedAmount?: number }).collectedAmount ?? 0,
+        payment_method_id: (params as { paymentMethodId?: string }).paymentMethodId ?? null,
+        payment_channel: (params as { paymentChannel?: string }).paymentChannel ?? 'cash',
+        reference_number: (params as { referenceNumber?: string }).referenceNumber ?? null,
+        receipt_path: (params as { receiptPath?: string }).receiptPath ?? null,
+        actual_toll_amount: (params as { actualTollAmount?: number }).actualTollAmount ?? null,
+        actual_fuel_amount: (params as { actualFuelAmount?: number }).actualFuelAmount ?? null,
+        note: (params as { note?: string }).note ?? null,
+      },
+    },
+    make_payment: {
+      fn: 'admin_record_completed_booking_payment',
+      args: {
+        target_booking_id: bookingId,
+        collected_amount: (params as { collectedAmount: number }).collectedAmount,
+        payment_method_id: (params as { paymentMethodId?: string }).paymentMethodId ?? null,
+        payment_channel: (params as { paymentChannel?: string }).paymentChannel ?? 'cash',
+        reference_number: (params as { referenceNumber?: string }).referenceNumber ?? null,
+        receipt_path: (params as { receiptPath?: string }).receiptPath ?? null,
+      },
+    },
     cancel: { fn: 'admin_cancel_booking', args: { target_booking_id: bookingId, cancellation_type: (params as { cancellationType: string }).cancellationType, reason: (params as { reason: string }).reason } },
     delete: { fn: 'admin_delete_booking', args: { target_booking_id: bookingId } },
   }

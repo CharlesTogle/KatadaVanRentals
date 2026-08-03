@@ -65,6 +65,20 @@ export function useCancelOwnBooking() {
   })
 }
 
+export function useAcceptOwnPriceAdjustment() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) => bookingService.acceptOwnPriceAdjustment(id),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['customer', 'bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['booking', variables.id] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'bookings'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] })
+    },
+  })
+}
+
 export function useUpdateBookingStatus() {
   const queryClient = useQueryClient()
 

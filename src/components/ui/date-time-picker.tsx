@@ -20,6 +20,7 @@ interface DateTimePickerProps {
   labelClassName?: string
   triggerClassName?: string
   disabled?: boolean
+  minDateTime?: Date
 }
 
 function parseDateTimeValue(value: string) {
@@ -63,6 +64,7 @@ export function DateTimePicker({
   labelClassName,
   triggerClassName,
   disabled = false,
+  minDateTime,
 }: DateTimePickerProps) {
   const selectedDate = useMemo(() => parseDateTimeValue(value), [value])
   const timeParts = useMemo(() => {
@@ -161,6 +163,7 @@ export function DateTimePicker({
                 onSelect={handleDateSelect}
                 showOutsideDays
                 fixedWeeks
+                disabled={minDateTime ? { before: minDateTime } : undefined}
                 className="p-3"
               />
             </div>

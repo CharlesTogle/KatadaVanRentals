@@ -1,89 +1,101 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
-import { useBooking, useCancelOwnBooking } from '@/hooks/use-bookings'
-import { useVehicleById } from '@/hooks/use-vehicles'
+import { useAcceptOwnPriceAdjustment, useBooking, useCancelOwnBooking } from '@/hooks/use-bookings'
+import { useFileViewer } from '@/hooks/use-file-viewer'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ImageViewer } from '@/components/ui/image-viewer'
 import {
-  ArrowLeft, MapPin, CalendarDays, CreditCard, FileText,
-  Clock, Star, Send,
+  ArrowLeft,
+  CheckCircle2,
+  Circle,
+  FileText,
+  Receipt,
+  Send,
+  Star,
 } from 'lucide-react'
 import { BOOKING_MESSAGES } from '@/constants/booking'
 import { STATUS_COLORS } from '@/config/constants'
-import { BookingSection } from '@/components/booking/booking-section'
-import { canCustomerCancelBooking } from '@/lib/booking-utils'
+import { getBookingAdjustmentSummary } from '@/lib/booking-adjustment'
+import { getDisplayBookingNote } from '@/lib/booking-notes'
+import { canCustomerCancelBooking, formatBookingStatus, getBookingCadenceLabel, getBookingCadenceValue } from '@/lib/booking-utils'
 import { downloadBookingInvoicePdf } from '@/lib/invoice-pdf'
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
 
-const timeline = ['for_review', 'confirmed', 'on_trip', 'completed']
+const TIMELINE_STATUSES = ['for_review', 'awaiting_documents', 'confirmed', 'on_trip', 'completed']
+const PAYMENT_RECEIPT_BUCKET = 'payment-receipts'
+
+function getPaymentReceiptPathCandidates(filePath: string) {
+  const trimmedPath = filePath.replace(/^\/+/, '')
+  const strippedBucketPath = trimmedPath.replace(new RegExp(`^${PAYMENT_RECEIPT_BUCKET}/`), '')
+
+  return [...new Set([
+    strippedBucketPath,
+    trimmedPath,
+    `${PAYMENT_RECEIPT_BUCKET}/${strippedBucketPath}`,
+  ].filter(Boolean))]
+}
 
 export default function BookingDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const { data: booking, isLoading: loading } = useBooking(id)
-  const { data: vehicle } = useVehicleById(booking?.vehicle_id)
+  const { data, isLoading: loading } = useBooking(id)
   const cancelBooking = useCancelOwnBooking()
-
-  const { data: statusReason } = useQuery({
-    queryKey: ['booking', id, 'status-reason'],
-    queryFn: async () => {
-      if (!id || !booking) return null
-      if (booking.status === 'rejected') {
-        const { data: d } = await supabase.from('booking_status_events').select('note').eq('booking_id', id).eq('to_status', 'rejected').not('note', 'is', null).order('created_at', { ascending: false }).limit(1).maybeSingle()
-        return d?.note || null
-      }
-      if (booking.status === 'canceled') {
-        const { data: d } = await supabase.from('booking_cancellations').select('reason').eq('booking_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle()
-        return d?.reason || null
-      }
-      return null
-    },
-    enabled: !!id && !!booking && ['rejected', 'canceled'].includes(booking.status),
+  const acceptPriceAdjustment = useAcceptOwnPriceAdjustment()
+  const { viewing, openingId, openFile, closeViewer } = useFileViewer((viewError) => {
+    toast.error(showError(viewError))
   })
 
   const [rating, setRating] = useState(0)
   const [feedback, setFeedback] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
+  const [adjustmentAction, setAdjustmentAction] = useState<'accept' | 'cancel' | null>(null)
 
   const handleCancelBooking = async () => {
-    if (!booking) return
+    if (!data) return
+
     const reason = window.prompt('Why are you canceling this booking?', 'Customer requested cancellation')
     if (reason === null) return
 
+    setAdjustmentAction('cancel')
+
     try {
-      await cancelBooking.mutateAsync({ id: booking.id, reason: reason.trim() || 'Customer requested cancellation' })
+      await cancelBooking.mutateAsync({ id: data.booking.id, reason: reason.trim() || 'Customer requested cancellation' })
       toast.success('Booking canceled.')
     } catch (error) {
       toast.error(showError(error as Error))
+    } finally {
+      setAdjustmentAction(null)
     }
   }
 
   const handleSubmitFeedback = async () => {
-    if (!booking || !user) return
+    if (!data || !user) return
+
     const { error } = await supabase.from('booking_feedback').insert({
-      booking_id: booking.id,
+      booking_id: data.booking.id,
       customer_id: user.id,
-      vehicle_id: booking.vehicle_id,
+      vehicle_id: data.booking.vehicle_id,
       rating,
       feedback: feedback || null,
     })
+
     if (!error) setSubmitted(true)
   }
 
   const handleDownloadInvoice = async () => {
-    if (!booking) return
+    if (!data) return
 
     setIsDownloadingInvoice(true)
 
     try {
-      await downloadBookingInvoicePdf(booking.id)
+      await downloadBookingInvoicePdf(data.booking.id)
     } catch (error) {
       toast.error(showError(error as Error))
     } finally {
@@ -91,24 +103,44 @@ export default function BookingDetail() {
     }
   }
 
+  const getPaymentReceiptSignedUrl = async (path: string) => {
+    for (const candidate of getPaymentReceiptPathCandidates(path)) {
+      const { data, error } = await supabase.storage.from(PAYMENT_RECEIPT_BUCKET).createSignedUrl(candidate, 3600)
+      if (!error && data?.signedUrl) return data.signedUrl
+    }
+
+    throw new Error('Unable to create signed URL for receipt.')
+  }
+
+  const handleViewReceipt = async (paymentId: string, path: string) => {
+    await openFile({
+      id: paymentId,
+      path,
+      alt: 'Payment receipt',
+      resolveUrl: getPaymentReceiptSignedUrl,
+    })
+  }
+
   if (loading) {
     return (
       <div className="min-h-[100dvh] bg-[#f7f9ff] animate-pulse">
-        <div className="mx-auto max-w-[900px] px-4 py-6 sm:px-6 sm:py-8 space-y-6">
+        <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8 space-y-6">
           <div className="h-4 w-24 rounded-lg bg-[#071f52]/10" />
-          <div className="h-8 w-64 rounded-lg bg-[#071f52]/10" />
-          <div className="grid gap-6 lg:grid-cols-[1fr_0.6fr]">
+          <div className="h-40 rounded-[30px] bg-[#071f52]/6" />
+          <div className="grid gap-6 xl:grid-cols-[1.65fr_0.85fr]">
             <div className="space-y-6">
-              {[...Array(3)].map((_, i) => <div key={i} className="h-40 rounded-2xl bg-[#071f52]/6" />)}
+              {[...Array(3)].map((_, i) => <div key={i} className="h-56 rounded-[26px] bg-[#071f52]/6" />)}
             </div>
-            <div className="h-48 rounded-2xl bg-[#071f52]/6" />
+            <div className="space-y-6">
+              {[...Array(3)].map((_, i) => <div key={i} className="h-48 rounded-[26px] bg-[#071f52]/6" />)}
+            </div>
           </div>
         </div>
       </div>
     )
   }
 
-  if (!booking) {
+  if (!data) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center bg-[#f7f9ff]">
         <p className="text-lg font-bold text-[#071f52]">Booking not found</p>
@@ -116,157 +148,563 @@ export default function BookingDetail() {
     )
   }
 
-  const currentStep = timeline.indexOf(booking.status)
-  const displayStatus = booking.status.replace(/_/g, ' ')
-  const statusKey = booking.status
+  const { booking, vehicle, payments, status_events, cancellation, extensions, invoice } = data
+  const timelineIdx = TIMELINE_STATUSES.indexOf(booking.status)
+  const rejectionReason = booking.status === 'rejected'
+    ? status_events.find((event) => event.to_status === 'rejected' && event.note)?.note || null
+    : null
+  const cancellationReason = booking.status === 'canceled'
+    ? cancellation?.reason ? `Type: ${cancellation.cancellation_type}. Reason: ${cancellation.reason}` : null
+    : null
+  const statusTone = getStatusTone(booking.status)
+  const statusMessage = getStatusMessage(booking.status, rejectionReason, cancellationReason)
+  const balanceSummary = getBookingAdjustmentSummary(booking, status_events, extensions)
+  const displayedTotal = balanceSummary?.currentTotal ?? booking.total_amount
+  const depositAmount = Number(booking.deposit_amount || 0)
+  const paymentTotal = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
+  const paymentMadeAmount = Math.max(paymentTotal - depositAmount, 0)
+  const displayedRemainingBalance = Math.max(displayedTotal - depositAmount - paymentMadeAmount, 0)
+  const customerNote = getDisplayBookingNote(booking.notes)
+  const priceApprovalDeadline = new Date(new Date(booking.start_at).getTime() - 2 * 60 * 60 * 1000)
+  const bookingSummary = [vehicle?.name || 'Vehicle pending', formatDateRange(booking.start_at, booking.end_at)]
+    .filter(Boolean)
+    .join('  ·  ')
+
+  const handleAcceptAdjustment = async () => {
+    setAdjustmentAction('accept')
+
+    try {
+      if (Date.now() > priceApprovalDeadline.getTime()) {
+        await cancelBooking.mutateAsync({ id: booking.id, reason: 'Price adjustment approval deadline passed.' })
+        toast.success('Booking canceled because the approval deadline passed.')
+        return
+      }
+
+      await acceptPriceAdjustment.mutateAsync({ id: booking.id })
+      toast.success('Price adjustment accepted.')
+    } catch (error) {
+      toast.error(showError(error as Error))
+    } finally {
+      setAdjustmentAction(null)
+    }
+  }
 
   return (
-    <div className="min-h-[100dvh] bg-[#f7f9ff]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      <div className="mx-auto max-w-[900px] px-4 py-6 sm:px-6 sm:py-8">
-        <button onClick={() => navigate('/bookings')} className="mb-4 flex items-center gap-2 text-sm font-bold text-[#071f52]/60 transition-colors hover:text-[#e92935]">
+    <main className="min-h-[100dvh] bg-[#f4f7fb] px-4 py-6 sm:px-6 lg:px-8" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <div className="mx-auto max-w-[1440px]">
+        <button onClick={() => navigate('/bookings')} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-[#071f52]/60 transition-colors hover:text-[#071f52]">
           <ArrowLeft size={16} /> Back to bookings
         </button>
 
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52] sm:text-3xl">{booking.booking_number}</h1>
-            <p className="mt-1 text-sm font-medium text-[#071f52]/58">{vehicle?.name ?? ''}</p>
-          </div>
-          <Badge className={`${STATUS_COLORS[statusKey] || 'bg-gray-100 text-gray-500'} rounded-full px-4 py-1.5 text-xs font-bold`}>
-            {displayStatus}
-          </Badge>
-        </div>
-
-        {statusReason ? (
-          <p className="mt-3 rounded-2xl border border-[#fecdd3] bg-[#fff1f2] px-4 py-3 text-sm font-medium leading-6 text-[#9f1239]">
-            {booking.status === 'rejected' ? 'Rejection Reason: ' : 'Cancellation Reason: '}{statusReason}
-          </p>
-        ) : null}
-
-        <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_0.6fr]">
-          <div className="space-y-6">
-            <div className="card">
-              <h2 className="flex items-center gap-2 text-base font-black text-[#071f52]">
-                <Clock size={16} /> Status Timeline
-              </h2>
-              <div className="mt-4 flex items-start gap-2">
-                {timeline.map((step, i) => (
-                  <div key={step} className="flex flex-1 flex-col items-center">
-                    <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-black ${
-                      i <= currentStep ? 'bg-[#071f52] text-white' : 'bg-[#071f52]/10 text-[#071f52]/30'
-                    }`}>
-                      {i + 1}
-                    </div>
-                    <p className={`mt-1 text-center text-[10px] font-bold leading-tight ${
-                      i <= currentStep ? 'text-[#071f52]' : 'text-[#071f52]/30'
-                    }`}>{step.replace(/_/g, ' ')}</p>
-                  </div>
-                ))}
+        <section className="rounded-[30px] border border-[#071f52]/8 bg-white px-6 py-6 shadow-[0_18px_50px_rgba(7,31,82,0.08)] sm:px-7 lg:px-8">
+          <div className="flex flex-wrap items-start justify-between gap-6">
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-[1.65rem] font-black tracking-[-0.04em] text-[#3c42f6] sm:text-[1.9rem]">{booking.booking_number}</h1>
+                <Badge className={`${STATUS_COLORS[booking.status] || 'bg-gray-100 text-gray-500'} rounded-full px-4 py-1.5 text-xs font-bold`}>
+                  {formatBookingStatus(booking.status)}
+                </Badge>
               </div>
+
+              <p className="mt-3 max-w-[900px] text-sm font-medium leading-7 text-[#071f52]/64 sm:text-[1rem]">
+                {bookingSummary}
+                <span className="ml-2 inline-block font-black text-[#071f52] tabular-nums">{formatCurrency(displayedTotal)}</span>
+              </p>
             </div>
 
-            <BookingSection title="Schedule" icon={CalendarDays} contentClassName="divide-y divide-[#071f52]/6">
-              <Row label="Pickup" value={new Date(booking.start_at).toLocaleString()} />
-              <Row label="Drop-off" value={booking.end_at ? new Date(booking.end_at).toLocaleString() : '—'} />
-              <Row label="Duration" value={`${booking.duration_days}d`} />
-            </BookingSection>
+            <div className="min-w-[220px] text-left sm:text-right">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#071f52]/34">Created</p>
+              <p className="mt-1 text-sm font-semibold text-[#071f52]/58">{formatDateTime(booking.created_at)}</p>
+            </div>
+          </div>
 
-            <BookingSection title="Route" icon={MapPin} contentClassName="divide-y divide-[#071f52]/6">
-              <Row label="Pickup" value={booking.pickup_location || '—'} />
-              <Row label="Drop-off" value={booking.dropoff_location || '—'} />
-              <Row label="Destination" value={booking.destination || '—'} />
-              <Row label="Purpose" value={booking.purpose_of_travel || '—'} />
-            </BookingSection>
+          <div className="mt-7 border-t border-[#071f52]/8 pt-8">
+            <div className="relative">
+              <div className="absolute left-5 right-5 top-4 hidden h-px bg-[#071f52]/10 sm:block" />
+              <ol className="grid gap-6 sm:grid-cols-5 sm:gap-3">
+                {TIMELINE_STATUSES.map((status, index) => {
+                  const reached = timelineIdx >= index
+                  const current = booking.status === status
 
-            {booking.status === 'completed' && !submitted && (
-              <div className="card">
+                  return (
+                    <li key={status} className="relative flex items-center gap-3 sm:flex-col sm:items-center sm:text-center">
+                      <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                        current
+                          ? 'border-[#4f46e5]/20 bg-[#4f46e5]/10 shadow-[0_0_0_7px_rgba(79,70,229,0.08)]'
+                          : reached
+                            ? 'border-[#071f52]/12 bg-[#071f52]'
+                            : 'border-[#071f52]/10 bg-[#e9edf5]'
+                      }`}>
+                        {current ? <div className="h-3 w-3 rounded-full bg-[#4f46e5]" /> : <Circle className={`h-3.5 w-3.5 ${reached ? 'fill-white text-white' : 'fill-[#cfd6e2] text-[#cfd6e2]'}`} />}
+                      </div>
+
+                      <div>
+                        <p className={`text-[11px] font-bold ${current ? 'text-[#4f46e5]' : reached ? 'text-[#071f52]' : 'text-[#071f52]/38'}`}>
+                          {formatBookingStatus(status)}
+                        </p>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.85fr)]">
+          <div className="space-y-6">
+            <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
+              <div className="border-b border-[#071f52]/8 px-6 py-5">
+                <h2 className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1f2a44]">Booking Details</h2>
+              </div>
+
+              <div className="px-6 py-6">
+                <div className={`mb-6 rounded-2xl border px-4 py-4 ${statusTone.wrapper}`}>
+                  <div className="flex items-start gap-3">
+                    {booking.status !== 'rejected' && booking.status !== 'canceled' ? (
+                      <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${statusTone.icon}`} />
+                    ) : null}
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#071f52]/46">{statusMessage.title}</p>
+                      <p className={`mt-1 text-sm font-medium leading-6 ${statusTone.text}`}>{statusMessage.body}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
+                  <Spec label="Vehicle" value={vehicle?.name || '—'} />
+                  <Spec label="Service" value={booking.rental_model === 'self_drive' ? 'Self Drive' : 'With Driver'} />
+                  <Spec label="Rental Model" value={toLabel(booking.rental_model)} />
+                  {booking.rental_model !== 'self_drive' ? (
+                    <Spec label="Booking Mode" value={formatBookingMode(booking.booking_mode)} />
+                  ) : null}
+                  <Spec label={getBookingCadenceLabel(booking)} value={getBookingCadenceValue(booking)} />
+                  <Spec label="Start Date" value={formatDateTime(booking.start_at)} />
+                  <Spec label="End Date" value={booking.end_at ? formatDateTime(booking.end_at) : '—'} />
+                  <Spec label="Pickup Location" value={booking.pickup_location || '—'} />
+                  <Spec label="Dropoff Location" value={booking.dropoff_location || '—'} />
+                  <Spec label="Destination" value={booking.destination || booking.dropoff_location || '—'} />
+                  <Spec label="Purpose of Travel" value={booking.purpose_of_travel || 'Not specified'} />
+                </div>
+
+                {booking.self_drive_address ? (
+                  <div className="mt-6 rounded-2xl bg-[#f7f9fc] px-4 py-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#071f52]/42">Self-Drive Address</p>
+                    <p className="mt-2 text-sm font-medium leading-6 text-[#071f52]/70">
+                      {Object.values(booking.self_drive_address).filter(Boolean).join(', ')}
+                    </p>
+                  </div>
+                ) : null}
+
+                {customerNote ? (
+                  <div className="mt-6 rounded-2xl bg-[#f7f9fc] px-4 py-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#071f52]/42">Customer Note</p>
+                    <p className="mt-2 text-sm font-medium leading-6 text-[#071f52]/70">{customerNote}</p>
+                  </div>
+                ) : null}
+              </div>
+            </section>
+
+            <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
+              <div className="border-b border-[#071f52]/8 px-6 py-5">
+                <h2 className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1f2a44]">Price Breakdown</h2>
+              </div>
+
+              <div className="px-6 py-6">
+                <div className="space-y-3">
+                  {(booking.price_line_items || []).map((item, index) => (
+                    <div key={index} className="flex items-start justify-between gap-4 border-b border-[#071f52]/6 pb-3 text-sm last:border-0 last:pb-0">
+                      <span className="text-[#071f52]/64">{item.label}{item.detail ? ` (${item.detail})` : ''}</span>
+                      <span className="font-bold text-[#071f52] tabular-nums">{formatCurrency(item.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 space-y-3 rounded-[22px] bg-[#f7f9fc] px-5 py-5">
+                  <SummaryRow label="Total" value={formatCurrency(displayedTotal)} strong valueClassName="text-[#4f46e5]" />
+                  {booking.rental_model === 'all_in' ? <SummaryRow label="Fuel Estimate" value={formatCurrency(Number(booking.fuel_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
+                  {booking.rental_model === 'all_in' ? <SummaryRow label="Toll Estimate" value={formatCurrency(Number(booking.toll_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
+                  {Math.abs(balanceSummary?.adjustmentAmount || 0) > 0.009 ? <SummaryRow label="Price Adjustment" value={`${balanceSummary?.isIncrease ? '+' : '-'}${formatCurrency(Math.abs(balanceSummary?.adjustmentAmount || 0))}`} valueClassName={balanceSummary?.isIncrease ? 'text-[#f97316]' : 'text-[#16a34a]'} /> : null}
+                  {balanceSummary && balanceSummary.extensionAmount > 0 ? <SummaryRow label={getExtensionChargeLabel(balanceSummary.extensionDays)} value={`+${formatCurrency(balanceSummary.extensionAmount)}`} valueClassName="text-[#f97316]" /> : null}
+                  <SummaryRow label="Security Deposit" value={`-${formatCurrency(depositAmount)}`} valueClassName="text-[#16a34a]" note="non-refundable" />
+                  {paymentMadeAmount > 0 ? <SummaryRow label="Payment Made" value={`-${formatCurrency(paymentMadeAmount)}`} valueClassName="text-[#16a34a]" /> : null}
+                  <SummaryRow label="Remaining Balance" value={formatCurrency(displayedRemainingBalance)} strong valueClassName="text-[#f97316]" />
+                </div>
+              </div>
+            </section>
+
+            <section id="payments-section" className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
+              <div className="border-b border-[#071f52]/8 px-6 py-5">
+                <h2 className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1f2a44]">Payments</h2>
+              </div>
+
+              <div className="px-6 py-6">
+                {payments.length ? (
+                  <div className="space-y-4">
+                    {payments.map((payment) => (
+                      <div key={payment.id} className="flex flex-col justify-between gap-4 rounded-[22px] border border-[#071f52]/8 bg-[#fbfcfe] px-4 py-4 sm:flex-row sm:items-start">
+                        <div className="flex gap-4">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#4f46e5]">
+                            <Receipt className="h-5 w-5" />
+                          </div>
+
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-base font-black text-[#1f2a44] tabular-nums">{formatCurrency(payment.amount)}</p>
+                              <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${payment.status === 'verified' ? 'bg-[#16a34a]/10 text-[#16a34a]' : 'bg-[#eef2ff] text-[#4f46e5]'}`}>
+                                {payment.status}
+                              </span>
+                            </div>
+
+                            <p className="mt-1 text-sm font-medium text-[#071f52]/62">
+                              via {toLabel(payment.channel)}{payment.reference_number ? ` · ${payment.reference_number}` : ''}
+                            </p>
+                            <p className="mt-1 text-xs font-medium text-[#071f52]/40">{formatDateTime(payment.paid_at || payment.created_at)}</p>
+
+                            {payment.receipt_path ? (
+                              <a href="#" onClick={(event) => { event.preventDefault(); handleViewReceipt(payment.id, payment.receipt_path!) }} className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[#4f46e5] transition-colors hover:text-[#3639d4]">
+                                <FileText className="h-4 w-4" /> {openingId === payment.id ? 'Opening...' : 'View receipt'}
+                              </a>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="flex items-center justify-between border-t border-[#071f52]/8 pt-4 text-sm font-semibold text-[#071f52]/62">
+                      <span>Recorded Payments</span>
+                      <span className="font-black text-[#1f2a44] tabular-nums">{formatCurrency(payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0))}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <EmptyNote>No payments recorded.</EmptyNote>
+                )}
+              </div>
+            </section>
+
+            {booking.status === 'completed' && !submitted ? (
+              <div className="rounded-[26px] border border-[#071f52]/8 bg-white px-6 py-6 shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
                 <h2 className="flex items-center gap-2 text-base font-black text-[#071f52]">
                   <Star size={16} /> Leave a Review
                 </h2>
                 <div className="mt-3 flex gap-1">
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <button key={star} type="button" onClick={() => setRating(star)}
-                      className={`transition-colors ${star <= rating ? 'text-[#ffd923]' : 'text-[#071f52]/20'}`}
-                    >
+                    <button key={star} type="button" onClick={() => setRating(star)} className={`transition-colors ${star <= rating ? 'text-[#ffd923]' : 'text-[#071f52]/20'}`}>
                       <Star size={24} fill={star <= rating ? 'currentColor' : 'none'} />
                     </button>
                   ))}
                 </div>
-                <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)}
-                  placeholder="Share your experience with this trip…"
+                <textarea
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  placeholder="Share your experience with this trip..."
                   className="mt-3 block w-full resize-none rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
                   rows={3}
                 />
-                <Button onClick={handleSubmitFeedback} disabled={!rating}
-                  className="mt-3 w-full gap-2 bg-[#071f52] text-white hover:bg-[#112458]"
-                  size="sm"
-                >
+                <Button onClick={handleSubmitFeedback} disabled={!rating} className="mt-3 w-full gap-2 bg-[#071f52] text-white hover:bg-[#112458]" size="sm">
                   <Send size={14} /> Submit Review
                 </Button>
               </div>
-            )}
+            ) : null}
 
-            {submitted && (
+            {submitted ? (
               <div className="rounded-2xl border border-[#16a34a]/20 bg-[#16a34a]/8 p-5 text-center">
                 <p className="text-sm font-bold text-[#16a34a]">{BOOKING_MESSAGES.success.review_submitted}</p>
               </div>
-            )}
+            ) : null}
           </div>
 
-          <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-            <div className="card">
-              <h3 className="flex items-center gap-2 text-base font-black text-[#071f52]">
-                <CreditCard size={16} /> Price Breakdown
-              </h3>
-              <div className="mt-3 space-y-1.5 text-sm">
-                {(booking.price_line_items as Array<{ label: string; amount: number }>).map((item, i) => (
-                  <div key={i} className="flex justify-between">
-                    <span className="text-[#071f52]/66">{item.label}</span>
-                    <span className="font-bold">₱{item.amount.toLocaleString()}.00</span>
+          <aside className="space-y-6">
+            {booking.status === 'pending_price_approval' && balanceSummary ? (
+              <section className="rounded-[26px] border border-[#f2c96a] bg-[#fff9eb] shadow-[0_16px_40px_rgba(204,152,34,0.12)]">
+                <div className="px-6 py-5">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c76a00]">Pending price approval</p>
+                  <div className="mt-4 space-y-2 border-b border-[#f2c96a]/70 pb-4">
+                    <SummaryRow label="Old Remaining Balance" value={formatCurrency(balanceSummary.previousRemainingBalance)} />
+                    {Math.abs(balanceSummary.adjustmentAmount) > 0.009 ? <SummaryRow label="Price Adjustment" value={`${balanceSummary.isIncrease ? '+' : '-'}${formatCurrency(Math.abs(balanceSummary.adjustmentAmount))}`} valueClassName={balanceSummary.isIncrease ? 'text-[#f97316]' : 'text-[#16a34a]'} /> : null}
+                    {balanceSummary.extensionAmount > 0 ? <SummaryRow label={getExtensionChargeLabel(balanceSummary.extensionDays)} value={`+${formatCurrency(balanceSummary.extensionAmount)}`} valueClassName="text-[#f97316]" /> : null}
+                    <SummaryRow label="New Remaining Balance" value={formatCurrency(balanceSummary.newRemainingBalance)} strong valueClassName="text-[#ea580c]" />
                   </div>
-                ))}
-                <div className="flex justify-between border-t border-[#071f52]/10 pt-1.5 text-base">
-                  <span className="font-black">Total</span>
-                  <span className="font-black">₱{booking.total_amount.toLocaleString()}.00</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-[#071f52]/58">Paid</span>
-                  <span className="font-bold text-[#16a34a]">₱{booking.paid_amount.toLocaleString()}.00</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-[#071f52]/58">Remaining</span>
-                  <span className="font-bold text-[#e92935]">₱{booking.remaining_amount.toLocaleString()}.00</span>
-                </div>
-              </div>
-            </div>
 
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1 gap-2 text-sm" onClick={handleDownloadInvoice} disabled={isDownloadingInvoice}>
-                <FileText size={14} /> {isDownloadingInvoice ? 'Preparing...' : 'Invoice'}
+                  {balanceSummary.reason ? <p className="mt-3 text-sm font-medium text-[#7c5b2b]"><span className="font-bold text-[#5b3b10]">Reason:</span> {balanceSummary.reason}</p> : null}
+                  <p className="mt-3 text-sm font-medium leading-6 text-[#6f5a32]">Respond by {formatDateTime(priceApprovalDeadline.toISOString())} — if you don't confirm, the booking is canceled and we won't charge the new price without your approval.</p>
+
+                  <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                    <button type="button" onClick={handleAcceptAdjustment} disabled={adjustmentAction !== null || acceptPriceAdjustment.isPending || cancelBooking.isPending} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#16a34a] px-4 py-3 text-sm font-bold text-white shadow-[0_10px_25px_rgba(22,163,74,0.18)] transition hover:bg-[#15803d] disabled:opacity-50">
+                      {adjustmentAction === 'accept' ? <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : null}
+                      {adjustmentAction === 'accept' ? 'Accepting...' : 'Accept Adjustment'}
+                    </button>
+                    <button type="button" onClick={handleCancelBooking} disabled={adjustmentAction !== null || acceptPriceAdjustment.isPending || cancelBooking.isPending} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#f0a1a8] bg-white px-4 py-3 text-sm font-bold text-[#e11d48] transition hover:bg-[#fff1f2] disabled:opacity-50">
+                      {adjustmentAction === 'cancel' ? <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-current/20 border-t-current" /> : null}
+                      {adjustmentAction === 'cancel' ? 'Canceling...' : 'Decline & Cancel'}
+                    </button>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
+              <div className="border-b border-[#071f52]/8 px-6 py-5">
+                <h2 className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1f2a44]">Status History</h2>
+              </div>
+
+              <div className="px-6 py-6">
+                {status_events.length ? (
+                  <div className="space-y-4">
+                    {status_events.map((event) => (
+                      <div key={event.id} className="relative pl-6">
+                        <div className="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full bg-[#4f46e5]" />
+                        <p className="text-sm font-bold text-[#1f2a44]">{event.from_status ? `${formatBookingStatus(event.from_status)} → ` : ''}{formatBookingStatus(event.to_status)}</p>
+                        <p className="mt-1 text-xs font-medium text-[#071f52]/40">{formatDateTime(event.created_at)}</p>
+                        {event.note ? <p className="mt-1 text-sm font-medium leading-6 text-[#071f52]/62">{event.to_status === 'canceled' ? formatCancellationReason(event.note) : event.note}</p> : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyNote>No status events.</EmptyNote>
+                )}
+              </div>
+            </section>
+
+            {extensions.length > 0 ? (
+              <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
+                <div className="border-b border-[#071f52]/8 px-6 py-5">
+                  <h2 className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1f2a44]">Extensions</h2>
+                </div>
+
+                <div className="px-6 py-6">
+                  <div className="space-y-3">
+                    {extensions.map((extension) => (
+                      <div key={extension.id} className="rounded-[20px] border border-[#071f52]/8 bg-[#fbfcfe] px-4 py-4">
+                        <p className="text-sm font-bold text-[#1f2a44]">Extended to {formatDateTime(extension.new_end_at)}</p>
+                        {extension.extension_amount > 0 ? <p className="mt-1 text-sm font-semibold text-[#16a34a]">+{formatCurrency(extension.extension_amount)}</p> : null}
+                        {extension.reason ? <p className="mt-2 text-sm font-medium text-[#071f52]/62">{extension.reason}</p> : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            {invoice ? (
+              <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
+                <div className="border-b border-[#071f52]/8 px-6 py-5">
+                  <h2 className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1f2a44]">Invoice</h2>
+                </div>
+
+                <div className="px-6 py-6">
+                  <SummaryRow label="Invoice #" value={invoice.invoice_number} />
+                  <SummaryRow label="Amount" value={formatCurrency(invoice.total_amount)} />
+                  <SummaryRow label="Status" value={toLabel(invoice.status)} />
+
+                  <Button variant="outline" className="mt-4 w-full gap-2 text-sm" onClick={handleDownloadInvoice} disabled={isDownloadingInvoice}>
+                    <FileText size={14} /> {isDownloadingInvoice ? 'Preparing...' : 'Download Invoice'}
+                  </Button>
+                </div>
+              </section>
+            ) : null}
+
+            {canCustomerCancelBooking(booking.status) && booking.status !== 'pending_price_approval' ? (
+              <Button
+                variant="outline"
+                className="w-full gap-2 rounded-2xl border-[#e92935]/30 py-6 text-sm text-[#e92935] hover:bg-[#e92935]/8"
+                onClick={handleCancelBooking}
+                disabled={cancelBooking.isPending}
+              >
+                Cancel Booking
               </Button>
-              {canCustomerCancelBooking(booking.status) ? (
-                <Button
-                  variant="outline"
-                  className="flex-1 gap-2 text-sm text-[#e92935] border-[#e92935]/30 hover:bg-[#e92935]/8"
-                  onClick={handleCancelBooking}
-                  disabled={cancelBooking.isPending}
-                >
-                  Cancel Booking
-                </Button>
-              ) : null}
-            </div>
-          </div>
+            ) : null}
+          </aside>
         </div>
+
+        <ImageViewer open={!!viewing} onClose={closeViewer} src={viewing?.src || ''} alt={viewing?.alt || ''} />
       </div>
+    </main>
+  )
+}
+
+function Spec({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#97a5bb]">{label}</p>
+      <p className="mt-2 text-[1.02rem] font-bold leading-6 text-[#1f2a44]">{value}</p>
     </div>
   )
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function SummaryRow({
+  label,
+  value,
+  strong = false,
+  note,
+  valueClassName = '',
+}: {
+  label: string
+  value: string
+  strong?: boolean
+  note?: string
+  valueClassName?: string
+}) {
   return (
-    <div className="flex items-center justify-between py-1.5">
-      <span className="text-xs font-bold text-[#071f52]/48">{label}</span>
-      <span className="text-sm font-semibold text-[#071f52]">{value}</span>
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <p className={`text-sm ${strong ? 'font-black text-[#1f2a44]' : 'font-medium text-[#071f52]/62'}`}>{label}</p>
+        {note ? <p className="mt-1 text-xs font-medium text-[#071f52]/38">{note}</p> : null}
+      </div>
+      <p className={`text-right tabular-nums ${strong ? 'text-base font-black text-[#1f2a44]' : 'text-sm font-bold text-[#1f2a44]'} ${valueClassName}`}>{value}</p>
     </div>
   )
+}
+
+function EmptyNote({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-[20px] bg-[#f7f9fc] px-4 py-4 text-sm font-medium text-[#071f52]/52">
+      {children}
+    </div>
+  )
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0)).replace('PHP', '₱')
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString('en-PH', {
+    timeZone: 'Asia/Manila',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+function formatDateRange(startAt: string, endAt: string | null) {
+  const start = new Date(startAt).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' })
+  const end = endAt ? new Date(endAt).toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric', year: 'numeric' }) : '—'
+
+  return `${start} – ${end}`
+}
+
+function getExtensionChargeLabel(days: number) {
+  return days > 0 ? `Extension Charge (${days} day${days === 1 ? '' : 's'})` : 'Extension Charge'
+}
+
+function formatBookingMode(mode?: string) {
+  if (mode === 'dropoff') return 'Just a Drop Off'
+  if (mode === 'keep') return 'Keep the Car'
+  return '—'
+}
+
+function toLabel(value: string) {
+  return value
+    .split('_')
+    .join(' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function formatCancellationReason(note?: string | null) {
+  if (!note) return 'No cancellation reason recorded.'
+
+  const match = note.match(/^Type:\s*(.+?)\.\s*Reason:\s*(.+)$/i)
+  if (!match) return note
+
+  const [, rawType, rawReason] = match
+  const type = rawType.trim()
+  const reason = rawReason.trim()
+
+  const label = (() => {
+    switch (type) {
+      case 'customer_request':
+        return 'Canceled at the customer\'s request'
+      case 'admin_refund':
+        return 'Canceled by admin with a refund'
+      case 'admin_no_refund':
+        return 'Canceled by admin without a refund'
+      default:
+        return `Canceled: ${toLabel(type)}`
+    }
+  })()
+
+  return reason ? `${label}. Reason: ${reason}` : label
+}
+
+function getStatusTone(status: string) {
+  switch (status) {
+    case 'confirmed':
+    case 'completed':
+      return {
+        wrapper: 'border-[#bbf7d0] bg-[#f0fdf4]',
+        icon: 'text-[#16a34a]',
+        text: 'text-[#166534]',
+      }
+    case 'rejected':
+    case 'canceled':
+      return {
+        wrapper: 'border-[#fecdd3] bg-[#fff1f2]',
+        icon: 'text-[#e11d48]',
+        text: 'text-[#9f1239]',
+      }
+    default:
+      return {
+        wrapper: 'border-[#c7d2fe] bg-[#eef2ff]',
+        icon: 'text-[#4f46e5]',
+        text: 'text-[#3730a3]',
+      }
+  }
+}
+
+function getStatusMessage(status: string, rejectionReason?: string | null, cancellationReason?: string | null) {
+  switch (status) {
+    case 'for_review':
+      return {
+        title: 'Pending review',
+        body: 'Your booking is under review. We are checking the trip details and payment before confirming it.',
+      }
+    case 'awaiting_documents':
+      return {
+        title: 'Awaiting documents',
+        body: 'Your booking is paused until the missing documents are uploaded and reviewed.',
+      }
+    case 'confirmed':
+      return {
+        title: 'Booking confirmed',
+        body: 'Your booking is confirmed and ready for the next trip steps.',
+      }
+    case 'pending_price_approval':
+      return {
+        title: 'Pending price approval',
+        body: 'We updated the trip price. Review the new remaining balance before this booking can be confirmed.',
+      }
+    case 'on_trip':
+      return {
+        title: 'Trip in progress',
+        body: 'This booking is currently active. Any updates will appear in the status history below.',
+      }
+    case 'completed':
+      return {
+        title: 'Trip completed',
+        body: 'This booking has been completed. You can review the payment trail and download your invoice anytime.',
+      }
+    case 'rejected':
+      return {
+        title: 'Booking rejected',
+        body: rejectionReason || 'This booking was rejected. Contact support if you need more details.',
+      }
+    case 'canceled':
+      return {
+        title: 'Booking canceled',
+        body: formatCancellationReason(cancellationReason),
+      }
+    default:
+      return {
+        title: 'Booking update',
+        body: 'Your booking has been updated.',
+      }
+  }
 }

@@ -101,13 +101,13 @@ export function TollPlazaConfirmation({
               <p className="text-sm font-bold text-[#071f52]">{selectedEntry.label} to {selectedExit.label}</p>
               <p className="mt-1 text-xs font-medium text-[#071f52]/48">Estimate only. Final actuals are reconciled after the trip.</p>
             </div>
-            <p className="text-base font-black text-[#071f52]">₱{Math.round(tollEstimateAmount).toLocaleString()}.00</p>
+            <p className="text-base font-black text-[#071f52]">₱{Number(tollEstimateAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
           </div>
           {rfidBreakdown.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#071f52]/56">
               {rfidBreakdown.map((item) => (
                 <span key={`${item.system}-${item.amount}`} className="rounded-full bg-[#f7f9ff] px-2.5 py-1">
-                  {item.system}: ₱{Math.round(item.amount).toLocaleString()}.00
+                  {item.system}: ₱{Number(item.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               ))}
             </div>

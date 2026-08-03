@@ -398,7 +398,7 @@ export default function BookingForm() {
     driverRatePerDay: bookingVehicle.driver_rate_per_day,
     routeQuote,
   })
-  const requiresPayment = pricing.deposit > 0
+  const requiresPayment = true
   const needsRouteQuote = rentalType === 'all-in' || (mode === 'dropoff' && rentalType !== 'self-drive')
   const basePriceLoading = routeLoading && mode === 'dropoff' && rentalType !== 'self-drive'
   const fuelPriceLoading = routeLoading && rentalType === 'all-in'
@@ -425,6 +425,18 @@ export default function BookingForm() {
     if (!startParam && !endParam) {
       // ponytail: block submit when neither date is set (nothing filled in)
       setError('Please fill in the required booking details before submitting.')
+      return
+    }
+
+    const todayEnd = new Date()
+    todayEnd.setHours(23, 59, 59, 999)
+    if (startDate && startDate <= todayEnd) {
+      setError('Pick-up must be at least one day in advance.')
+      return
+    }
+
+    if (endDate && startDate && endDate <= startDate) {
+      setError('Return date and time must be after pick-up date and time.')
       return
     }
 
@@ -475,9 +487,8 @@ export default function BookingForm() {
 
     const rentalModel = toBookingRentalModel(rentalType)
     const idempotencyKey = crypto.randomUUID()
-    const bookingNotes = rentalType === 'self-drive'
-      ? [`Complete Address: ${bookingAddress}`, notes.trim()].filter(Boolean).join('\n\n')
-      : notes || null
+    const bookingNotes = notes || null
+    const selfDriveAddress = rentalType === 'self-drive' ? completeAddress : null
 
     const { data: booking, error: bookingError } = await supabase.rpc(
       'create_booking',
@@ -487,7 +498,7 @@ export default function BookingForm() {
         p_rental_model: rentalModel,
         p_booking_mode: mode,
         p_start_at: startDate?.toISOString() || new Date().toISOString(),
-        p_end_at: mode === 'dropoff' ? null : endDate?.toISOString() || null,
+        p_end_at: (mode === 'dropoff' && rentalType !== 'self-drive') ? null : endDate?.toISOString() || null,
         p_duration_days: pricing.days || 1,
         p_pickup_location: locations.pickup || null,
         p_dropoff_location: locations.dropoff || null,
@@ -511,6 +522,7 @@ export default function BookingForm() {
         p_toll_exit_expressway: routeQuote?.tollExitExpressway ?? null,
         p_toll_vehicle_class: routeQuote?.tollVehicleClass ?? tollSelections.vehicleClass,
         p_toll_rfid_breakdown: routeQuote?.tollRfidBreakdown ?? [],
+        p_self_drive_address: selfDriveAddress,
       },
     )
 
@@ -562,18 +574,22 @@ export default function BookingForm() {
             `Rental Type: ${formatRentalLabel(rentalType)}`,
             `Pickup: ${startDate?.toLocaleString() || 'TBD'}`,
             `Drop-off: ${endDate?.toLocaleString() || 'TBD'}`,
-            `Duration: ${pricing.days || 1} day(s)`,
+            mode === 'dropoff' && rentalType !== 'self-drive'
+              ? `Distance: ${pricing.distanceKm || 0} km`
+              : `Duration: ${pricing.days || 1} day(s)`,
             `Pickup Location: ${locations.pickup || 'TBD'}`,
             `Drop-off Location: ${locations.dropoff || 'TBD'}`,
             `Destination: ${locations.destination || 'TBD'}`,
-            `Total: PHP ${Number(booking.total_amount || 0).toLocaleString()}`,
+            `Total at booking: PHP ${Number(booking.total_amount || 0).toLocaleString()}`,
             `Deposit: PHP ${Number(booking.deposit_amount || 0).toLocaleString()}`,
             `Remaining Balance: PHP ${Number(booking.remaining_amount || 0).toLocaleString()}`,
+            rentalType === 'all-in' ? `Fuel estimate (settled after trip): PHP ${Number(routeQuote?.fuelEstimateAmount || 0).toLocaleString()}` : null,
+            rentalType === 'all-in' ? `Toll estimate (settled after trip): PHP ${Number(routeQuote?.tollEstimateAmount || 0).toLocaleString()}` : null,
             '',
             'We will contact you once the booking has been reviewed.',
             '',
             'Katada Van Rentals',
-          ].join('\n'),
+          ].filter(Boolean).join('\n'),
         },
       })
     } catch {

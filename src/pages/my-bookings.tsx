@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { useMyBookings } from '@/hooks/use-bookings'
 import { STATUS_COLORS } from '@/config/constants'
 import { cn } from '@/lib/utils'
-import { formatBookingStatus } from '@/lib/booking-utils'
+import { formatBookingStatus, getBookingCadenceValue } from '@/lib/booking-utils'
 import { CalendarDays, ChevronRight } from 'lucide-react'
 
 const statuses = [
@@ -83,7 +83,7 @@ export default function MyBookings() {
                   <p className="text-sm font-black text-[#071f52]">{booking.booking_number}</p>
                   <p className="mt-1 text-sm font-semibold text-[#071f52]/66">{booking.vehicles?.name || 'Vehicle pending'}</p>
                   <p className="mt-1 text-xs text-[#071f52]/48">
-                    {new Date(booking.start_at).toLocaleDateString()} {booking.end_at ? `to ${new Date(booking.end_at).toLocaleDateString()}` : ''} · {booking.duration_days} day{Number(booking.duration_days) === 1 ? '' : 's'}
+                    {new Date(booking.start_at).toLocaleDateString()} {booking.end_at ? `to ${new Date(booking.end_at).toLocaleDateString()}` : ''} · {getBookingCadenceValue(booking)}
                   </p>
                 </div>
                 <span className={cn('rounded-full px-3 py-1 text-[11px] font-bold', STATUS_COLORS[booking.status])}>

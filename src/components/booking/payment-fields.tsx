@@ -12,18 +12,10 @@ export function PaymentFields({ depositAmount }: { depositAmount: number }) {
   const { data: paymentMethods = [] } = usePaymentMethods()
 
   useEffect(() => {
-    if (depositAmount === 0) {
-      if (payment.method || payment.reference || receiptFile || payment.amount !== '0') {
-        setPayment({ method: '', reference: '', amount: '0' })
-        setReceiptFile(null)
-      }
-      return
-    }
-
     if (paymentMethods.length && !payment.method) {
       setPayment({ method: paymentMethods[0].id })
     }
-  }, [depositAmount, payment.amount, payment.method, payment.reference, paymentMethods, receiptFile, setPayment, setReceiptFile])
+  }, [payment.method, paymentMethods, setPayment])
 
   useEffect(() => {
     if (payment.amount !== String(depositAmount)) {
@@ -35,14 +27,6 @@ export function PaymentFields({ depositAmount }: { depositAmount: number }) {
     const pm = paymentMethods.find(m => m.id === pmId)
     if (!pm) return ''
     return `${pm.provider}${pm.account_number ? ` (${pm.account_number})` : ''} · ${pm.channel === 'bank_transfer' ? 'Bank Transfer' : 'E-Wallet'}`
-  }
-
-  if (depositAmount === 0) {
-    return (
-      <div className="rounded-2xl border border-[#16a34a]/14 bg-[#16a34a]/6 px-4 py-4 text-sm font-semibold text-[#166534]">
-        No deposit is required at booking time for this rental type.
-      </div>
-    )
   }
 
   return (
@@ -64,7 +48,7 @@ export function PaymentFields({ depositAmount }: { depositAmount: number }) {
           <input value={`₱ ${depositAmount.toLocaleString()}`} readOnly
             className="block w-full rounded-2xl border border-[#071f52]/14 bg-gray-100 px-4 py-3 text-base font-semibold text-[#071f52]/72"
           />
-          <p className="text-xs font-medium text-[#071f52]/48">Automatically set to 10% of total rental</p>
+          <p className="text-xs font-medium text-[#071f52]/48">Automatically set by the booking policy for this rental.</p>
         </div>
         <div className="space-y-1.5">
           <label className="text-sm font-bold text-[#071f52]">Reference # <span className="text-[#e92935]">*</span></label>

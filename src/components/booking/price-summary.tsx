@@ -27,6 +27,7 @@ interface PriceSummaryProps {
 }
 
 export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, driverRatePerDay, baseTotal, driverTotal, fuelEstimateAmount = 0, tollEstimateAmount = 0, tollMessage, distanceKm = 0, baseLoading = false, fuelLoading = false, tollLoading = false, grandTotal, deposit, remaining, submitting, disabled = false, disabledMessage, error }: PriceSummaryProps) {
+  const isDistanceMode = bookingMode === 'dropoff' && rentalType !== 'self-drive'
   const amount = (value: number, loading?: boolean) => loading
     ? <span className="font-bold text-[#071f52]/48">Computing...</span>
     : <span className="font-bold">₱{value.toLocaleString()}.00</span>
@@ -37,7 +38,7 @@ export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, d
 
       <div className="space-y-3 text-sm">
         <div className="flex justify-between">
-          <span className="text-[#071f52]/66">{distanceKm > 0 && rentalType !== 'self-drive' ? `Fare (${distanceKm}km × ₱${basePricePerDay.toLocaleString()})` : `Base (${days}d × ₱${basePricePerDay.toLocaleString()})`}</span>
+          <span className="text-[#071f52]/66">{isDistanceMode ? `Fare (${distanceKm}km × ₱${basePricePerDay.toLocaleString()})` : `Base (${days}d × ₱${basePricePerDay.toLocaleString()})`}</span>
           {amount(baseTotal, baseLoading)}
         </div>
         {driverTotal > 0 && (
@@ -59,6 +60,7 @@ export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, d
               {amount(tollEstimateAmount, tollLoading)}
             </div>
             {tollMessage ? <p className="text-xs font-semibold leading-5 text-[#e92935]">{tollMessage}</p> : null}
+            <p className="text-xs font-medium leading-5 text-[#071f52]/48">Fuel and toll are estimates only. They are not included in the total or remaining balance until trip reconciliation.</p>
           </>
         )}
         <div className="flex justify-between border-t border-[#071f52]/10 pt-3 text-base">

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { saveBookingDateSelection } from '@/lib/booking-date-storage'
@@ -104,6 +104,20 @@ export function RentalDetailsFields() {
     setRentalType(category === 'self-drive' ? 'self-drive' : 'all-out')
   }
 
+  const minPickup = useMemo(() => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setHours(0, 0, 0, 0)
+    return tomorrow
+  }, [])
+  const minReturn = useMemo(() => {
+    if (!startParam) return minPickup
+    const pickup = new Date(startParam)
+    if (Number.isNaN(pickup.getTime())) return minPickup
+    pickup.setHours(0, 0, 0, 0)
+    return pickup
+  }, [minPickup, startParam])
+
   const withDriver = rentalType !== 'self-drive'
 
   return (
@@ -195,6 +209,7 @@ export function RentalDetailsFields() {
           id="booking-start-at"
           label="Pick-up Date & Time"
           required
+          minDateTime={minPickup}
           value={mergeDateTimeValue(startDatePart, startTimePart)}
           placeholder="Select date & time"
           onChange={(value) => {
@@ -210,6 +225,7 @@ export function RentalDetailsFields() {
             id="booking-end-at"
             label="Return Date & Time"
             required
+            minDateTime={minReturn}
             value={mergeDateTimeValue(endDatePart, endTimePart)}
             placeholder="Select date & time"
             onChange={(value) => {

@@ -31,8 +31,8 @@ export function BookingPricePreview({ vehicle, rentalModel, startAt, endAt, rout
   const driverTotal = (rentalModel === 'all_in' || rentalModel === 'all_out')
     ? durationDays * vehicle!.driver_rate_per_day
     : 0
-  const fuelTotal = rentalModel === 'all_in' ? Math.round(routeQuote?.fuelEstimateAmount ?? 0) : 0
-  const tollTotal = rentalModel === 'all_in' ? Math.round(routeQuote?.tollEstimateAmount ?? 0) : 0
+  const fuelTotal = rentalModel === 'all_in' ? Number(routeQuote?.fuelEstimateAmount ?? 0) : 0
+  const tollTotal = rentalModel === 'all_in' ? Number(routeQuote?.tollEstimateAmount ?? 0) : 0
   const total = baseTotal + driverTotal + fuelTotal + tollTotal
 
   return (
