@@ -27,12 +27,15 @@ export interface Booking {
   destination: string | null
   purpose_of_travel: string | null
   notes: string | null
+  self_drive_address: Record<string, string> | null
   distance_km: number | null
   duration_minutes: number | null
   toll_estimate_amount: number
   toll_segments: unknown[]
+  actual_toll_amount?: number
   fuel_estimate_liters: number
   fuel_estimate_amount: number
+  actual_fuel_amount?: number
   delivery_fee: number
   recovery_fee: number
   discount_amount: number
