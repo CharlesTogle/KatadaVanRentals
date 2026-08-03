@@ -40,6 +40,7 @@ const mockBooking = {
   booking_number: 'CR-260723-ABCD',
   status: 'confirmed',
   rental_model: 'all_in',
+  booking_mode: 'keep',
   start_at: '2026-07-25T08:00:00Z',
   end_at: '2026-07-27T08:00:00Z',
   duration_days: 2,
@@ -55,6 +56,10 @@ const mockBooking = {
   price_line_items: [
     { label: 'Base Rate', detail: '2 days × ₱4,500', amount: 9000 },
   ],
+  toll_estimate_amount: 600,
+  fuel_estimate_amount: 1400,
+  actual_toll_amount: 0,
+  actual_fuel_amount: 0,
   customer_id: 'cust-1',
   vehicle_id: 'veh-1',
   created_at: '2026-07-23T10:00:00Z',
@@ -118,6 +123,28 @@ describe('AdminBookingDetail', () => {
     consoleError.mockRestore()
   })
 
+  it('does not show the complete address block as customer note', async () => {
+    useAdminBooking.mockReturnValue({
+      data: {
+        booking: { ...mockBooking, rental_model: 'self_drive', notes: 'Complete Address: Unit 3A, Blue Residences, Taft Avenue' },
+        customer: mockCustomer,
+        vehicle: mockVehicle,
+        payments: [],
+        documents: [],
+        status_events: [],
+        extensions: [],
+        invoice: null,
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    expect(screen.queryByText('Customer Note')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Complete Address:/)).not.toBeInTheDocument()
+  })
+
   it('renders not-found when data is null', () => {
     useAdminBooking.mockReturnValue({ data: undefined, isLoading: false, error: new Error('not found') })
 
@@ -140,6 +167,47 @@ describe('AdminBookingDetail', () => {
       expect(screen.getAllByText('confirmed').length).toBeGreaterThanOrEqual(1)
       expect(screen.getAllByText(/Toyota Commuter/).length).toBeGreaterThanOrEqual(1)
       expect(screen.getAllByText(/Alex Santos/).length).toBeGreaterThanOrEqual(1)
+    })
+  })
+
+  it('shows distance instead of duration for with-driver dropoff bookings', async () => {
+    useAdminBooking.mockReturnValue({
+      data: {
+        booking: { ...mockBooking, rental_model: 'all_out', booking_mode: 'dropoff', distance_km: 42, duration_days: 2 },
+        customer: mockCustomer,
+        vehicle: mockVehicle,
+        payments: [],
+        documents: [],
+        status_events: [],
+        extensions: [],
+        invoice: null,
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    await waitFor(() => {
+      expect(screen.getByText('Distance')).toBeInTheDocument()
+      expect(screen.getByText('42 km')).toBeInTheDocument()
+      expect(screen.queryByText('Duration')).not.toBeInTheDocument()
+    })
+  })
+
+  it('shows all-in fuel and toll estimates as estimate-only rows in price breakdown', async () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: mockBooking, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    await waitFor(() => {
+      expect(screen.getByText('Fuel Estimate')).toBeInTheDocument()
+      expect(screen.getByText('Toll Estimate')).toBeInTheDocument()
+      expect(screen.getAllByText('estimate only - settled after trip').length).toBeGreaterThanOrEqual(2)
     })
   })
 
@@ -224,11 +292,103 @@ describe('AdminBookingDetail', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Reject' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Adjust Booking' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Confirm with Adjustment' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Request Documents' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Delete Booking' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Release Unit / Start Trip' })).not.toBeInTheDocument()
     })
+  })
+
+  it('renders price adjustment rows in the admin price breakdown', async () => {
+    useAdminBooking.mockReturnValue({
+      data: {
+        booking: {
+          ...mockBooking,
+          status: 'pending_price_approval',
+          deposit_amount: 900,
+          total_amount: 10000,
+          remaining_amount: 8000,
+        },
+        customer: mockCustomer,
+        vehicle: mockVehicle,
+        payments: [{ id: 'payment-1', channel: 'bank_transfer', status: 'verified', amount: 1100, reference_number: 'REF-1', receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        documents: [],
+        status_events: [{ id: 'event-adjusted', from_status: null, to_status: 'pending_price_approval', note: 'Price adjusted to 10000. Reason: Out-of-city surcharge', created_at: '2026-07-23T10:30:00Z' }],
+        extensions: [],
+        invoice: null,
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    expect(screen.getByText('Price Adjustment')).toBeInTheDocument()
+    expect(screen.getByText('Payment Made')).toBeInTheDocument()
+    expect(screen.getByText('Remaining Balance')).toBeInTheDocument()
+  })
+
+  it('adds unpaid extension charges to the admin balance summary', () => {
+    useAdminBooking.mockReturnValue({
+      data: {
+        booking: {
+          ...mockBooking,
+          status: 'on_trip',
+          deposit_amount: 900,
+          total_amount: 11500,
+          remaining_amount: 9500,
+        },
+        customer: mockCustomer,
+        vehicle: mockVehicle,
+        payments: [{ id: 'payment-1', channel: 'bank_transfer', status: 'verified', amount: 1100, reference_number: 'REF-1', receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        documents: [],
+        status_events: [{ id: 'event-adjusted', from_status: null, to_status: 'on_trip', note: 'Price adjusted to 10000. Reason: Out-of-city surcharge', created_at: '2026-07-23T10:30:00Z' }],
+        extensions: [{ id: 'extension-1', previous_end_at: '2026-07-27T08:00:00Z', new_end_at: '2026-07-28T08:00:00Z', extension_amount: 1500, payment_id: null, reason: 'Customer requested an extra day', created_at: '2026-07-26T09:00:00Z' }],
+        invoice: null,
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    expect(screen.getByText('Price Adjustment')).toBeInTheDocument()
+    expect(screen.getByText('Extension Charge (1 day)')).toBeInTheDocument()
+    expect(screen.getByText('Payment Made')).toBeInTheDocument()
+    expect(screen.getAllByText('+₱1,500.00').length).toBeGreaterThan(0)
+    expect(screen.getByText('₱10,400.00')).toBeInTheDocument()
+  })
+
+  it('shows the reconstructed total when adjustments and extensions outpace the stored booking total', () => {
+    useAdminBooking.mockReturnValue({
+      data: {
+        booking: {
+          ...mockBooking,
+          status: 'on_trip',
+          total_amount: 23000,
+          remaining_amount: 23700,
+          deposit_amount: 2300,
+          price_line_items: [{ label: 'Base', detail: '23.00d × ₱1000.00', amount: 23000 }],
+        },
+        customer: mockCustomer,
+        vehicle: mockVehicle,
+        payments: [{ id: 'payment-1', channel: 'bank_transfer', status: 'submitted', amount: 2300, reference_number: 'REF-1', receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        documents: [],
+        status_events: [{ id: 'event-adjusted', from_status: null, to_status: 'on_trip', note: 'Price adjusted to 26000. Reason: Extra fees', created_at: '2026-07-23T10:30:00Z' }],
+        extensions: [{ id: 'extension-1', previous_end_at: '2026-07-27T08:00:00Z', new_end_at: '2026-08-05T08:00:00Z', extension_amount: 16500, payment_id: null, reason: 'Longer trip', created_at: '2026-07-26T09:00:00Z' }],
+        invoice: null,
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    expect(screen.getAllByText('₱42,500.00').length).toBeGreaterThan(0)
+    expect(screen.getByText('Price Adjustment')).toBeInTheDocument()
+    expect(screen.getByText('Extension Charge (9 days)')).toBeInTheDocument()
+    expect(screen.queryByText('Payment Made')).not.toBeInTheDocument()
+    expect(screen.getByText('₱40,200.00')).toBeInTheDocument()
   })
 
   it('confirms a for review booking from the modal', async () => {
@@ -264,6 +424,93 @@ describe('AdminBookingDetail', () => {
     await waitFor(() => {
       expect(mutateAsync).toHaveBeenCalledWith({ type: 'reject', bookingId: 'booking-1', reason: 'Missing verification' })
     })
+  })
+
+  it('adjusts a for review booking upward from the modal', async () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm with Adjustment' }))
+
+    expect(screen.getByText('Customer must approve the addition within the deadline before booking confirms.')).toBeInTheDocument()
+    expect(screen.getAllByText('₱7,000.00').length).toBeGreaterThan(0)
+
+    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '500' } })
+    expect(screen.getAllByText('₱7,500.00').length).toBeGreaterThan(0)
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. Location surcharge for out-of-city delivery...'), { target: { value: 'Location surcharge' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Adjustment' }))
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({ type: 'adjust_price', bookingId: 'booking-1', adjustedTotal: 9500, reason: 'Location surcharge' })
+    })
+  })
+
+  it('adjusts a for review booking downward from the modal', async () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm with Adjustment' }))
+    fireEvent.click(screen.getByRole('button', { name: '-' }))
+
+    expect(screen.getByText('Discount - booking will be automatically confirmed immediately.')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '1000' } })
+    expect(screen.getAllByText('₱6,000.00').length).toBeGreaterThan(0)
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. Location surcharge for out-of-city delivery...'), { target: { value: 'Discount approved' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm Adjustment' }))
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({ type: 'adjust_price', bookingId: 'booking-1', adjustedTotal: 8000, reason: 'Discount approved' })
+    })
+  })
+
+  it('shows inline validation in the adjust booking modal', async () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm with Adjustment' }))
+
+    expect(screen.getByText('Enter an adjustment amount.')).toBeInTheDocument()
+    expect(screen.getByText('Reason for adjustment is required.')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '-' }))
+    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '8000' } })
+
+    expect(screen.getByText('New remaining balance cannot be below 0.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Confirm Adjustment' })).toBeDisabled()
+  })
+
+  it('blocks absurd adjustment amounts in the modal', async () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm with Adjustment' }))
+    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '999999' } })
+
+    expect(screen.getByText('Adjustment amount cannot exceed ₱99,999.99.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Confirm Adjustment' })).toBeDisabled()
   })
 
   it('shows correct actions for confirmed status', async () => {
@@ -316,7 +563,7 @@ describe('AdminBookingDetail', () => {
     renderDetail()
 
     fireEvent.click(screen.getByRole('button', { name: 'Extend Rental' }))
-    fireEvent.change(document.querySelector('input[type="date"]') as HTMLInputElement, { target: { value: '2026-07-30' } })
+    fireEvent.change(screen.getByLabelText('New Return Date'), { target: { value: '2026-07-30T08:00' } })
     fireEvent.change(screen.getByPlaceholderText('Enter the extension charge'), { target: { value: '1500' } })
     fireEvent.change(screen.getByPlaceholderText('Optional note for the extension'), { target: { value: 'Customer requested two extra days' } })
     fireEvent.click(screen.getByLabelText('Collect payment now'))
@@ -328,8 +575,29 @@ describe('AdminBookingDetail', () => {
 
     await waitFor(() => {
       expect(upload).toHaveBeenCalled()
-      expect(mutateAsync).toHaveBeenCalledWith({ type: 'extend', bookingId: 'booking-1', newEndAt: '2026-07-30', extensionAmount: 1500, reason: 'Customer requested two extra days', collectNow: true, paymentMethodId: 'pm-1', paymentChannel: 'bank_transfer', referenceNumber: 'EXT-456', receiptPath: expect.stringMatching(/^booking-1\/\d+\.pdf$/) })
+      expect(mutateAsync).toHaveBeenCalledWith({ type: 'extend', bookingId: 'booking-1', newEndAt: '2026-07-30T08:00', extensionAmount: 1500, reason: 'Customer requested two extra days', collectNow: true, paymentMethodId: 'pm-1', paymentChannel: 'bank_transfer', referenceNumber: 'EXT-456', receiptPath: expect.stringMatching(/^booking-1\/\d+\.pdf$/) })
     })
+  })
+
+  it('requires the new return date to be after the current end date', () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Extend Rental' }))
+    const dateInput = screen.getByLabelText('New Return Date') as HTMLInputElement
+
+    expect(dateInput).toHaveValue('')
+
+    fireEvent.change(dateInput, { target: { value: '2026-07-27T08:00' } })
+    fireEvent.change(screen.getByPlaceholderText('Enter the extension charge'), { target: { value: '1500' } })
+
+    expect(screen.getByRole('button', { name: 'Extend' })).toBeDisabled()
+    expect(mutateAsync).not.toHaveBeenCalled()
   })
 
   it('cancels a confirmed booking from the modal', async () => {
@@ -368,6 +636,108 @@ describe('AdminBookingDetail', () => {
     })
   })
 
+  it('shows make a payment for completed bookings with remaining balance', async () => {
+    useAdminBooking.mockReturnValue({
+      data: {
+        booking: { ...mockBooking, status: 'completed', remaining_amount: 1500 },
+        customer: mockCustomer,
+        vehicle: mockVehicle,
+        payments: [{ id: 'payment-1', channel: 'cash', status: 'verified', amount: 7500, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        documents: [],
+        status_events: [],
+        extensions: [],
+        invoice: null,
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Make a Payment' })).toBeInTheDocument()
+    })
+  })
+
+  it('hides make a payment for completed bookings with zero remaining balance', async () => {
+    useAdminBooking.mockReturnValue({
+      data: {
+        booking: { ...mockBooking, status: 'completed', remaining_amount: 0 },
+        customer: mockCustomer,
+        vehicle: mockVehicle,
+        payments: [{ id: 'payment-1', channel: 'cash', status: 'verified', amount: 9000, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        documents: [],
+        status_events: [],
+        extensions: [],
+        invoice: null,
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Make a Payment' })).not.toBeInTheDocument()
+    })
+  })
+
+  it('hides make a payment when displayed remaining balance is zero even if booking.remaining_amount is stale', async () => {
+    useAdminBooking.mockReturnValue({
+      data: {
+        booking: { ...mockBooking, status: 'completed', remaining_amount: 1500 },
+        customer: mockCustomer,
+        vehicle: mockVehicle,
+        payments: [{ id: 'payment-1', channel: 'cash', status: 'verified', amount: 9000, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        documents: [],
+        status_events: [],
+        extensions: [],
+        invoice: null,
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    await waitFor(() => {
+      expect(screen.getByText('₱0.00')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Make a Payment' })).not.toBeInTheDocument()
+    })
+  })
+
+  it('records a payment for a completed booking from the modal', async () => {
+    useAdminBooking.mockReturnValue({
+      data: {
+        booking: { ...mockBooking, status: 'completed', remaining_amount: 1500 },
+        customer: mockCustomer,
+        vehicle: mockVehicle,
+        payments: [{ id: 'payment-1', channel: 'cash', status: 'verified', amount: 7500, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        documents: [],
+        status_events: [],
+        extensions: [],
+        invoice: null,
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Make a Payment' }))
+    fireEvent.change(screen.getByPlaceholderText('Enter the amount collected'), { target: { value: '1500' } })
+    fireEvent.change(screen.getByDisplayValue('BDO'), { target: { value: 'pm-1' } })
+    fireEvent.change(screen.getByDisplayValue('Cash'), { target: { value: 'bank_transfer' } })
+    fireEvent.change(screen.getByPlaceholderText('Reference number or official receipt'), { target: { value: 'BAL-123' } })
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [new File(['receipt'], 'balance.pdf', { type: 'application/pdf' })] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Record Payment' }))
+
+    await waitFor(() => {
+      expect(upload).toHaveBeenCalled()
+      expect(mutateAsync).toHaveBeenCalledWith({ type: 'make_payment', bookingId: 'booking-1', collectedAmount: 1500, paymentMethodId: 'pm-1', paymentChannel: 'bank_transfer', referenceNumber: 'BAL-123', receiptPath: expect.stringMatching(/^booking-1\/\d+\.pdf$/) })
+    })
+  })
+
   it('shows correct actions for on_trip status', async () => {
     useAdminBooking.mockReturnValue({
       data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
@@ -385,15 +755,73 @@ describe('AdminBookingDetail', () => {
     })
   })
 
+  it('completes an on trip booking from the modal with a final payment', async () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as Returned' }))
+    fireEvent.change(screen.getByPlaceholderText('Enter the actual toll'), { target: { value: '700' } })
+    fireEvent.change(screen.getByPlaceholderText('Enter the actual gas'), { target: { value: '1500' } })
+    fireEvent.change(screen.getByPlaceholderText('Enter the amount collected'), { target: { value: '3500' } })
+    fireEvent.change(screen.getByDisplayValue('BDO'), { target: { value: 'pm-1' } })
+    fireEvent.change(screen.getByDisplayValue('Cash'), { target: { value: 'bank_transfer' } })
+    fireEvent.change(screen.getByPlaceholderText('Reference number or official receipt'), { target: { value: 'RET-789' } })
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [new File(['receipt'], 'return.pdf', { type: 'application/pdf' })] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Complete' }))
+
+    await waitFor(() => {
+      expect(upload).toHaveBeenCalled()
+      expect(mutateAsync).toHaveBeenCalledWith({ type: 'complete', bookingId: 'booking-1', collectedAmount: 3500, paymentMethodId: 'pm-1', paymentChannel: 'bank_transfer', referenceNumber: 'RET-789', receiptPath: expect.stringMatching(/^booking-1\/\d+\.pdf$/), actualTollAmount: 700, actualFuelAmount: 1500 })
+    })
+  })
+
+  it('requires actual toll and gas to complete an all-in keep trip', () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as Returned' }))
+
+    expect(screen.getByText('Trip Reconciliation')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Complete' })).toBeDisabled()
+  })
+
+  it('requires actual toll and gas for all-in trips even when not keep-the-car', () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'on_trip', booking_mode: 'dropoff' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as Returned' }))
+
+    expect(screen.getByText('Trip Reconciliation')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Enter the actual toll')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Enter the actual gas')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Complete' })).toBeDisabled()
+  })
+
   it('formats canceled booking notes into plain language', async () => {
     useAdminBooking.mockReturnValue({
       data: {
         booking: { ...mockBooking, status: 'canceled' },
         customer: mockCustomer,
         vehicle: mockVehicle,
+        cancellation: { cancellation_type: 'customer_request', reason: 'Cinancel eh', created_at: '2026-07-23T10:00:00Z' },
         payments: [],
         documents: [],
-        status_events: [{ id: 'event-1', from_status: 'confirmed', to_status: 'canceled', note: 'Type: customer_request. Reason: Cinancel eh', created_at: '2026-07-23T10:00:00Z' }],
+        status_events: [{ id: 'event-1', from_status: 'confirmed', to_status: 'canceled', note: null, created_at: '2026-07-23T10:00:00Z' }],
         extensions: [],
         invoice: null,
       },

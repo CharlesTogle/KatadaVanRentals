@@ -59,4 +59,36 @@ describe('MyBookings', () => {
 
     expect(useMyBookings).toHaveBeenLastCalledWith('confirmed')
   })
+
+  it('shows distance instead of duration for with-driver dropoff cards', () => {
+    useMyBookings.mockReturnValue({
+      data: [
+        {
+          id: 'booking-1',
+          booking_number: 'CR-260723-ABCD',
+          start_at: '2026-07-25T08:00:00.000Z',
+          end_at: '2026-07-25T10:00:00.000Z',
+          duration_days: 2,
+          distance_km: 42,
+          booking_mode: 'dropoff',
+          rental_model: 'all_out',
+          total_amount: 4500,
+          paid_amount: 450,
+          remaining_amount: 4050,
+          status: 'for_review',
+          vehicles: { name: 'Toyota Commuter' },
+        },
+      ],
+      isLoading: false,
+    })
+
+    render(
+      <MemoryRouter>
+        <MyBookings />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText(/42 km/)).toBeInTheDocument()
+    expect(screen.queryByText(/2 days/)).not.toBeInTheDocument()
+  })
 })

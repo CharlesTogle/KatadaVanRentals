@@ -75,7 +75,7 @@ begin
       )
       || jsonb_build_object(
         'label', 'Toll Estimate',
-        'detail', 'Temporarily manual',
+        'detail', 'Route-based estimate',
         'amount', coalesce(new.toll_estimate_amount, 0)
       );
   end if;

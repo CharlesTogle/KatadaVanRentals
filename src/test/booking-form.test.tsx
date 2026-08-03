@@ -186,7 +186,7 @@ describe('BookingForm', () => {
     }
     useCustomerDocuments.mockReturnValue({ data: [], isLoading: false })
 
-    renderBookingForm('/dashboard/book/vehicle-1?type=with-driver&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
+    renderBookingForm('/dashboard/book/vehicle-1?type=with-driver&start=2026-08-05T08:00:00.000Z&end=2026-08-06T08:00:00.000Z')
 
     expect(screen.queryByText(/Complete your profile before booking/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/Address line 1/i)).not.toBeInTheDocument()
@@ -195,7 +195,7 @@ describe('BookingForm', () => {
   it('sends the back-to-vehicle action to the fleet page', () => {
     useCustomerDocuments.mockReturnValue({ data: [], isLoading: false })
 
-    renderBookingForm('/dashboard/book/vehicle-1?type=with-driver&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
+    renderBookingForm('/dashboard/book/vehicle-1?type=with-driver&start=2026-08-05T08:00:00.000Z&end=2026-08-06T08:00:00.000Z')
 
     fireEvent.click(screen.getByRole('button', { name: /Back to vehicle/i }))
 
@@ -205,8 +205,10 @@ describe('BookingForm', () => {
   it('shows drop-off fields only for Just a Drop Off and trip details for Keep the Car', () => {
     useCustomerDocuments.mockReturnValue({ data: [], isLoading: false })
 
-    renderBookingForm('/dashboard/book/vehicle-1?type=all-in&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
+    renderBookingForm('/dashboard/book/vehicle-1?type=all-in&start=2026-08-05T08:00:00.000Z&end=2026-08-06T08:00:00.000Z')
 
+    expect(screen.getByText(/Fare \(0km × ₱4,500\)/)).toBeInTheDocument()
+    expect(screen.queryByText(/Base \(1d × ₱4,500\)/)).not.toBeInTheDocument()
     expect(screen.getByLabelText(/Pickup Location/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/Drop-off Location/i)).toBeInTheDocument()
     expect(screen.queryByLabelText(/Destination/i)).not.toBeInTheDocument()
@@ -214,6 +216,7 @@ describe('BookingForm', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Keep the Car/i }))
 
+    expect(screen.getByText(/Base \(1d × ₱4,500\)/)).toBeInTheDocument()
     expect(screen.getByLabelText(/Destination/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/Purpose of Travel/i)).toBeInTheDocument()
   })
@@ -221,7 +224,7 @@ describe('BookingForm', () => {
   it('blocks self-drive submission when required documents are missing', () => {
     useCustomerDocuments.mockReturnValue({ data: [], isLoading: false })
 
-    renderBookingForm('/dashboard/book/vehicle-1?type=self-drive&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
+    renderBookingForm('/dashboard/book/vehicle-1?type=self-drive&start=2026-08-05T08:00:00.000Z&end=2026-08-06T08:00:00.000Z')
 
     expect(screen.getByText(/Profile documents required for Self-Drive/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Submit Booking' })).toBeDisabled()
@@ -248,7 +251,7 @@ describe('BookingForm', () => {
       error: null,
     })
 
-    renderBookingForm('/dashboard/book/vehicle-1?type=self-drive&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
+    renderBookingForm('/dashboard/book/vehicle-1?type=self-drive&start=2026-08-05T08:00:00.000Z&end=2026-08-06T08:00:00.000Z')
 
     await waitFor(() => {
       expect(screen.getByLabelText(/Address Line 1/i)).toHaveValue('Unit 3A')
@@ -264,7 +267,15 @@ describe('BookingForm', () => {
       expect(rpc).toHaveBeenCalledWith('create_booking', expect.objectContaining({
         p_vehicle_id: 'vehicle-1',
         p_rental_model: 'self_drive',
-        p_notes: 'Complete Address: Booking-only address, Blue Residences, Taft Avenue, Barangay 76, Quezon City, Metro Manila, 1100, Philippines',
+        p_self_drive_address: expect.objectContaining({
+          addressLine1: 'Booking-only address',
+          streetAddress: 'Taft Avenue',
+          barangay: 'Barangay 76',
+          city: 'Quezon City',
+          province: 'Metro Manila',
+          zipCode: '1100',
+          country: 'Philippines',
+        }),
       }))
     })
 
@@ -304,24 +315,25 @@ describe('BookingForm', () => {
       data: {
         id: 'booking-2',
         booking_number: 'CR-260723-EFGH',
-        total_amount: 5615,
-        deposit_amount: 0,
-        remaining_amount: 5615,
+        total_amount: 5300,
+        deposit_amount: 450,
+        remaining_amount: 4850,
       },
       error: null,
     })
 
-    renderBookingForm('/dashboard/book/vehicle-1?type=all-in&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
+    renderBookingForm('/dashboard/book/vehicle-1?type=all-in&start=2026-08-05T08:00:00.000Z&end=2026-08-06T08:00:00.000Z')
 
     await waitFor(() => {
       expect(functionsInvoke).toHaveBeenCalledWith('route-quote', expect.any(Object))
     })
 
+    fillPaymentProof()
+
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Submit Booking' })).toBeEnabled()
     })
 
-    fillPaymentProof()
     fireEvent.click(screen.getByRole('button', { name: 'Submit Booking' }))
 
     await waitFor(() => {
@@ -339,6 +351,7 @@ describe('BookingForm', () => {
     })
 
     expect(paymentsInsert).toHaveBeenCalledWith(expect.objectContaining({
+      amount: 450,
       reference_number: 'REF-123',
       status: 'submitted',
     }))
@@ -404,12 +417,12 @@ describe('BookingForm', () => {
       return Promise.resolve({ error: null })
     })
 
-    renderBookingForm('/dashboard/book/vehicle-1?type=all-in&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
+    renderBookingForm('/dashboard/book/vehicle-1?type=all-in&start=2026-08-05T08:00:00.000Z&end=2026-08-06T08:00:00.000Z')
 
     await waitFor(() => {
       expect(functionsInvoke.mock.calls.filter(([name, options]) => name === 'toll-estimate' && options?.body?.entryPlaza)).toHaveLength(1)
     })
-    expect(screen.getByText(/We can't compute the toll price yet/)).toBeInTheDocument()
+    expect(screen.getAllByText(/We can't compute the toll price yet/).length).toBeGreaterThanOrEqual(1)
 
     await new Promise((resolve) => setTimeout(resolve, 50))
 
@@ -426,33 +439,37 @@ describe('BookingForm', () => {
       isLoading: false,
     })
 
-    renderBookingForm('/dashboard/book/vehicle-1?type=with-driver&start=2026-07-25T08:00:00.000Z&end=2026-07-26T08:00:00.000Z')
+    renderBookingForm('/dashboard/book/vehicle-1?type=with-driver&start=2026-08-05T08:00:00.000Z&end=2026-08-06T08:00:00.000Z')
     fireEvent.click(screen.getByRole('button', { name: /Keep the Car/i }))
 
     expect(screen.queryByText(/Complete your profile before booking/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Submit Booking' })).toBeDisabled()
+
+    fillPaymentProof()
+
     expect(screen.getByRole('button', { name: 'Submit Booking' })).toBeEnabled()
   })
 
   it('hydrates stored dates and keeps them editable on the booking page', async () => {
     useCustomerDocuments.mockReturnValue({ data: [], isLoading: false })
     window.localStorage.setItem('booking-date-selection', JSON.stringify({
-      start: '2026-07-25T08:00',
-      end: '2026-07-26T10:30',
+      start: '2026-08-05T08:00',
+      end: '2026-08-06T10:30',
     }))
 
     renderBookingForm('/dashboard/book/vehicle-1?type=with-driver')
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Pick-up Date & Time/i)).toHaveValue('2026-07-25T08:00')
+      expect(screen.getByLabelText(/Pick-up Date & Time/i)).toHaveValue('2026-08-05T08:00')
     })
 
     const pickupDateTimeInput = screen.getByLabelText(/Pick-up Date & Time/i)
-    fireEvent.change(pickupDateTimeInput, { target: { value: '2026-07-25T09:15' } })
+    fireEvent.change(pickupDateTimeInput, { target: { value: '2026-08-05T09:15' } })
 
-    expect(pickupDateTimeInput).toHaveValue('2026-07-25T09:15')
+    expect(pickupDateTimeInput).toHaveValue('2026-08-05T09:15')
     expect(JSON.parse(window.localStorage.getItem('booking-date-selection') || '{}')).toEqual({
-      start: '2026-07-25T09:15',
-      end: '2026-07-26T10:30',
+      start: '2026-08-05T09:15',
+      end: '2026-08-06T10:30',
     })
   })
 })
