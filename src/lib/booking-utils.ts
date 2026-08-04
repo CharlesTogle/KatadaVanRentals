@@ -74,11 +74,9 @@ export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, e
   const fuelEstimateAmount = rentalType === 'all-in' ? Number(routeQuote?.fuelEstimateAmount ?? 0) : 0
   const tollEstimateAmount = rentalType === 'all-in' ? Number(routeQuote?.tollEstimateAmount ?? 0) : 0
   const grandTotal = baseTotal + driverTotal
-  const deposit = rentalType === 'all-in'
-    ? Math.round(baseTotal * 0.1)
-    : rentalType === 'self-drive'
-      ? Math.round(grandTotal * 0.1)
-      : 0
+  const deposit = rentalType === 'self-drive'
+    ? Math.round(grandTotal * 0.1)
+    : Math.round(baseTotal * 0.1)
   const remaining = Math.max(0, grandTotal - deposit)
 
   return {
@@ -119,6 +117,7 @@ export interface AdminAction {
 export function getAdminBookingDetailActions(status: BookingStatus): AdminAction[] {
   switch (status) {
     case 'for_review':
+    case 'awaiting_documents':
       return [
         { type: 'confirm', label: 'Confirm', variant: 'primary' },
         { type: 'reject', label: 'Reject', variant: 'danger' },

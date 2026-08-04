@@ -85,8 +85,8 @@ export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, d
         {rentalType === 'all-in' ? (
           <p className="text-xs font-semibold leading-5 text-[#071f52]/48">
             {bookingMode === 'dropoff'
-              ? 'Computed as Pickup &#8594; Destination. Fuel and toll are estimates. Final actuals are reconciled after the trip.'
-              : 'Computed as Pickup &#8594; Destination &#8594; Return. Fuel and toll are estimates. Final actuals are reconciled after the trip.'}
+              ? 'Computed as Pickup → Destination. Fuel and toll are estimates. Final actuals are reconciled after the trip.'
+              : 'Computed as Pickup → Destination → Return. Fuel and toll are estimates. Final actuals are reconciled after the trip.'}
           </p>
         ) : null}
       </div>

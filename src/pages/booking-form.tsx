@@ -415,7 +415,8 @@ export default function BookingForm() {
   const selfDriveAddressIncomplete = rentalType === 'self-drive' && !formatSelfDriveAddress(completeAddress)
   const routeIncomplete = needsRouteQuote && (routeSelections.pickup.lat == null || (rentalType === 'all-in' && mode === 'keep' && routeSelections.destination.lat == null) || routeSelections.dropoff.lat == null || !routeQuote)
   const paymentIncomplete = requiresPayment && (!payment.method || !payment.reference.trim() || !receiptFile)
-  const formIncomplete = !startParam || !endParam || profileBlocked || selfDriveBlocked || documentsQuery.isLoading || (requiresPayment && paymentMethodsQuery.isLoading) || selfDriveAddressIncomplete || routeIncomplete || needsTollEstimate || tollLoading || paymentIncomplete
+  const isWithDriverDropoff = rentalType !== 'self-drive' && mode === 'dropoff'
+  const formIncomplete = !startParam || (!endParam && !isWithDriverDropoff) || profileBlocked || selfDriveBlocked || documentsQuery.isLoading || (requiresPayment && paymentMethodsQuery.isLoading) || selfDriveAddressIncomplete || routeIncomplete || needsTollEstimate || tollLoading || paymentIncomplete
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -435,7 +436,7 @@ export default function BookingForm() {
       return
     }
 
-    if (endDate && startDate && endDate <= startDate) {
+    if (!isWithDriverDropoff && endDate && startDate && endDate <= startDate) {
       setError('Return date and time must be after pick-up date and time.')
       return
     }
