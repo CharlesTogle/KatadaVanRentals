@@ -97,10 +97,22 @@ export async function getAdminBookings(params: { status?: string; search?: strin
     .order('created_at', { ascending: false })
 
   if (params.status) query = query.eq('status', params.status)
-  if (params.search) query = query.or(`booking_number.ilike.%${params.search}%,profiles.first_name.ilike.%${params.search}%,profiles.last_name.ilike.%${params.search}%`)
 
   const { data } = await query
-  return data || []
+  const rows = data || []
+
+  // ponytail: Supabase .or() doesn't support foreign-table dot notation reliably.
+  // Filter booking_number server-side would be ideal, but .ilike() on the main table
+  // also works. Client-side filter on profiles columns since admin dataset is small.
+  if (!params.search) return rows
+
+  const term = params.search.toLowerCase()
+  return rows.filter((row) =>
+    row.booking_number?.toLowerCase().includes(term) ||
+    row.profiles?.first_name?.toLowerCase().includes(term) ||
+    row.profiles?.last_name?.toLowerCase().includes(term) ||
+    row.profiles?.email?.toLowerCase().includes(term)
+  )
 }
 
 export interface AdminFeedbackRow {
