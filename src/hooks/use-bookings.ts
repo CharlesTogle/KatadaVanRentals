@@ -42,8 +42,8 @@ export function useAdminDashboard() {
   return useQuery({
     queryKey: ['admin', 'dashboard'],
     queryFn: async () => {
-      const { bRes, pRes, rbRes, vRes } = await bookingService.getAdminDashboardData()
-      return { bRes, pRes, rbRes, vRes }
+      const { bRes, pRes, vRes, vtRes } = await bookingService.getAdminDashboardData()
+      return { bRes, pRes, vRes, vtRes }
     },
   })
 }
