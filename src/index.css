@@ -27,11 +27,56 @@ html {
   box-shadow: 0 8px 24px rgba(7, 31, 82, 0.06);
 }
 
+@utility admin-table-wrap {
+  overflow-x: auto;
+  @media (max-width: 767.98px) {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+  }
+  @media (min-width: 768px) {
+    border-radius: 8px;
+    border: 1px solid color-mix(in oklab, var(--color-brand-navy) 10%, transparent);
+    background: white;
+    box-shadow: 0 8px 24px rgba(7, 31, 82, 0.06);
+  }
+  & table {
+    width: 100%;
+    text-align: left;
+    @media (max-width: 767.98px) {
+      min-width: 600px;
+      font-size: 0.6875rem;
+    }
+  }
+  & th {
+    font-size: 0.625rem;
+    @media (min-width: 640px) {
+      font-size: 0.75rem;
+    }
+  }
+  & td {
+    @media (max-width: 767.98px) {
+      padding-left: 0.75rem;
+      padding-right: 0.75rem;
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+  }
+}
+
 .customer-shell .card,
 .customer-shell .card-overflow,
 .customer-shell [class*='rounded-xl']:not([class*='rounded-full']),
 .customer-shell [class*='rounded-2xl']:not([class*='rounded-full']),
 .customer-shell [class*='rounded-[24px]'],
 .customer-shell [class*='rounded-[28px]'] {
+  border-radius: 8px;
+}
+
+.admin-shell .card,
+.admin-shell .card-overflow,
+.admin-shell [class*='rounded-xl']:not([class*='rounded-full']),
+.admin-shell [class*='rounded-2xl']:not([class*='rounded-full']),
+.admin-shell [class*='rounded-[24px]'],
+.admin-shell [class*='rounded-[28px]'] {
   border-radius: 8px;
 }

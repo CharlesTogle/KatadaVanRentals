@@ -1,48 +1,23 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
-import { ChevronDown, LogOut, LayoutDashboard, CalendarCheck, Users, Truck, BarChart3, Settings, Home } from 'lucide-react'
+import { LogOut, LayoutDashboard, CalendarCheck, Users, Truck, BarChart3, Settings, Home, MessageSquareMore } from 'lucide-react'
 import { AppHeader } from '@/components/app-header'
 
 const navGroups = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/bookings', label: 'Bookings', icon: CalendarCheck },
   { to: '/admin/customers', label: 'Customers', icon: Users },
+  { to: '/admin/feedback', label: 'User Feedback', icon: MessageSquareMore },
   { to: '/admin/fleet', label: 'Our Fleet', icon: Truck },
-  {
-    label: 'Report', icon: BarChart3, children: [
-      { to: '/admin/reports/revenue', label: 'Revenue' },
-      { to: '/admin/reports/utilization', label: 'Vehicle Utilization' },
-    ],
-  },
-  {
-    label: 'Settings', icon: Settings, children: [
-      { to: '/admin/settings', label: 'Profile' },
-      { to: '/admin/settings?page=password', label: 'Password' },
-      { to: '/admin/settings?page=business', label: 'Business' },
-      { to: '/admin/settings?page=team', label: 'Team' },
-      { to: '/admin/settings?page=payments', label: 'Payments' },
-      { to: '/admin/settings?page=documents', label: 'Customer Documents' },
-      { to: '/admin/settings?page=integrations', label: 'Integrations' },
-      { to: '/admin/settings?page=pickup', label: 'Pickup & Drop-off' },
-      { to: '/admin/settings?page=email-log', label: 'Email Log' },
-      { to: '/admin/settings?page=content', label: 'Content' },
-      { to: '/admin/settings?page=domain', label: 'Domain' },
-      { to: '/admin/settings?page=email', label: 'Email' },
-      { to: '/admin/settings?page=help', label: 'Help & Guides' },
-    ],
-  },
+  { to: '/admin/reports/revenue', label: 'Reports', icon: BarChart3 },
+  { to: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
 export default function AdminLayout() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  const toggleGroup = (label: string) => {
-    setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }))
-  }
 
   const handleSignOut = async () => {
     await signOut()
@@ -52,7 +27,7 @@ export default function AdminLayout() {
   const name = user?.user_metadata?.full_name || user?.email || 'Admin'
 
   return (
-    <div className="min-h-screen bg-[#f7f9ff]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div className="admin-shell min-h-screen bg-[#f7f9ff]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <div className="md:hidden">
         <AppHeader onMenuClick={() => setSidebarOpen((open) => !open)} mobileMenuOpen={sidebarOpen} />
       </div>
@@ -78,58 +53,24 @@ export default function AdminLayout() {
           </div>
 
           <nav className="flex-1 space-y-0.5 overflow-y-auto px-3">
-            {navGroups.map((group) =>
-              'to' in group ? (
-                <NavLink
-                  key={group.to}
-                  to={group.to!}
-                  end={group.end}
-                  onClick={() => setSidebarOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors ${
-                      isActive
-                        ? 'bg-[#071f52] text-white'
-                        : 'text-[#071f52]/64 hover:bg-[#071f52]/8 hover:text-[#071f52]'
-                    }`
-                  }
-                >
-                  <group.icon size={18} />
-                  {group.label}
-                </NavLink>
-              ) : (
-                <div key={group.label}>
-                  <button
-                    type="button"
-                    onClick={() => toggleGroup(group.label)}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold text-[#071f52]/64 transition-colors hover:bg-[#071f52]/8 hover:text-[#071f52]"
-                  >
-                    <group.icon size={18} />
-                    <span className="flex-1 text-left">{group.label}</span>
-                    <ChevronDown size={14} className={`transition-transform ${openGroups[group.label] ? 'rotate-180' : ''}`} />
-                  </button>
-                  {openGroups[group.label] && (
-                    <div className="ml-9 mt-0.5 space-y-0.5 border-l border-[#071f52]/10 pl-3">
-                      {group.children!.map((child) => (
-                        <NavLink
-                          key={child.to}
-                          to={child.to}
-                          onClick={() => setSidebarOpen(false)}
-                          className={({ isActive }) =>
-                            `block rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                              isActive
-                                ? 'bg-[#071f52]/8 text-[#071f52]'
-                                : 'text-[#071f52]/48 hover:bg-[#071f52]/6 hover:text-[#071f52]'
-                            }`
-                          }
-                        >
-                          {child.label}
-                        </NavLink>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ),
-            )}
+            {navGroups.map((group) => (
+              <NavLink
+                key={group.to}
+                to={group.to}
+                end={group.end}
+                onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-colors ${
+                    isActive
+                      ? 'bg-[#071f52] text-white'
+                      : 'text-[#071f52]/64 hover:bg-[#071f52]/8 hover:text-[#071f52]'
+                  }`
+                }
+              >
+                <group.icon size={18} />
+                {group.label}
+              </NavLink>
+            ))}
           </nav>
 
           <div className="space-y-3 border-t border-[#071f52]/10 px-3 py-4">
@@ -161,7 +102,7 @@ export default function AdminLayout() {
           </div>
         </aside>
 
-        <main className="flex-1 overflow-auto md:pl-64">
+        <main className="flex-1 md:pl-64">
           <Outlet />
         </main>
       </div>
