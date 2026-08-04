@@ -153,7 +153,7 @@ export default function BookingDetail() {
 
   if (loading) {
     return (
-      <div className="w-full animate-pulse px-3 py-4 sm:px-5 sm:py-6 space-y-4">
+      <div className="w-full animate-pulse px-4 py-4 sm:px-5 sm:py-6 space-y-4">
         <div className="h-4 w-24 rounded bg-[#071f52]/10" />
         <div className="h-32 rounded-lg bg-[#071f52]/6" />
         <div className="grid gap-4 lg:grid-cols-[1.65fr_0.85fr]">
@@ -326,7 +326,7 @@ export default function BookingDetail() {
   }
 
   return (
-    <div className="w-full px-3 py-4 sm:px-5 sm:py-6">
+    <div className="w-full px-4 py-4 sm:px-5 sm:py-6">
         <button onClick={() => navigate('/bookings')} className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#071f52]/60 transition-colors hover:text-[#071f52] sm:text-sm">
         <ArrowLeft size={14} /> Back to bookings
       </button>
@@ -355,7 +355,7 @@ export default function BookingDetail() {
 
         <div className="mt-5 border-t border-[#071f52]/8 pt-5">
           <div className="overflow-x-auto pb-1">
-            <div className="relative flex min-w-[480px] gap-2 sm:gap-3">
+            <div className="relative flex min-w-[340px] gap-2 sm:min-w-[480px] sm:gap-3">
               <div className="absolute left-5 right-5 top-4 hidden h-px bg-[#071f52]/10 sm:block" />
               {TIMELINE_STATUSES.map((status, index) => {
                 const reached = timelineIdx >= index
@@ -414,7 +414,7 @@ export default function BookingDetail() {
         </div>
       ) : null}
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,0.85fr)]">
+      <div className="mt-4 grid gap-4 overflow-hidden lg:grid-cols-[minmax(0,1.65fr)_minmax(0,0.85fr)]">
         <div className="space-y-4">
           <section className="rounded-lg border border-[#071f52]/8 bg-white shadow-[0_6px_20px_rgba(7,31,82,0.04)]">
             <div className="border-b border-[#071f52]/8 px-4 py-3.5">
@@ -475,7 +475,7 @@ export default function BookingDetail() {
 
             <div className="px-4 py-4">
               <div className="min-w-0 overflow-x-auto">
-                <div className="space-y-2 min-w-[320px]">
+                <div className="space-y-2 min-w-[280px] sm:min-w-[320px]">
                   {(booking.price_line_items || []).map((item, index) => (
                       <div key={index} className="flex items-start justify-between gap-3 border-b border-[#071f52]/6 pb-2 text-xs last:border-0 last:pb-0 sm:text-sm">
                       <span className="text-[#071f52]/64">{item.label}{item.detail ? ` (${item.detail})` : ''}</span>
