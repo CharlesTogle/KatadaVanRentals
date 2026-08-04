@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
 import { useAcceptOwnPriceAdjustment, useBooking, useCancelOwnBooking } from '@/hooks/use-bookings'
 import { useFileViewer } from '@/hooks/use-file-viewer'
+import { saveBookingRequestedDocument, deleteBookingRequestedDocument, getCustomerDocumentSignedUrl } from '@/services/document-service'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ImageViewer } from '@/components/ui/image-viewer'
@@ -15,6 +16,8 @@ import {
   Receipt,
   Send,
   Star,
+  Trash2,
+  Upload,
 } from 'lucide-react'
 import { BOOKING_MESSAGES } from '@/constants/booking'
 import { STATUS_COLORS } from '@/config/constants'
@@ -44,7 +47,7 @@ export default function BookingDetail() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const { data, isLoading: loading } = useBooking(id)
+  const { data, isLoading: loading, refetch: refetchBooking } = useBooking(id)
   const cancelBooking = useCancelOwnBooking()
   const acceptPriceAdjustment = useAcceptOwnPriceAdjustment()
   const { viewing, openingId, openFile, closeViewer } = useFileViewer((viewError) => {
@@ -56,6 +59,29 @@ export default function BookingDetail() {
   const [submitted, setSubmitted] = useState(false)
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
   const [adjustmentAction, setAdjustmentAction] = useState<'accept' | 'cancel' | null>(null)
+  const [uploadingTypeId, setUploadingTypeId] = useState<string | null>(null)
+  const [sizeError, setSizeError] = useState<string | null>(null)
+  const oldUploadRef = useRef<{ file_path: string; original_filename: string; mime_type: string; size_bytes: number } | null>(null)
+  const uploadHandledRef = useRef(false)
+
+  useEffect(() => {
+    const el = docInputRef.current
+    if (!el) return
+    el.oncancel = () => setUploadingTypeId(null)
+  })
+
+  useEffect(() => {
+    if (!uploadingTypeId) return
+    const onFocus = () => {
+      setTimeout(() => {
+        if (!uploadHandledRef.current) setUploadingTypeId(null)
+      }, 300)
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [uploadingTypeId])
+  const [dragOver, setDragOver] = useState(false)
+  const docInputRef = useRef<HTMLInputElement>(null)
 
   const handleCancelBooking = async () => {
     if (!data) return
@@ -148,7 +174,10 @@ export default function BookingDetail() {
     )
   }
 
-  const { booking, vehicle, payments, status_events, cancellation, extensions, invoice } = data
+  const { booking, vehicle, payments, status_events, cancellation, extensions, invoice, requested_document_types } = data
+  const adminRequestSentAt = booking.status === 'awaiting_documents'
+    ? status_events.find((e) => e.to_status === 'awaiting_documents')?.created_at || null
+    : null
   const timelineIdx = TIMELINE_STATUSES.indexOf(booking.status)
   const rejectionReason = booking.status === 'rejected'
     ? status_events.find((event) => event.to_status === 'rejected' && event.note)?.note || null
@@ -158,17 +187,122 @@ export default function BookingDetail() {
     : null
   const statusTone = getStatusTone(booking.status)
   const statusMessage = getStatusMessage(booking.status, rejectionReason, cancellationReason)
-  const balanceSummary = getBookingAdjustmentSummary(booking, status_events, extensions)
-  const displayedTotal = balanceSummary?.currentTotal ?? booking.total_amount
+  const tripReconciliationAmount = Number(booking.actual_toll_amount || 0) + Number(booking.actual_fuel_amount || 0)
+  const totalIncludesTripReconciliation = booking.status === 'completed' && booking.rental_model === 'all_in' && tripReconciliationAmount > 0 && status_events.some((event) => event.note?.startsWith('Trip reconciled.'))
+  const pricingBooking = totalIncludesTripReconciliation ? { ...booking, total_amount: booking.total_amount - tripReconciliationAmount } : booking
+  const balanceSummary = getBookingAdjustmentSummary(pricingBooking, status_events, extensions)
+  const displayedTotal = balanceSummary?.currentTotal ?? pricingBooking.total_amount
   const depositAmount = Number(booking.deposit_amount || 0)
   const paymentTotal = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
   const paymentMadeAmount = Math.max(paymentTotal - depositAmount, 0)
-  const displayedRemainingBalance = Math.max(displayedTotal - depositAmount - paymentMadeAmount, 0)
+  const displayedRemainingBalance = Math.max(displayedTotal + tripReconciliationAmount - depositAmount - paymentMadeAmount, 0)
   const customerNote = getDisplayBookingNote(booking.notes)
   const priceApprovalDeadline = new Date(new Date(booking.start_at).getTime() - 2 * 60 * 60 * 1000)
   const bookingSummary = [vehicle?.name || 'Vehicle pending', formatDateRange(booking.start_at, booking.end_at)]
     .filter(Boolean)
     .join('  ·  ')
+
+  const doUpload = async (file: File, requestedTypeId: string, oldUpload?: { file_path: string; original_filename: string; mime_type: string; size_bytes: number } | null) => {
+    if (!user) return
+    setSizeError(null)
+    setUploadingTypeId(requestedTypeId)
+
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `${user.id}/requested/${booking.id}/${Date.now()}.${ext}`
+
+      const docId = await saveBookingRequestedDocument({
+        booking_id: booking.id,
+        customer_id: user.id,
+        requested_type_id: requestedTypeId,
+        file_path: path,
+        original_filename: file.name,
+        mime_type: file.type || 'application/octet-stream',
+        size_bytes: file.size,
+      })
+
+      const { error: uploadError } = await supabase.storage
+        .from('customer-documents')
+        .upload(path, file, { upsert: true })
+
+      if (uploadError) {
+        if (oldUpload) {
+          await saveBookingRequestedDocument({
+            booking_id: booking.id,
+            customer_id: user.id,
+            requested_type_id: requestedTypeId,
+            file_path: oldUpload.file_path,
+            original_filename: oldUpload.original_filename,
+            mime_type: oldUpload.mime_type,
+            size_bytes: oldUpload.size_bytes,
+          })
+        } else {
+          await supabase.from('booking_requested_documents').delete().eq('id', docId)
+        }
+        throw uploadError
+      }
+
+      if (oldUpload) {
+        const { error: removeError } = await supabase.storage.from('customer-documents').remove([oldUpload.file_path])
+        if (removeError) console.warn('Failed to remove old requested-document file:', oldUpload.file_path, removeError)
+      }
+
+      toast.success('Document uploaded.')
+      refetchBooking()
+    } catch (error) {
+      toast.error(showError(error as Error))
+    } finally {
+      setUploadingTypeId(null)
+    }
+  }
+
+  const handleDeleteDoc = async (docId: string) => {
+    try {
+      await deleteBookingRequestedDocument(docId)
+      toast.success('Document removed.')
+      refetchBooking()
+    } catch (error) {
+      toast.error(showError(error as Error))
+    }
+  }
+
+  const handleViewDoc = async (doc: { id: string; file_path: string; mime_type: string | null }) => {
+    await openFile({
+      id: doc.id,
+      path: doc.file_path,
+      alt: 'Requested Document',
+      resolveUrl: getCustomerDocumentSignedUrl,
+      isPdf: doc.mime_type === 'application/pdf',
+    })
+  }
+
+  const handleDocUpload = (e: React.ChangeEvent<HTMLInputElement>, requestedTypeId: string) => {
+    uploadHandledRef.current = true
+    const file = e.target.files?.[0]
+    if (docInputRef.current) docInputRef.current.value = ''
+    if (!file) {
+      setUploadingTypeId(null)
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setSizeError(requestedTypeId)
+      setUploadingTypeId(null)
+      return
+    }
+    doUpload(file, requestedTypeId, oldUploadRef.current)
+  }
+
+  const handleDrop = (e: React.DragEvent, requestedTypeId: string) => {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      setSizeError(requestedTypeId)
+      return
+    }
+    doUpload(file, requestedTypeId, null)
+  }
 
   const handleAcceptAdjustment = async () => {
     setAdjustmentAction('accept')
@@ -322,8 +456,9 @@ export default function BookingDetail() {
 
                 <div className="mt-6 space-y-3 rounded-[22px] bg-[#f7f9fc] px-5 py-5">
                   <SummaryRow label="Total" value={formatCurrency(displayedTotal)} strong valueClassName="text-[#4f46e5]" />
-                  {booking.rental_model === 'all_in' ? <SummaryRow label="Fuel Estimate" value={formatCurrency(Number(booking.fuel_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
-                  {booking.rental_model === 'all_in' ? <SummaryRow label="Toll Estimate" value={formatCurrency(Number(booking.toll_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
+                  {booking.rental_model === 'all_in' && booking.status !== 'completed' ? <SummaryRow label="Fuel Estimate" value={formatCurrency(Number(booking.fuel_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
+                  {booking.rental_model === 'all_in' && booking.status !== 'completed' ? <SummaryRow label="Toll Estimate" value={formatCurrency(Number(booking.toll_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
+                  {booking.status === 'completed' && booking.rental_model === 'all_in' ? <SummaryRow label="Trip Reconciliation" value={`${tripReconciliationAmount >= 0 ? '+' : '-'}${formatCurrency(Math.abs(tripReconciliationAmount))}`} valueClassName={tripReconciliationAmount >= 0 ? 'text-[#f97316]' : 'text-[#16a34a]'} note={`Toll ${formatCurrency(Number(booking.actual_toll_amount || 0))} · Gas ${formatCurrency(Number(booking.actual_fuel_amount || 0))}`} /> : null}
                   {Math.abs(balanceSummary?.adjustmentAmount || 0) > 0.009 ? <SummaryRow label="Price Adjustment" value={`${balanceSummary?.isIncrease ? '+' : '-'}${formatCurrency(Math.abs(balanceSummary?.adjustmentAmount || 0))}`} valueClassName={balanceSummary?.isIncrease ? 'text-[#f97316]' : 'text-[#16a34a]'} /> : null}
                   {balanceSummary && balanceSummary.extensionAmount > 0 ? <SummaryRow label={getExtensionChargeLabel(balanceSummary.extensionDays)} value={`+${formatCurrency(balanceSummary.extensionAmount)}`} valueClassName="text-[#f97316]" /> : null}
                   <SummaryRow label="Security Deposit" value={`-${formatCurrency(depositAmount)}`} valueClassName="text-[#16a34a]" note="non-refundable" />
@@ -438,6 +573,115 @@ export default function BookingDetail() {
                       {adjustmentAction === 'cancel' ? <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-current/20 border-t-current" /> : null}
                       {adjustmentAction === 'cancel' ? 'Canceling...' : 'Decline & Cancel'}
                     </button>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            {booking.status === 'awaiting_documents' ? (
+              <section className="rounded-[26px] border border-[#c7d2fe] bg-[#eef2ff] shadow-[0_16px_40px_rgba(79,70,229,0.1)]">
+                <div className="px-6 py-5">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#4f46e5]">Requested documents</p>
+                  {adminRequestSentAt ? (
+                    <p className="mt-2 text-xs font-semibold text-[#4f46e5]/60">Request sent {formatDateTime(adminRequestSentAt)}</p>
+                  ) : null}
+
+                  <input
+                    ref={docInputRef}
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => uploadingTypeId ? handleDocUpload(e, uploadingTypeId) : null}
+                    className="hidden"
+                    aria-label="Upload requested document"
+                  />
+
+                  <div className="mt-4 space-y-3">
+                    {requested_document_types.map((type) => (
+                      <div key={type.id} className="rounded-xl border border-[#c7d2fe]/50 bg-white px-4 py-3">
+                        <p className="text-sm font-bold text-[#1f2a44]">{type.label}</p>
+
+                        {type.upload ? (
+                          <>
+                            <div className="mt-2 flex items-center justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                {uploadingTypeId === type.id ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[#4f46e5]/30 border-t-[#4f46e5]" />
+                                    <span className="text-xs font-semibold text-[#4f46e5]">Uploading...</span>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <p className="truncate text-xs font-semibold text-[#16a34a]">{type.upload.original_filename || type.upload.file_path}</p>
+                                    <p className="text-[10px] font-medium text-[#16a34a]/70">Uploaded</p>
+                                  </>
+                                )}
+                              </div>
+                              <div className="flex shrink-0 items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewDoc({ id: type.upload!.id, file_path: type.upload!.file_path, mime_type: type.upload!.mime_type })}
+                                  disabled={openingId === type.upload.id || uploadingTypeId !== null}
+                                  className="rounded-lg px-2 py-1 text-xs font-bold text-[#4f46e5] underline hover:text-[#3639d4] disabled:opacity-50"
+                                >
+                                  {openingId === type.upload.id ? 'Opening...' : 'View'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { if (!uploadingTypeId && type.upload) { uploadHandledRef.current = false; oldUploadRef.current = { file_path: type.upload.file_path, original_filename: type.upload.original_filename || '', mime_type: type.upload.mime_type || '', size_bytes: type.upload.size_bytes ?? 0 }; setUploadingTypeId(type.id); docInputRef.current?.click() } }}
+                                  disabled={uploadingTypeId !== null}
+                                  className="rounded-lg px-2 py-1 text-xs font-bold text-[#4f46e5] underline hover:text-[#3639d4] disabled:opacity-50"
+                                >
+                                  Replace
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteDoc(type.upload!.id)}
+                                  disabled={uploadingTypeId !== null}
+                                  className="rounded-lg p-1 text-[#071f52]/30 transition-colors hover:bg-[#e92935]/8 hover:text-[#e92935] disabled:opacity-20"
+                                  aria-label={`Delete ${type.label}`}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                            {sizeError === type.id ? (
+                              <p className="mt-1 text-[10px] font-semibold text-[#e92935]">File must be under 5 MB.</p>
+                            ) : null}
+                          </>
+                        ) : (
+                          <>
+                            <div
+                              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                              onDragLeave={() => setDragOver(false)}
+                              onDrop={(e) => handleDrop(e, type.id)}
+                              onClick={() => { if (!uploadingTypeId) { uploadHandledRef.current = false; setSizeError(null); oldUploadRef.current = null; setUploadingTypeId(type.id); docInputRef.current?.click() } }}
+                              className={`mt-2 cursor-pointer rounded-xl border-2 border-dashed px-4 py-4 text-center transition-colors ${
+                                dragOver
+                                  ? 'border-[#4f46e5] bg-[#4f46e5]/8'
+                                  : 'border-[#4f46e5]/25 bg-[#f8f9ff] hover:border-[#4f46e5]/40'
+                              } ${uploadingTypeId !== null ? 'pointer-events-none opacity-50' : ''}`}
+                            >
+                              {uploadingTypeId === type.id ? (
+                                <div className="flex items-center justify-center gap-2">
+                                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#4f46e5]/30 border-t-[#4f46e5]" />
+                                  <span className="text-xs font-semibold text-[#4f46e5]">Uploading...</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-center gap-2">
+                                  <Upload size={14} className="text-[#4f46e5]" />
+                                  <span className="text-xs font-semibold text-[#4f46e5]">Upload file</span>
+                                </div>
+                              )}
+                            </div>
+                            {sizeError === type.id ? (
+                              <p className="mt-1 text-[10px] font-semibold text-[#e92935]">File must be under 5 MB.</p>
+                            ) : (
+                              <p className="mt-1 text-[10px] text-[#4f46e5]/50">Max 5 MB per file</p>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </section>

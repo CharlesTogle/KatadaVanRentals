@@ -10,6 +10,7 @@ export interface CustomerBookingDetail {
   cancellation: AdminBookingDetail['cancellation']
   extensions: AdminBookingDetail['extensions']
   invoice: AdminBookingDetail['invoice']
+  requested_document_types: Array<{ id: string; label: string; upload: { id: string; file_path: string; original_filename: string | null; mime_type: string | null; size_bytes: number | null; status: string; created_at: string } | null }>
 }
 
 type BookingCancellation = {
@@ -27,17 +28,39 @@ export async function getBookingById(id: string): Promise<CustomerBookingDetail>
 
   if (bookingError) throw bookingError
 
-  const [paymentsRes, eventsRes, extensionsRes, invoiceRes, cancellationRes] = await Promise.all([
+  const [paymentsRes, eventsRes, extensionsRes, invoiceRes, cancellationRes, typesRes, uploadsRes] = await Promise.all([
     supabase.from('payments').select('id,channel,status,amount,reference_number,receipt_path,paid_at,created_at').eq('booking_id', id).order('created_at', { ascending: false }),
     supabase.from('booking_status_events').select('id,from_status,to_status,note,created_at').eq('booking_id', id).order('created_at', { ascending: false }),
     supabase.from('booking_extensions').select('id,previous_end_at,new_end_at,extension_amount,reason,payment_id,created_at').eq('booking_id', id).order('created_at', { ascending: false }),
     supabase.from('invoices').select('id,invoice_number,status,total_amount,file_path,issued_at').eq('booking_id', id).order('created_at', { ascending: false }).maybeSingle(),
     supabase.from('booking_cancellations').select('cancellation_type,reason,created_at').eq('booking_id', id).order('created_at', { ascending: false }).maybeSingle(),
+    supabase.from('booking_requested_document_types').select('id,label,created_at').eq('booking_id', id).order('created_at', { ascending: true }),
+    supabase.from('booking_requested_documents').select('id,requested_type_id,file_path,original_filename,mime_type,size_bytes,status,created_at').eq('booking_id', id).order('created_at', { ascending: true }),
   ])
 
   const vehicle = booking.vehicles && !Array.isArray(booking.vehicles)
     ? booking.vehicles as AdminBookingDetail['vehicle']
     : null
+
+  if (typesRes.error) throw typesRes.error
+  if (uploadsRes.error) throw uploadsRes.error
+
+  const uploadMap = new Map((uploadsRes.data || []).map((u) => [u.requested_type_id, u]))
+  const requestedDocumentTypes = (typesRes.data || []).map((type) => ({
+    id: type.id,
+    label: type.label,
+    upload: uploadMap.get(type.id)
+      ? {
+          id: uploadMap.get(type.id)!.id,
+          file_path: uploadMap.get(type.id)!.file_path,
+          original_filename: uploadMap.get(type.id)!.original_filename,
+          mime_type: uploadMap.get(type.id)!.mime_type,
+          size_bytes: uploadMap.get(type.id)!.size_bytes,
+          status: uploadMap.get(type.id)!.status,
+          created_at: uploadMap.get(type.id)!.created_at,
+        }
+      : null,
+  }))
 
   return {
     booking: booking as Booking,
@@ -47,6 +70,7 @@ export async function getBookingById(id: string): Promise<CustomerBookingDetail>
     cancellation: cancellationRes.data,
     extensions: extensionsRes.data || [],
     invoice: invoiceRes.data,
+    requested_document_types: requestedDocumentTypes as CustomerBookingDetail['requested_document_types'],
   }
 }
 
@@ -122,6 +146,7 @@ export interface AdminBookingDetail {
   payments: Array<{ id: string; channel: string; status: string; amount: number; reference_number: string | null; receipt_path: string | null; paid_at: string | null; created_at: string }>
   cancellation: BookingCancellation | null
   documents: Array<{ id: string; document_type: string; status: string; file_path: string; original_filename: string | null; mime_type: string | null; created_at: string }>
+  requested_document_types: Array<{ id: string; label: string; upload: { id: string; file_path: string; original_filename: string | null; mime_type: string | null; size_bytes: number | null; status: string; created_at: string } | null }>
   status_events: Array<{ id: string; from_status: string | null; to_status: string; note: string | null; created_at: string }>
   extensions: Array<{ id: string; previous_end_at: string | null; new_end_at: string; extension_amount: number; reason: string | null; payment_id?: string | null; created_at: string }>
   invoice: { id: string; invoice_number: string; status: string; total_amount: number; file_path: string | null; issued_at: string } | null
@@ -240,7 +265,7 @@ export async function getAdminBookingByNumber(bookingNumber: string): Promise<Ad
     ? booking.vehicles as AdminBookingDetail['vehicle']
     : null
 
-  const [payRes, docRes, eventRes, extRes, invRes, cancellationRes] = await Promise.all([
+  const [payRes, docRes, eventRes, extRes, invRes, cancellationRes, typesRes, uploadsRes] = await Promise.all([
     supabase.from('payments').select('id,channel,status,amount,reference_number,receipt_path,paid_at,created_at').eq('booking_id', booking.id).order('created_at', { ascending: false }),
     booking.customer_id
       ? supabase.from('customer_documents').select('id,document_type,status,file_path,original_filename,mime_type,created_at').eq('customer_id', booking.customer_id).order('created_at', { ascending: false })
@@ -249,7 +274,29 @@ export async function getAdminBookingByNumber(bookingNumber: string): Promise<Ad
     supabase.from('booking_extensions').select('id,previous_end_at,new_end_at,extension_amount,reason,payment_id,created_at').eq('booking_id', booking.id).order('created_at', { ascending: false }),
     supabase.from('invoices').select('id,invoice_number,status,total_amount,file_path,issued_at').eq('booking_id', booking.id).order('created_at', { ascending: false }).maybeSingle(),
     supabase.from('booking_cancellations').select('cancellation_type,reason,created_at').eq('booking_id', booking.id).order('created_at', { ascending: false }).maybeSingle(),
+    supabase.from('booking_requested_document_types').select('id,label,created_at').eq('booking_id', booking.id).order('created_at', { ascending: true }),
+    supabase.from('booking_requested_documents').select('id,requested_type_id,file_path,original_filename,mime_type,size_bytes,status,created_at').eq('booking_id', booking.id).order('created_at', { ascending: true }),
   ])
+
+  if (typesRes.error) throw typesRes.error
+  if (uploadsRes.error) throw uploadsRes.error
+
+  const uploadMap = new Map((uploadsRes.data || []).map((u) => [u.requested_type_id, u]))
+  const requestedDocumentTypes = (typesRes.data || []).map((type) => ({
+    id: type.id,
+    label: type.label,
+    upload: uploadMap.get(type.id)
+      ? {
+          id: uploadMap.get(type.id)!.id,
+          file_path: uploadMap.get(type.id)!.file_path,
+          original_filename: uploadMap.get(type.id)!.original_filename,
+          mime_type: uploadMap.get(type.id)!.mime_type,
+          size_bytes: uploadMap.get(type.id)!.size_bytes,
+          status: uploadMap.get(type.id)!.status,
+          created_at: uploadMap.get(type.id)!.created_at,
+        }
+      : null,
+  }))
 
   return {
     booking: booking as Booking,
@@ -258,6 +305,7 @@ export async function getAdminBookingByNumber(bookingNumber: string): Promise<Ad
     payments: payRes.data || [],
     cancellation: cancellationRes.data,
     documents: (docRes.data || []) as AdminBookingDetail['documents'],
+    requested_document_types: requestedDocumentTypes as AdminBookingDetail['requested_document_types'],
     status_events: eventRes.data || [],
     extensions: extRes.data || [],
     invoice: invRes.data,
@@ -305,7 +353,7 @@ export type AdminBookingActionType =
 export type AdminBookingActionInput =
   | { type: 'confirm'; bookingId: string; note?: string }
   | { type: 'reject'; bookingId: string; reason: string }
-  | { type: 'request_documents'; bookingId: string; requestedDocuments: string }
+  | { type: 'request_documents'; bookingId: string; requestedDocumentLabels: string[] }
   | { type: 'adjust_price'; bookingId: string; adjustedTotal: number; reason: string }
   | { type: 'start_trip'; bookingId: string; collectedAmount: number; paymentMethodId?: string; paymentChannel?: string; referenceNumber?: string; receiptPath?: string }
   | { type: 'extend'; bookingId: string; newEndAt: string; extensionAmount: number; reason?: string; collectNow?: boolean; paymentMethodId?: string; paymentChannel?: string; referenceNumber?: string; receiptPath?: string }
@@ -320,7 +368,7 @@ export async function runAdminBookingAction(input: AdminBookingActionInput): Pro
   const rpcMap: Record<AdminBookingActionType, { fn: string; args: Record<string, unknown> }> = {
     confirm: { fn: 'admin_confirm_booking', args: { target_booking_id: bookingId, note: (params as { note?: string }).note ?? null } },
     reject: { fn: 'admin_reject_booking', args: { target_booking_id: bookingId, reason: (params as { reason: string }).reason } },
-    request_documents: { fn: 'admin_request_booking_documents', args: { target_booking_id: bookingId, requested_documents: (params as { requestedDocuments: string }).requestedDocuments } },
+    request_documents: { fn: 'admin_request_booking_documents', args: { target_booking_id: bookingId, requested_document_labels: (params as { requestedDocumentLabels: string[] }).requestedDocumentLabels } },
     adjust_price: { fn: 'admin_adjust_booking_price', args: { target_booking_id: bookingId, adjusted_total: (params as { adjustedTotal: number }).adjustedTotal, reason: (params as { reason: string }).reason } },
     start_trip: {
       fn: 'admin_start_trip',

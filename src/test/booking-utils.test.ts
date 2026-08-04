@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canCustomerCancelBooking, getAdminBookingActions, getBookingPriceBreakdown, hasRequiredSelfDriveDocuments } from '@/lib/booking-utils'
+import { canCustomerCancelBooking, getAdminBookingActions, getAdminBookingDetailActions, getBookingPriceBreakdown, hasRequiredSelfDriveDocuments } from '@/lib/booking-utils'
 
 describe('booking-utils', () => {
   it('requires all self-drive documents', () => {
@@ -51,6 +51,13 @@ describe('booking-utils', () => {
       { label: 'Reject', nextStatus: 'rejected' },
     ])
     expect(getAdminBookingActions('completed')).toEqual([])
+  })
+
+  it('returns detail actions for awaiting_documents same as for_review', () => {
+    const forReviewActions = getAdminBookingDetailActions('for_review')
+    const awaitingDocsActions = getAdminBookingDetailActions('awaiting_documents')
+    expect(awaitingDocsActions).toEqual(forReviewActions)
+    expect(awaitingDocsActions.length).toBeGreaterThan(0)
   })
 
   it('keeps all-in estimates out of booking-time total and remaining balance', () => {

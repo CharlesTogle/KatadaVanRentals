@@ -32,6 +32,15 @@ const mocks = vi.hoisted(() => {
   const invoicesEq = vi.fn(() => ({ order: invoicesOrder }))
   const invoicesSelect = vi.fn(() => ({ eq: invoicesEq }))
 
+  const bookingDocsEq = vi.fn()
+  const bookingDocsOrder = vi.fn()
+  const bookingDocsEqWithOrder = vi.fn(() => ({ order: bookingDocsOrder }))
+  const bookingDocsSelect = vi.fn(() => ({ eq: bookingDocsEqWithOrder }))
+
+  const docTypesOrder = vi.fn()
+  const docTypesEqWithOrder = vi.fn(() => ({ order: docTypesOrder }))
+  const docTypesSelect = vi.fn(() => ({ eq: docTypesEqWithOrder }))
+
   const from = vi.fn((table: string) => {
     if (table === 'bookings') return { select: bookingsSelect }
     if (table === 'payments') return { select: paymentsSelect }
@@ -40,6 +49,8 @@ const mocks = vi.hoisted(() => {
     if (table === 'booking_extensions') return { select: extensionsSelect }
     if (table === 'invoices') return { select: invoicesSelect }
     if (table === 'booking_cancellations') return { select: bookingCancellationsSelect }
+    if (table === 'booking_requested_documents') return { select: bookingDocsSelect }
+    if (table === 'booking_requested_document_types') return { select: docTypesSelect }
 
     throw new Error(`Unexpected table: ${table}`)
   })
@@ -70,6 +81,10 @@ const mocks = vi.hoisted(() => {
     invoicesOrder,
     invoicesEq,
     invoicesSelect,
+    bookingDocsEq,
+    bookingDocsOrder,
+    bookingDocsSelect,
+    docTypesOrder,
     from,
     rpc,
   }
@@ -88,6 +103,8 @@ describe('booking-service', () => {
     mocks.extensionsOrder.mockResolvedValue({ data: [], error: null })
     mocks.invoicesMaybeSingle.mockResolvedValue({ data: null, error: null })
     mocks.bookingCancellationsMaybeSingle.mockResolvedValue({ data: null, error: null })
+    mocks.bookingDocsOrder.mockResolvedValue({ data: [], error: null })
+    mocks.docTypesOrder.mockResolvedValue({ data: [], error: null })
     mocks.rpc.mockResolvedValue({ error: null })
   })
 

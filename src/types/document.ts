@@ -17,3 +17,38 @@ export interface CustomerDocument {
   created_at: string
   updated_at: string
 }
+
+export interface BookingRequestedDocumentType {
+  id: string
+  booking_id: string
+  label: string
+  created_at: string
+}
+
+export interface BookingRequestedDocument {
+  id: string
+  booking_id: string
+  customer_id: string
+  requested_type_id: string | null
+  file_path: string
+  original_filename: string | null
+  mime_type: string | null
+  size_bytes: number | null
+  status: DocumentStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface RequestedDocumentTypeWithUpload {
+  id: string
+  label: string
+  upload: {
+    id: string
+    file_path: string
+    original_filename: string | null
+    mime_type: string | null
+    size_bytes: number | null
+    status: string
+    created_at: string
+  } | null
+}

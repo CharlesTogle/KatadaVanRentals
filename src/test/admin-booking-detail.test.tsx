@@ -102,7 +102,8 @@ describe('AdminBookingDetail', () => {
     expect(container.querySelector('.animate-pulse')).toBeInTheDocument()
 
     useAdminBooking.mockReturnValue({
-      data: { booking: mockBooking, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: mockBooking, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -130,6 +131,7 @@ describe('AdminBookingDetail', () => {
         customer: mockCustomer,
         vehicle: mockVehicle,
         payments: [],
+        requested_document_types: [],
         documents: [],
         status_events: [],
         extensions: [],
@@ -155,7 +157,8 @@ describe('AdminBookingDetail', () => {
 
   it('displays booking header and status', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: mockBooking, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: mockBooking, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -177,6 +180,7 @@ describe('AdminBookingDetail', () => {
         customer: mockCustomer,
         vehicle: mockVehicle,
         payments: [],
+        requested_document_types: [],
         documents: [],
         status_events: [],
         extensions: [],
@@ -197,7 +201,8 @@ describe('AdminBookingDetail', () => {
 
   it('shows all-in fuel and toll estimates as estimate-only rows in price breakdown', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: mockBooking, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: mockBooking, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -213,7 +218,8 @@ describe('AdminBookingDetail', () => {
 
   it('renders customer details', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: mockBooking, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: mockBooking, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -233,6 +239,7 @@ describe('AdminBookingDetail', () => {
         customer: { ...mockCustomer, id: 'staff-1' },
         vehicle: mockVehicle,
         payments: [],
+        requested_document_types: [],
         documents: [],
         status_events: [],
         extensions: [],
@@ -253,7 +260,8 @@ describe('AdminBookingDetail', () => {
 
   it('renders placeholders in action modals', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'confirmed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'confirmed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -268,7 +276,8 @@ describe('AdminBookingDetail', () => {
 
   it('renders no-documents message when empty', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: mockBooking, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: mockBooking, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -282,7 +291,8 @@ describe('AdminBookingDetail', () => {
 
   it('shows correct actions for for_review status', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -312,6 +322,7 @@ describe('AdminBookingDetail', () => {
         customer: mockCustomer,
         vehicle: mockVehicle,
         payments: [{ id: 'payment-1', channel: 'bank_transfer', status: 'verified', amount: 1100, reference_number: 'REF-1', receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        requested_document_types: [],
         documents: [],
         status_events: [{ id: 'event-adjusted', from_status: null, to_status: 'pending_price_approval', note: 'Price adjusted to 10000. Reason: Out-of-city surcharge', created_at: '2026-07-23T10:30:00Z' }],
         extensions: [],
@@ -341,6 +352,7 @@ describe('AdminBookingDetail', () => {
         customer: mockCustomer,
         vehicle: mockVehicle,
         payments: [{ id: 'payment-1', channel: 'bank_transfer', status: 'verified', amount: 1100, reference_number: 'REF-1', receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        requested_document_types: [],
         documents: [],
         status_events: [{ id: 'event-adjusted', from_status: null, to_status: 'on_trip', note: 'Price adjusted to 10000. Reason: Out-of-city surcharge', created_at: '2026-07-23T10:30:00Z' }],
         extensions: [{ id: 'extension-1', previous_end_at: '2026-07-27T08:00:00Z', new_end_at: '2026-07-28T08:00:00Z', extension_amount: 1500, payment_id: null, reason: 'Customer requested an extra day', created_at: '2026-07-26T09:00:00Z' }],
@@ -373,6 +385,7 @@ describe('AdminBookingDetail', () => {
         customer: mockCustomer,
         vehicle: mockVehicle,
         payments: [{ id: 'payment-1', channel: 'bank_transfer', status: 'submitted', amount: 2300, reference_number: 'REF-1', receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        requested_document_types: [],
         documents: [],
         status_events: [{ id: 'event-adjusted', from_status: null, to_status: 'on_trip', note: 'Price adjusted to 26000. Reason: Extra fees', created_at: '2026-07-23T10:30:00Z' }],
         extensions: [{ id: 'extension-1', previous_end_at: '2026-07-27T08:00:00Z', new_end_at: '2026-08-05T08:00:00Z', extension_amount: 16500, payment_id: null, reason: 'Longer trip', created_at: '2026-07-26T09:00:00Z' }],
@@ -393,7 +406,8 @@ describe('AdminBookingDetail', () => {
 
   it('confirms a for review booking from the modal', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -410,7 +424,8 @@ describe('AdminBookingDetail', () => {
 
   it('rejects a for review booking from the modal', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -428,7 +443,8 @@ describe('AdminBookingDetail', () => {
 
   it('adjusts a for review booking upward from the modal', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -453,7 +469,8 @@ describe('AdminBookingDetail', () => {
 
   it('adjusts a for review booking downward from the modal', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -478,7 +495,8 @@ describe('AdminBookingDetail', () => {
 
   it('shows inline validation in the adjust booking modal', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -499,7 +517,8 @@ describe('AdminBookingDetail', () => {
 
   it('blocks absurd adjustment amounts in the modal', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'for_review' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -515,7 +534,8 @@ describe('AdminBookingDetail', () => {
 
   it('shows correct actions for confirmed status', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'confirmed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'confirmed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -532,7 +552,8 @@ describe('AdminBookingDetail', () => {
 
   it('starts a confirmed trip from the modal', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'confirmed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'confirmed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -555,7 +576,8 @@ describe('AdminBookingDetail', () => {
 
   it('extends an on trip booking from the modal', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -581,7 +603,8 @@ describe('AdminBookingDetail', () => {
 
   it('requires the new return date to be after the current end date', () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -602,7 +625,8 @@ describe('AdminBookingDetail', () => {
 
   it('cancels a confirmed booking from the modal', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'confirmed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'confirmed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -621,7 +645,8 @@ describe('AdminBookingDetail', () => {
 
   it('deletes a booking from the modal', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'completed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'completed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -643,6 +668,7 @@ describe('AdminBookingDetail', () => {
         customer: mockCustomer,
         vehicle: mockVehicle,
         payments: [{ id: 'payment-1', channel: 'cash', status: 'verified', amount: 7500, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        requested_document_types: [],
         documents: [],
         status_events: [],
         extensions: [],
@@ -666,6 +692,7 @@ describe('AdminBookingDetail', () => {
         customer: mockCustomer,
         vehicle: mockVehicle,
         payments: [{ id: 'payment-1', channel: 'cash', status: 'verified', amount: 9000, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        requested_document_types: [],
         documents: [],
         status_events: [],
         extensions: [],
@@ -689,6 +716,7 @@ describe('AdminBookingDetail', () => {
         customer: mockCustomer,
         vehicle: mockVehicle,
         payments: [{ id: 'payment-1', channel: 'cash', status: 'verified', amount: 9000, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        requested_document_types: [],
         documents: [],
         status_events: [],
         extensions: [],
@@ -713,6 +741,7 @@ describe('AdminBookingDetail', () => {
         customer: mockCustomer,
         vehicle: mockVehicle,
         payments: [{ id: 'payment-1', channel: 'cash', status: 'verified', amount: 7500, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        requested_document_types: [],
         documents: [],
         status_events: [],
         extensions: [],
@@ -740,7 +769,8 @@ describe('AdminBookingDetail', () => {
 
   it('shows correct actions for on_trip status', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -757,7 +787,8 @@ describe('AdminBookingDetail', () => {
 
   it('completes an on trip booking from the modal with a final payment', async () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -782,7 +813,8 @@ describe('AdminBookingDetail', () => {
 
   it('requires actual toll and gas to complete an all-in keep trip', () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -797,7 +829,8 @@ describe('AdminBookingDetail', () => {
 
   it('requires actual toll and gas for all-in trips even when not keep-the-car', () => {
     useAdminBooking.mockReturnValue({
-      data: { booking: { ...mockBooking, status: 'on_trip', booking_mode: 'dropoff' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], documents: [], status_events: [], extensions: [], invoice: null },
+      data: { booking: { ...mockBooking, status: 'on_trip', booking_mode: 'dropoff' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
       isLoading: false,
       error: null,
     })
@@ -820,6 +853,7 @@ describe('AdminBookingDetail', () => {
         vehicle: mockVehicle,
         cancellation: { cancellation_type: 'customer_request', reason: 'Cinancel eh', created_at: '2026-07-23T10:00:00Z' },
         payments: [],
+        requested_document_types: [],
         documents: [],
         status_events: [{ id: 'event-1', from_status: 'confirmed', to_status: 'canceled', note: null, created_at: '2026-07-23T10:00:00Z' }],
         extensions: [],
@@ -862,6 +896,7 @@ describe('AdminBookingDetail', () => {
           paid_at: null,
           created_at: '2026-07-23T10:00:00Z',
         }],
+        requested_document_types: [],
         documents: [],
         status_events: [],
         extensions: [],

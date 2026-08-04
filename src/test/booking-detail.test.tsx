@@ -26,11 +26,22 @@ vi.mock('@/lib/toast', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }))
 
+const mockInsertSingle = vi.fn().mockResolvedValue({ data: { id: 'rd-1' }, error: null })
+const mockDeleteEq = vi.fn().mockResolvedValue({ error: null })
+const mockDelete = vi.fn(() => ({ eq: mockDeleteEq }))
+const mockInsert = vi.fn(() => ({ select: vi.fn(() => ({ single: mockInsertSingle })) }))
+
 vi.mock('@/lib/supabase', () => ({
   supabase: {
-    from: vi.fn(() => ({ insert: vi.fn().mockResolvedValue({ error: null }) })),
+    from: vi.fn((table: string) => {
+      if (table === 'booking_requested_document_types') return { insert: mockInsert, delete: mockDelete }
+      return { insert: vi.fn(() => ({ select: vi.fn(() => ({ single: mockInsertSingle })) })) }
+    }),
     storage: {
-      from: vi.fn(() => ({ createSignedUrl: vi.fn().mockResolvedValue({ data: { signedUrl: 'https://example.com/receipt.png' }, error: null }) })),
+      from: vi.fn(() => ({
+        createSignedUrl: vi.fn().mockResolvedValue({ data: { signedUrl: 'https://example.com/receipt.png' }, error: null }),
+        upload: vi.fn().mockResolvedValue({ error: null }),
+      })),
     },
   },
 }))
@@ -529,5 +540,200 @@ describe('BookingDetail', () => {
     expect(screen.getAllByText('Old Remaining Balance').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Price Adjustment').length).toBeGreaterThan(0)
     expect(screen.getAllByText('New Remaining Balance').length).toBeGreaterThan(0)
+  })
+
+  it('shows requested-documents card with admin note when status is awaiting_documents', async () => {
+    useBooking.mockReturnValue({
+      data: {
+        booking: {
+          id: 'booking-1',
+          booking_number: 'CR-260723-ABCD',
+          customer_id: 'user-1',
+          guest_name: null,
+          guest_email: null,
+          guest_mobile: null,
+          vehicle_id: 'veh-1',
+          rental_model: 'self_drive',
+          booking_mode: 'keep',
+          status: 'awaiting_documents',
+          start_at: '2026-07-25T08:00:00Z',
+          end_at: '2026-07-27T08:00:00Z',
+          duration_days: 2,
+          pickup_location: 'Manila',
+          dropoff_location: 'Batangas',
+          destination: 'Taal',
+          purpose_of_travel: 'Leisure',
+          notes: null,
+          distance_km: null,
+          duration_minutes: null,
+          toll_estimate_amount: 0,
+          toll_segments: [],
+          fuel_estimate_liters: 0,
+          fuel_estimate_amount: 0,
+          delivery_fee: 0,
+          recovery_fee: 0,
+          discount_amount: 0,
+          deposit_amount: 500,
+          subtotal_amount: 5000,
+          total_amount: 5000,
+          paid_amount: 0,
+          remaining_amount: 4500,
+          price_line_items: [],
+          idempotency_key: null,
+          created_by: 'user-1',
+          created_at: '2026-07-23T10:00:00Z',
+          updated_at: '2026-07-23T10:00:00Z',
+        },
+        vehicle: { id: 'veh-1', name: 'Toyota Commuter', plate_number: 'ABC123', image_paths: [] },
+        payments: [],
+        status_events: [
+          { id: 'event-1', from_status: 'for_review', to_status: 'awaiting_documents', note: 'Please upload your valid ID and proof of billing.', created_at: '2026-07-23T10:30:00Z' },
+        ],
+        extensions: [],
+        invoice: null,
+        requested_document_types: [
+          { id: 'type-1', label: 'Valid ID', upload: null },
+        ],
+      },
+      isLoading: false,
+    })
+
+    renderDetail()
+
+    await waitFor(() => {
+      expect(screen.getByText('Requested documents')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText(/Request sent/)).toBeInTheDocument()
+    expect(screen.getByText('Valid ID')).toBeInTheDocument()
+    expect(screen.getByText('Upload file')).toBeInTheDocument()
+    expect(screen.getAllByText('Please upload your valid ID and proof of billing.').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('lists already-uploaded requested documents in the card', async () => {
+    useBooking.mockReturnValue({
+      data: {
+        booking: {
+          id: 'booking-1',
+          booking_number: 'CR-260723-ABCD',
+          customer_id: 'user-1',
+          guest_name: null,
+          guest_email: null,
+          guest_mobile: null,
+          vehicle_id: 'veh-1',
+          rental_model: 'self_drive',
+          booking_mode: 'keep',
+          status: 'awaiting_documents',
+          start_at: '2026-07-25T08:00:00Z',
+          end_at: '2026-07-27T08:00:00Z',
+          duration_days: 2,
+          pickup_location: 'Manila',
+          dropoff_location: 'Batangas',
+          destination: 'Taal',
+          purpose_of_travel: 'Leisure',
+          notes: null,
+          distance_km: null,
+          duration_minutes: null,
+          toll_estimate_amount: 0,
+          toll_segments: [],
+          fuel_estimate_liters: 0,
+          fuel_estimate_amount: 0,
+          delivery_fee: 0,
+          recovery_fee: 0,
+          discount_amount: 0,
+          deposit_amount: 500,
+          subtotal_amount: 5000,
+          total_amount: 5000,
+          paid_amount: 0,
+          remaining_amount: 4500,
+          price_line_items: [],
+          idempotency_key: null,
+          created_by: 'user-1',
+          created_at: '2026-07-23T10:00:00Z',
+          updated_at: '2026-07-23T10:00:00Z',
+        },
+        vehicle: { id: 'veh-1', name: 'Toyota Commuter', plate_number: 'ABC123', image_paths: [] },
+        payments: [],
+        status_events: [
+          { id: 'event-1', from_status: 'for_review', to_status: 'awaiting_documents', note: 'Please upload documents.', created_at: '2026-07-23T10:30:00Z' },
+        ],
+        extensions: [],
+        invoice: null,
+        requested_document_types: [
+          { id: 'type-1', label: 'Valid ID', upload: { id: 'rd-1', file_path: 'user-1/requested/booking-1/doc.pdf', original_filename: 'id_scan.pdf', mime_type: 'application/pdf', status: 'submitted', created_at: '2026-07-23T11:00:00Z' } },
+        ],
+      },
+      isLoading: false,
+    })
+
+    renderDetail()
+
+    await waitFor(() => {
+      expect(screen.getByText('Requested documents')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText('id_scan.pdf')).toBeInTheDocument()
+    expect(screen.getByText('Uploaded')).toBeInTheDocument()
+  })
+
+  it('does not show requested-documents card for non-awaiting_documents status', async () => {
+    useBooking.mockReturnValue({
+      data: {
+        booking: {
+          id: 'booking-1',
+          booking_number: 'CR-260723-ABCD',
+          customer_id: 'user-1',
+          guest_name: null,
+          guest_email: null,
+          guest_mobile: null,
+          vehicle_id: 'veh-1',
+          rental_model: 'all_out',
+          booking_mode: 'keep',
+          status: 'confirmed',
+          start_at: '2026-07-25T08:00:00Z',
+          end_at: '2026-07-27T08:00:00Z',
+          duration_days: 2,
+          pickup_location: 'Manila',
+          dropoff_location: 'Batangas',
+          destination: 'Taal',
+          purpose_of_travel: 'Leisure',
+          notes: null,
+          distance_km: null,
+          duration_minutes: null,
+          toll_estimate_amount: 0,
+          toll_segments: [],
+          fuel_estimate_liters: 0,
+          fuel_estimate_amount: 0,
+          delivery_fee: 0,
+          recovery_fee: 0,
+          discount_amount: 0,
+          deposit_amount: 900,
+          subtotal_amount: 9000,
+          total_amount: 9000,
+          paid_amount: 2000,
+          remaining_amount: 7000,
+          price_line_items: [{ label: 'Base Rate', detail: '2 days × ₱4,500', amount: 9000 }],
+          idempotency_key: null,
+          created_by: 'user-1',
+          created_at: '2026-07-23T10:00:00Z',
+          updated_at: '2026-07-23T10:00:00Z',
+        },
+        vehicle: { id: 'veh-1', name: 'Toyota Commuter', plate_number: 'ABC123', image_paths: [] },
+        payments: [],
+        status_events: [],
+        extensions: [],
+        invoice: null,
+        requested_document_types: [],
+      },
+      isLoading: false,
+    })
+
+    renderDetail()
+
+    await waitFor(() => {
+      expect(screen.getByText('Booking Details')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText('Requested documents')).not.toBeInTheDocument()
   })
 })

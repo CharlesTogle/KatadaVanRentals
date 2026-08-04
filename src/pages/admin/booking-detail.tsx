@@ -60,7 +60,6 @@ export default function BookingDetail() {
     actualFuelAmount: '',
     adjustmentType: 'increase' as 'increase' | 'decrease',
     newDate: '',
-    docs: '',
     paymentMethodId: '',
     paymentChannel: 'cash',
     referenceNumber: '',
@@ -81,7 +80,6 @@ export default function BookingDetail() {
       actualFuelAmount: '',
       adjustmentType: 'increase',
       newDate: '',
-      docs: '',
       paymentMethodId: defaultPaymentMethodId,
       paymentChannel: 'cash',
       referenceNumber: '',
@@ -124,7 +122,7 @@ export default function BookingDetail() {
     )
   }
 
-  const { booking, customer, vehicle, payments, cancellation, documents, status_events, extensions, invoice } = data
+  const { booking, customer, vehicle, payments, cancellation, documents, requested_document_types, status_events, extensions, invoice } = data
   const customerName = customer
     ? [customer.first_name, customer.last_name].filter(Boolean).join(' ') || customer.email || 'Customer'
     : booking.guest_name || booking.guest_email || 'Guest customer'
@@ -146,16 +144,18 @@ export default function BookingDetail() {
     : null
   const statusTone = getStatusTone(booking.status)
   const statusMessage = getStatusMessage(booking.status, rejectionReason, cancellationReason)
-  const balanceSummary = getBookingAdjustmentSummary(booking, status_events, extensions)
-  const displayedTotal = balanceSummary?.currentTotal ?? booking.total_amount
+  const tripReconciliationAmount = Number(booking.actual_toll_amount || 0) + Number(booking.actual_fuel_amount || 0)
+  const totalIncludesTripReconciliation = booking.status === 'completed' && booking.rental_model === 'all_in' && tripReconciliationAmount > 0 && status_events.some((event) => event.note?.startsWith('Trip reconciled.'))
+  const pricingBooking = totalIncludesTripReconciliation ? { ...booking, total_amount: booking.total_amount - tripReconciliationAmount } : booking
+  const balanceSummary = getBookingAdjustmentSummary(pricingBooking, status_events, extensions)
+  const displayedTotal = balanceSummary?.currentTotal ?? pricingBooking.total_amount
   const depositAmount = Number(booking.deposit_amount || 0)
   const paymentTotal = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
   const paymentMadeAmount = Math.max(paymentTotal - depositAmount, 0)
-  const displayedRemainingBalance = Math.max(displayedTotal - depositAmount - paymentMadeAmount, 0)
+  const displayedRemainingBalance = Math.max(displayedTotal + tripReconciliationAmount - depositAmount - paymentMadeAmount, 0)
   const requiresTripReconciliation = booking.rental_model === 'all_in' && booking.status === 'on_trip'
   const actualTollAmount = Number(modalForm.actualTollAmount || 0)
   const actualFuelAmount = Number(modalForm.actualFuelAmount || 0)
-  const tripReconciliationAmount = Number(booking.actual_toll_amount || 0) + Number(booking.actual_fuel_amount || 0)
   const actions: AdminAction[] = !bookingStatus
     ? []
     : bookingStatus !== 'completed' || displayedRemainingBalance <= 0
@@ -191,7 +191,7 @@ export default function BookingDetail() {
   const adjustedTotal = displayedTotal + signedAdjustmentAmount
 
   const handleAdjustBooking = () => runAction({ type: 'adjust_price', bookingId: booking.id, adjustedTotal, reason: modalForm.reason.trim() }, 'Booking price updated.')
-  const handleRequestDocuments = () => runAction({ type: 'request_documents', bookingId: booking.id, requestedDocuments: modalForm.docs.trim() }, 'Document request sent.')
+  const handleRequestDocuments = (labels: string[]) => runAction({ type: 'request_documents', bookingId: booking.id, requestedDocumentLabels: labels }, 'Document request sent.')
   const handleCompleteBooking = async () => {
     const receiptPath = await uploadReceipt(modalForm.receiptFile)
 
@@ -243,11 +243,11 @@ export default function BookingDetail() {
     })
   }
 
-  const handleViewDocument = async (doc: { id: string; file_path: string; document_type: string; mime_type?: string | null }) => {
+  const handleViewDocument = async (doc: { id: string; file_path: string; document_type?: string; mime_type?: string | null }) => {
     await openFile({
       id: doc.id,
       path: doc.file_path,
-      alt: toLabel(doc.document_type),
+      alt: doc.document_type ? toLabel(doc.document_type) : 'Requested Document',
       resolveUrl: getCustomerDocumentSignedUrl,
       isPdf: doc.mime_type === 'application/pdf',
     })
@@ -441,8 +441,8 @@ export default function BookingDetail() {
 
                 <div className="mt-6 space-y-3 rounded-[22px] bg-[#f7f9fc] px-5 py-5">
                   <SummaryRow label="Total" value={formatCurrency(displayedTotal)} strong valueClassName="text-[#4f46e5]" />
-                  {booking.rental_model === 'all_in' ? <SummaryRow label="Fuel Estimate" value={formatCurrency(Number(booking.fuel_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
-                  {booking.rental_model === 'all_in' ? <SummaryRow label="Toll Estimate" value={formatCurrency(Number(booking.toll_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
+                  {booking.rental_model === 'all_in' && booking.status !== 'completed' ? <SummaryRow label="Fuel Estimate" value={formatCurrency(Number(booking.fuel_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
+                  {booking.rental_model === 'all_in' && booking.status !== 'completed' ? <SummaryRow label="Toll Estimate" value={formatCurrency(Number(booking.toll_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
                   {Math.abs(balanceSummary?.adjustmentAmount || 0) > 0.009 ? <SummaryRow label="Price Adjustment" value={`${balanceSummary?.isIncrease ? '+' : '-'}${formatCurrency(Math.abs(balanceSummary?.adjustmentAmount || 0))}`} valueClassName={balanceSummary?.isIncrease ? 'text-[#f97316]' : 'text-[#16a34a]'} /> : null}
                   {balanceSummary && balanceSummary.extensionAmount > 0 ? <SummaryRow label={getExtensionChargeLabel(balanceSummary.extensionDays)} value={`+${formatCurrency(balanceSummary.extensionAmount)}`} valueClassName="text-[#f97316]" /> : null}
                   {booking.status === 'completed' && booking.rental_model === 'all_in' ? <SummaryRow label="Trip Reconciliation" value={`${tripReconciliationAmount >= 0 ? '+' : '-'}${formatCurrency(Math.abs(tripReconciliationAmount))}`} valueClassName={tripReconciliationAmount >= 0 ? 'text-[#f97316]' : 'text-[#16a34a]'} note={`Toll ${formatCurrency(Number(booking.actual_toll_amount || 0))} · Gas ${formatCurrency(Number(booking.actual_fuel_amount || 0))}`} /> : null}
@@ -532,36 +532,71 @@ export default function BookingDetail() {
             <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
               <div className="flex items-center justify-between border-b border-[#071f52]/8 px-6 py-5">
                 <h2 className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1f2a44]">Documents</h2>
-                <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-[#eef2f8] px-2 text-xs font-bold text-[#071f52]/48">{documents.length}</span>
+                <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-[#eef2f8] px-2 text-xs font-bold text-[#071f52]/48">{documents.length + requested_document_types.length}</span>
               </div>
 
               <div className="px-6 py-6">
-                {documents.length ? (
-                  <div className="space-y-3">
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#91a0b8]">Profile Documents</p>
+                <div className="space-y-5">
+                  {requested_document_types.length > 0 ? (
+                    <div className="space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#91a0b8]">Requested Documents</p>
 
-                    {documents.map((document) => (
-                      <div key={document.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-[#071f52]/8 bg-[#fbfcfe] px-4 py-3">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#ecfdf3] text-[#22c55e]">
-                            <FileText className="h-4.5 w-4.5" />
+                      {requested_document_types.map((type) => (
+                        <div key={type.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-[#071f52]/8 bg-[#fbfcfe] px-4 py-3">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#4f46e5]">
+                              <FileText className="h-4.5 w-4.5" />
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-bold text-[#1f2a44]">{type.label}</p>
+                              {type.upload ? (
+                                <p className="truncate text-xs font-medium text-[#f59e0b]">{type.upload.original_filename || type.upload.file_path}</p>
+                              ) : (
+                                <p className="text-xs font-medium text-[#e92935]/70">Not uploaded</p>
+                              )}
+                            </div>
                           </div>
 
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-bold text-[#1f2a44]">{toLabel(document.document_type)}</p>
-                            <p className="truncate text-xs font-medium text-[#f59e0b]">{document.original_filename || document.file_path}</p>
-                          </div>
+                          {type.upload ? (
+                            <button type="button" onClick={() => handleViewDocument(type.upload!)} disabled={openingId === type.upload.id} className="shrink-0 text-sm font-bold text-[#4f46e5] transition-colors hover:text-[#3639d4] disabled:opacity-50">
+                              {openingId === type.upload.id ? 'Opening...' : 'View'}
+                            </button>
+                          ) : null}
                         </div>
+                      ))}
+                    </div>
+                  ) : null}
 
-                        <button type="button" onClick={() => handleViewDocument(document)} disabled={openingId === document.id} className="shrink-0 text-sm font-bold text-[#4f46e5] transition-colors hover:text-[#3639d4] disabled:opacity-50">
-                          {openingId === document.id ? 'Opening...' : 'View'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyNote>No documents on file.</EmptyNote>
-                )}
+                  {documents.length > 0 ? (
+                    <div className="space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#91a0b8]">Profile Documents</p>
+
+                      {documents.map((document) => (
+                        <div key={document.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-[#071f52]/8 bg-[#fbfcfe] px-4 py-3">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#ecfdf3] text-[#22c55e]">
+                              <FileText className="h-4.5 w-4.5" />
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-bold text-[#1f2a44]">{toLabel(document.document_type)}</p>
+                              <p className="truncate text-xs font-medium text-[#f59e0b]">{document.original_filename || document.file_path}</p>
+                            </div>
+                          </div>
+
+                          <button type="button" onClick={() => handleViewDocument(document)} disabled={openingId === document.id} className="shrink-0 text-sm font-bold text-[#4f46e5] transition-colors hover:text-[#3639d4] disabled:opacity-50">
+                            {openingId === document.id ? 'Opening...' : 'View'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {documents.length === 0 && requested_document_types.length === 0 ? (
+                    <EmptyNote>No documents on file.</EmptyNote>
+                  ) : null}
+                </div>
               </div>
             </section>
 
@@ -676,7 +711,7 @@ export default function BookingDetail() {
       <ConfirmModal open={activeModal === 'confirm'} onClose={() => setActiveModal(null)} onConfirm={handleConfirmBooking} isPending={bookingAction.isPending} />
       <RejectModal open={activeModal === 'reject'} onClose={() => setActiveModal(null)} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} onSubmit={handleRejectBooking} isPending={bookingAction.isPending} />
       <AdjustBookingModal open={activeModal === 'adjust_booking'} onClose={() => setActiveModal(null)} remainingBalance={booking.remaining_amount} currentTotal={displayedTotal} adjustmentType={modalForm.adjustmentType} setAdjustmentType={(adjustmentType) => setModalForm((current) => ({ ...current, adjustmentType }))} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} onSubmit={handleAdjustBooking} isPending={bookingAction.isPending} />
-      <RequestDocsModal open={activeModal === 'request_documents'} onClose={() => setActiveModal(null)} docs={modalForm.docs} setDocs={(docs) => setModalForm((current) => ({ ...current, docs }))} onSubmit={handleRequestDocuments} isPending={bookingAction.isPending} />
+      <RequestDocsModal open={activeModal === 'request_documents'} onClose={() => setActiveModal(null)} onSubmit={handleRequestDocuments} isPending={bookingAction.isPending} />
       <StartTripModal open={activeModal === 'start_trip'} onClose={() => setActiveModal(null)} amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} paymentMethodId={modalForm.paymentMethodId} setPaymentMethodId={(paymentMethodId) => setModalForm((current) => ({ ...current, paymentMethodId }))} paymentChannel={modalForm.paymentChannel} setPaymentChannel={(paymentChannel) => setModalForm((current) => ({ ...current, paymentChannel }))} referenceNumber={modalForm.referenceNumber} setReferenceNumber={(referenceNumber) => setModalForm((current) => ({ ...current, referenceNumber }))} receiptFile={modalForm.receiptFile} setReceiptFile={(receiptFile) => setModalForm((current) => ({ ...current, receiptFile }))} paymentMethods={paymentMethods} onSubmit={handleStartTrip} isPending={bookingAction.isPending} />
       <ExtendRentalModal open={activeModal === 'extend_rental'} onClose={() => setActiveModal(null)} newDate={modalForm.newDate} setNewDate={(newDate) => setModalForm((current) => ({ ...current, newDate }))} minimumDateTime={minimumExtensionDateTime ? new Date(minimumExtensionDateTime) : undefined} amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} collectNow={modalForm.collectNow} setCollectNow={(collectNow) => setModalForm((current) => ({ ...current, collectNow }))} paymentMethodId={modalForm.paymentMethodId} setPaymentMethodId={(paymentMethodId) => setModalForm((current) => ({ ...current, paymentMethodId }))} paymentChannel={modalForm.paymentChannel} setPaymentChannel={(paymentChannel) => setModalForm((current) => ({ ...current, paymentChannel }))} referenceNumber={modalForm.referenceNumber} setReferenceNumber={(referenceNumber) => setModalForm((current) => ({ ...current, referenceNumber }))} receiptFile={modalForm.receiptFile} setReceiptFile={(receiptFile) => setModalForm((current) => ({ ...current, receiptFile }))} paymentMethods={paymentMethods} onSubmit={handleExtendBooking} isPending={bookingAction.isPending} isDateValid={isExtensionDateValid} />
       <CompleteModal open={activeModal === 'complete'} onClose={() => setActiveModal(null)} amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} actualTollAmount={modalForm.actualTollAmount} setActualTollAmount={(actualTollAmount) => setModalForm((current) => ({ ...current, actualTollAmount }))} actualFuelAmount={modalForm.actualFuelAmount} setActualFuelAmount={(actualFuelAmount) => setModalForm((current) => ({ ...current, actualFuelAmount }))} requiresTripReconciliation={requiresTripReconciliation} tollEstimateAmount={Number(booking.toll_estimate_amount || 0)} fuelEstimateAmount={Number(booking.fuel_estimate_amount || 0)} paymentMethodId={modalForm.paymentMethodId} setPaymentMethodId={(paymentMethodId) => setModalForm((current) => ({ ...current, paymentMethodId }))} paymentChannel={modalForm.paymentChannel} setPaymentChannel={(paymentChannel) => setModalForm((current) => ({ ...current, paymentChannel }))} referenceNumber={modalForm.referenceNumber} setReferenceNumber={(referenceNumber) => setModalForm((current) => ({ ...current, referenceNumber }))} receiptFile={modalForm.receiptFile} setReceiptFile={(receiptFile) => setModalForm((current) => ({ ...current, receiptFile }))} paymentMethods={paymentMethods} onSubmit={handleCompleteBooking} isPending={bookingAction.isPending} />
@@ -779,14 +814,46 @@ function AdjustBookingModal({ open, onClose, remainingBalance, currentTotal, adj
   )
 }
 
-function RequestDocsModal({ open, onClose, docs, setDocs, onSubmit, isPending }: { open: boolean; onClose: () => void; docs: string; setDocs: (v: string) => void; onSubmit: () => void; isPending: boolean }) {
+function RequestDocsModal({ open, onClose, onSubmit, isPending }: { open: boolean; onClose: () => void; onSubmit: (labels: string[]) => void; isPending: boolean }) {
+  const [labels, setLabels] = useState<string[]>([''])
+
+  const setLabel = (index: number, value: string) => {
+    setLabels((prev) => prev.map((label, i) => (i === index ? value : label)))
+  }
+
+  const addLabel = () => setLabels((prev) => [...prev, ''])
+  const removeLabel = (index: number) => setLabels((prev) => prev.filter((_, i) => i !== index))
+
+  const validLabels = labels.map((l) => l.trim()).filter(Boolean)
+
+  const handleSubmit = () => {
+    if (validLabels.length === 0) return
+    onSubmit(validLabels)
+  }
+
   return (
     <Dialog open={open} onClose={onClose} title="Request Documents">
-      <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Documents to request</label>
-      <textarea value={docs} onChange={(e) => setDocs(e.target.value)} rows={3} placeholder="e.g. Valid ID, Proof of billing" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
+      <div className="space-y-2">
+        {labels.map((label, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <input
+              value={label}
+              onChange={(e) => setLabel(index, e.target.value)}
+              placeholder="e.g. Valid ID"
+              className="flex-1 rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none"
+            />
+            {labels.length > 1 ? (
+              <button type="button" onClick={() => removeLabel(index)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#e92935]/30 text-[#e92935] hover:bg-[#e92935]/8">−</button>
+            ) : null}
+          </div>
+        ))}
+      </div>
+
+      <button type="button" onClick={addLabel} className="mt-2 flex items-center gap-1 text-xs font-bold text-[#4f46e5] hover:text-[#3639d4]">+ Add another document</button>
+
       <div className="flex justify-end gap-2 mt-4">
         <button onClick={onClose} disabled={isPending} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6 disabled:opacity-50">Cancel</button>
-        <button onClick={onSubmit} disabled={isPending || !docs.trim()} className="rounded-full px-4 py-2 text-xs font-bold bg-[#071f52] text-white hover:bg-[#071f52]/90 disabled:opacity-50">{isPending ? 'Sending...' : 'Send Request'}</button>
+        <button onClick={handleSubmit} disabled={isPending || validLabels.length === 0} className="rounded-full px-4 py-2 text-xs font-bold bg-[#071f52] text-white hover:bg-[#071f52]/90 disabled:opacity-50">{isPending ? 'Sending...' : 'Send Request'}</button>
       </div>
     </Dialog>
   )
