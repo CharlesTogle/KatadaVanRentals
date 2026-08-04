@@ -4,7 +4,7 @@ import { BookingCreateForm } from '@/components/admin/booking-create-form'
 
 export default function AdminBookingsCreate() {
   return (
-    <div className="mx-auto max-w-[1240px] px-4 py-6 sm:px-6 sm:py-8" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div className="mx-auto max-w-[1240px] py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <Link to="/admin/bookings" className="mb-4 inline-flex items-center gap-2 text-sm font-bold text-[#071f52]/60 transition-colors hover:text-[#071f52]">
         <ArrowLeft size={16} /> Back to bookings
       </Link>

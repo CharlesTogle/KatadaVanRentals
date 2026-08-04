@@ -89,13 +89,13 @@ export default function Customers() {
   }
 
   return (
-    <div className="px-6 py-8 overflow-x-hidden" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div className="py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52]">Customers</h1>
           <p className="mt-1 text-sm text-[#071f52]/58">Manage customer accounts and view booking activity.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => exportCsv(customers)}
@@ -103,16 +103,17 @@ export default function Customers() {
             className="inline-flex items-center gap-2 rounded-xl border border-[#071f52]/14 bg-white px-3 py-1.5 text-[10px] sm:px-4 sm:py-2 sm:text-sm font-bold text-[#071f52] transition-colors hover:bg-[#f7f9ff] disabled:opacity-40"
           >
             <Download size={14} />
-            Export CSV
+            <span className="hidden sm:inline">Export CSV</span>
+            <span className="sm:hidden">Export</span>
           </button>
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none">
             <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#071f52]/38" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Name, email, or mobile..."
+              placeholder="Search customers..."
               aria-label="Search customers"
-              className="w-full sm:w-64 rounded-xl border border-[#071f52]/14 bg-white py-2 pl-9 pr-4 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 focus:border-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+              className="w-full sm:w-52 rounded-xl border border-[#071f52]/14 bg-white py-2 pl-9 pr-4 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 focus:border-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
             />
           </div>
         </div>

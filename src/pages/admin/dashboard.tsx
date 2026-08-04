@@ -289,15 +289,15 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="px-6 py-8 animate-pulse space-y-6">
+      <div className="py-6 animate-pulse space-y-6">
         <div className="h-7 w-40 rounded-lg bg-[#071f52]/10" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => <div key={i} className="h-28 rounded-xl bg-[#071f52]/6" />)}
         </div>
-        <div className="grid gap-6 xl:grid-cols-[2fr_1fr_1fr]">
+        <div className="grid gap-6 grid-cols-1 lg:grid-cols-[2fr_1fr] xl:grid-cols-[2fr_1fr_1fr]">
           <div className="h-80 rounded-xl bg-[#071f52]/6" />
           <div className="h-80 rounded-xl bg-[#071f52]/6" />
-          <div className="h-80 rounded-xl bg-[#071f52]/6" />
+          <div className="h-80 hidden xl:block rounded-xl bg-[#071f52]/6" />
         </div>
       </div>
     )
@@ -314,8 +314,8 @@ export default function Dashboard() {
 
   const d = data!
 
-  return (
-    <div className="px-6 py-8" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    return (
+    <div className="py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52]">Dashboard</h1>
 
       {/* ── stat cards ── */}
@@ -347,11 +347,11 @@ export default function Dashboard() {
       </div>
 
       {/* ── 3-column grid ── */}
-      <div className="mt-8 grid gap-6 xl:grid-cols-[2fr_1fr_1fr]">
+      <div className="mt-8 grid gap-6 grid-cols-1 lg:grid-cols-[2fr_1fr] xl:grid-cols-[2fr_1fr_1fr]">
         {/* ── MAIN ── */}
         <div className="flex flex-col gap-6">
           {/* earnings summary */}
-          <div className="card flex-1 min-h-0 flex flex-col">
+          <div className="card flex-1 min-h-[280px] flex flex-col">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base font-black text-[#071f52]">Earnings Summary</h2>
@@ -374,7 +374,7 @@ export default function Dashboard() {
           </div>
 
           {/* bookings overview */}
-          <div className="card flex-1 min-h-0 flex flex-col">
+          <div className="card flex-1 min-h-[280px] flex flex-col">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base font-black text-[#071f52]">Bookings Overview</h2>
@@ -397,7 +397,7 @@ export default function Dashboard() {
         {/* ── MIDDLE ── */}
         <div className="flex flex-col gap-6">
           {/* rent status donut */}
-          <div className="card flex-1 min-h-0 flex flex-col">
+          <div className="card flex-1 min-h-[280px] flex flex-col">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-black text-[#071f52]">Rent Status</h2>
               <span className="rounded-full bg-[#071f52]/6 px-3 py-1 text-xs font-bold text-[#071f52]/56">This week</span>
@@ -427,7 +427,7 @@ export default function Dashboard() {
           </div>
 
           {/* revenue by vehicle */}
-          <div className="card flex-1 min-h-0 flex flex-col">
+          <div className="card flex-1 min-h-[280px] flex flex-col">
             <h2 className="text-base font-black text-[#071f52]">Revenue by Vehicle</h2>
             <p className="mt-1 text-sm text-[#071f52]/56">Top vehicles by total revenue.</p>
             {d.revenueByVehicle.length === 0 ? (
@@ -447,9 +447,9 @@ export default function Dashboard() {
         </div>
 
         {/* ── RIGHT ── */}
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 lg:col-span-2 xl:col-span-1 lg:grid lg:grid-cols-2 xl:flex xl:flex-col">
           {/* daily bookings */}
-          <div className="card flex-1 min-h-0 flex flex-col">
+          <div className="card flex-1 min-h-[240px] flex flex-col">
             <h2 className="text-base font-black text-[#071f52]">Daily Bookings</h2>
             <p className="mt-1 text-sm text-[#071f52]/56">Booking volume last 7 days.</p>
             {d.dailyBookings.every((p) => p.value === 0) ? (
@@ -468,7 +468,7 @@ export default function Dashboard() {
           </div>
 
           {/* car types */}
-          <div className="card flex-1 min-h-0 flex flex-col">
+          <div className="card flex-1 min-h-[240px] flex flex-col">
             <h2 className="text-base font-black text-[#071f52]">Car Types</h2>
             <p className="mt-1 text-sm text-[#071f52]/56">Vehicle distribution by category.</p>
             <div className="mt-4 space-y-5">
@@ -497,22 +497,22 @@ export default function Dashboard() {
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-base font-black text-[#071f52]">Car Bookings</h2>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 rounded-lg border border-[#071f52]/12 bg-[#071f52]/4 px-3 py-1.5">
+            <div className="flex items-center gap-2 rounded-lg border border-[#071f52]/12 bg-[#071f52]/4 px-2.5 py-1.5">
               <Search size={14} className="text-[#071f52]/40" />
               <input
                 value={bookingSearch}
                 onChange={(e) => setBookingSearch(e.target.value)}
-                placeholder="Search bookings..."
-                className="bg-transparent text-xs font-medium text-[#071f52] outline-none placeholder:text-[#071f52]/32 w-36"
+                placeholder="Search..."
+                className="bg-transparent text-xs font-medium text-[#071f52] outline-none placeholder:text-[#071f52]/32 w-24 sm:w-36"
               />
             </div>
-            <button className="flex items-center gap-1.5 rounded-lg border border-[#071f52]/12 px-3 py-1.5 text-xs font-bold text-[#071f52]/56 hover:bg-[#071f52]/4 transition-colors">
-              <Filter size={13} /> Filter
+            <button className="flex items-center gap-1.5 rounded-lg border border-[#071f52]/12 px-2.5 py-1.5 text-xs font-bold text-[#071f52]/56 hover:bg-[#071f52]/4 transition-colors">
+              <Filter size={13} /> <span className="hidden sm:inline">Filter</span>
             </button>
           </div>
         </div>
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="w-full text-left text-sm min-w-[500px]">
             <thead>
               <tr className="border-b border-[#071f52]/8 text-xs font-bold text-[#071f52]/48 uppercase tracking-[0.08em]">
                 <th className="pb-2.5 pr-3">Booking #</th>

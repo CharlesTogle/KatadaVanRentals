@@ -463,11 +463,13 @@ export function BookingCreateForm() {
               </div>
 
               {selectedVehicle ? (
-                <div className="card flex items-center gap-4 rounded-[24px] p-4 sm:p-5">
-                  <img src={selectedVehicle.image_paths?.[0] || '/van-1.jpg'} alt={selectedVehicle.name} className="h-16 w-20 rounded-2xl object-cover" />
-                  <div>
-                    <p className="text-2xl font-black tracking-[-0.03em] text-[#071f52]">{selectedVehicle.name}</p>
-                    <p className="mt-1 text-base font-medium text-[#071f52]/52">Toyota · {selectedVehicle.transmission || 'Manual'} · {selectedVehicle.passenger_count} seats</p>
+                <div className="card flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-[24px] p-4 sm:p-5">
+                  <img src={selectedVehicle.image_paths?.[0] || '/van-1.jpg'} alt={selectedVehicle.name} className="h-16 w-20 shrink-0 rounded-2xl object-cover" />
+                  <div className="min-w-0">
+                    <p className="text-xl sm:text-2xl font-black tracking-[-0.03em] text-[#071f52]">{selectedVehicle.name}</p>
+                    <p className="mt-1 text-sm sm:text-base font-medium text-[#071f52]/52">
+                      {selectedVehicle.brand_id || 'Toyota'} · {selectedVehicle.transmission || 'Manual'} · {selectedVehicle.passenger_count} seats
+                    </p>
                   </div>
                 </div>
               ) : null}

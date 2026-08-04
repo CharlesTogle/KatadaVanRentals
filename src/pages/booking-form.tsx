@@ -604,45 +604,47 @@ export default function BookingForm() {
   }
 
   return (
-    <div className="mx-auto max-w-[1240px] px-4 py-6 sm:px-6 sm:py-8">
-      <button onClick={() => navigate('/our-fleet')} className="mb-4 flex items-center gap-2 text-sm font-bold text-[#071f52]/60 transition-colors hover:text-[#e92935]">
-        <ArrowLeft size={16} /> Back to vehicle
+    <div className="w-full px-3 py-4 sm:px-5 sm:py-6">
+      <button onClick={() => navigate('/our-fleet')} className="mb-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#071f52]/60 transition-colors hover:text-[#e92935] sm:mb-4 sm:gap-2 sm:text-sm">
+        <ArrowLeft size={14} className="sm:hidden" />
+        <ArrowLeft size={16} className="hidden sm:block" />
+        Back to vehicle
       </button>
 
-      <h1 className="text-3xl font-black tracking-[-0.04em] text-[#071f52] sm:text-5xl">Book {bookingVehicle.name}</h1>
-      <p className="mt-2 text-base font-medium text-[#071f52]/58 sm:text-lg">
+      <h1 className="text-lg font-black tracking-[-0.03em] text-[#071f52] sm:text-3xl sm:tracking-[-0.04em]">Book {bookingVehicle.name}</h1>
+      <p className="mt-1 text-xs font-medium text-[#071f52]/58 sm:mt-2 sm:text-base sm:text-lg">
         Fill in all details below. Your booking will be reviewed by our team.
       </p>
 
       {selfDriveBlocked ? (
-        <div className="mt-8 rounded-[24px] border border-[#e92935]/24 bg-[#fff5f5] px-5 py-5 text-[#b91c1c] sm:px-6">
-          <p className="text-lg font-black">Profile documents required for Self-Drive</p>
-          <p className="mt-2 text-sm font-medium leading-6 text-[#b91c1c]/88">
+        <div className="mt-6 rounded-lg border border-[#e92935]/24 bg-[#fff5f5] px-4 py-4 text-[#b91c1c] sm:mt-8 sm:rounded-[24px] sm:px-6 sm:py-5">
+          <p className="text-sm font-black sm:text-lg">Profile documents required for Self-Drive</p>
+          <p className="mt-1.5 text-xs font-medium leading-5 text-[#b91c1c]/88 sm:mt-2 sm:text-sm sm:leading-6">
             You cannot submit a self-drive booking until the following documents are uploaded to your profile. Please complete them first, then return here to book.
           </p>
-          <ul className="mt-4 space-y-2 text-sm font-semibold">
+          <ul className="mt-3 space-y-1.5 text-xs font-semibold sm:mt-4 sm:space-y-2 sm:text-sm">
             {missingSelfDriveDocuments.map((documentType) => (
               <li key={documentType}>× {formatDocumentLabel(documentType)} - missing</li>
             ))}
           </ul>
-          <Link to="/documents" className="mt-5 inline-flex text-base font-black underline underline-offset-4">
+          <Link to="/documents" className="mt-4 inline-flex text-sm font-black underline underline-offset-4 sm:mt-5 sm:text-base">
             Complete your documents →
           </Link>
         </div>
         ) : null}
 
         {profileBlocked ? (
-          <div className="mt-8 rounded-[24px] border border-[#e92935]/24 bg-[#fff5f5] px-5 py-5 text-[#b91c1c] sm:px-6">
-            <p className="text-lg font-black">Complete your profile before booking</p>
-            <p className="mt-2 text-sm font-medium leading-6 text-[#b91c1c]/88">
+          <div className="mt-6 rounded-lg border border-[#e92935]/24 bg-[#fff5f5] px-4 py-4 text-[#b91c1c] sm:mt-8 sm:rounded-[24px] sm:px-6 sm:py-5">
+            <p className="text-sm font-black sm:text-lg">Complete your profile before booking</p>
+            <p className="mt-1.5 text-xs font-medium leading-5 text-[#b91c1c]/88 sm:mt-2 sm:text-sm sm:leading-6">
               Your booking uses the contact details from your profile. Update the missing details first, then return here to continue.
             </p>
-            <ul className="mt-4 space-y-2 text-sm font-semibold">
+            <ul className="mt-3 space-y-1.5 text-xs font-semibold sm:mt-4 sm:space-y-2 sm:text-sm">
               {missingProfileFields.map((field) => (
                 <li key={field}>× {field} - missing</li>
               ))}
             </ul>
-            <Link to="/profile" className="mt-5 inline-flex text-base font-black underline underline-offset-4">
+            <Link to="/profile" className="mt-4 inline-flex text-sm font-black underline underline-offset-4 sm:mt-5 sm:text-base">
               Complete your profile →
             </Link>
           </div>
@@ -723,23 +725,14 @@ export default function BookingForm() {
               </BookingSection>
 
             <div className="card">
-              <h2 className="mb-4 text-base font-black tracking-[-0.02em] text-[#071f52]">ADDITIONAL NOTES (OPTIONAL)</h2>
+              <h2 className="mb-4 text-base font-black tracking-[-0.02em] text-[#071f52] sm:text-lg">ADDITIONAL NOTES (OPTIONAL)</h2>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 placeholder="Any special requests, notes for the admin, accessibility needs, etc."
-                className="block w-full resize-none rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+                className="block w-full resize-none rounded-lg border border-[#071f52]/14 bg-[#f7f9ff] px-3 py-2 text-xs font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-base"
               />
-            </div>
-
-            <div className="pb-8 pt-2 text-center text-sm font-medium text-[#071f52]/48">
-              <p>© 2026 Katada Transportation Services. All rights reserved.</p>
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-4">
-                <Link to="/terms" className="font-bold text-[#071f52] hover:text-[#e92935]">Terms of Service</Link>
-                <Link to="/privacy" className="font-bold text-[#071f52] hover:text-[#e92935]">Privacy Policy</Link>
-              </div>
-              <p className="mt-2">Car Rental Booking System Powered by CarRentSaaS</p>
             </div>
           </div>
 
@@ -767,6 +760,14 @@ export default function BookingForm() {
               disabledMessage={profileBlocked ? 'Complete your profile to enable booking.' : selfDriveBlocked ? 'Complete your profile documents to enable booking.' : (!startParam || !endParam) ? 'Pick-up and drop-off dates are required.' : selfDriveAddressIncomplete ? 'Enter your complete address for this self-drive booking.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : paymentIncomplete ? 'Complete payment details to enable booking.' : undefined))}
               error={error}
             />
+          </div>
+        </div>
+
+        <div className="mt-6 text-center text-xs font-medium text-[#071f52]/48 sm:text-sm">
+          <p>© 2026 Katada Transportation Services. All rights reserved.</p>
+          <div className="mt-1.5 flex flex-wrap items-center justify-center gap-3 sm:mt-2 sm:gap-4">
+            <Link to="/terms" className="font-bold text-[#071f52] hover:text-[#e92935]">Terms of Service</Link>
+            <Link to="/privacy" className="font-bold text-[#071f52] hover:text-[#e92935]">Privacy Policy</Link>
           </div>
         </div>
       </form>

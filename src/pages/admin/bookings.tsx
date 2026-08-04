@@ -43,8 +43,8 @@ export default function AdminBookings() {
   }
 
   return (
-    <div className="px-6 py-8" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52]">Bookings</h1>
         <div className="flex items-center gap-3">
           <Link
@@ -53,14 +53,14 @@ export default function AdminBookings() {
           >
             Create booking
           </Link>
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none">
             <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#071f52]/38" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search booking or customer..."
+              placeholder="Search..."
               aria-label="Search bookings"
-              className="w-64 rounded-xl border border-[#071f52]/14 bg-white py-2 pl-9 pr-4 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 focus:border-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+              className="w-full sm:w-56 rounded-xl border border-[#071f52]/14 bg-white py-2 pl-9 pr-4 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 focus:border-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
             />
           </div>
         </div>

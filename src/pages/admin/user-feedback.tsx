@@ -19,7 +19,7 @@ export default function AdminUserFeedback() {
   const { data: feedback = [], isLoading } = useAdminFeedback()
 
   return (
-    <div className="px-6 py-8" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div className="py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <div>
         <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52]">User Feedback</h1>
         <p className="mt-1 text-sm text-[#071f52]/58">All customer ratings and written feedback in one place.</p>

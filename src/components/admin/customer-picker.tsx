@@ -40,7 +40,7 @@ export function CustomerPicker({ value, onChange }: CustomerPickerProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {(['existing', 'new'] as const).map((mode) => (
           <button
             key={mode}
@@ -50,7 +50,7 @@ export function CustomerPicker({ value, onChange }: CustomerPickerProps) {
               existingCustomer: mode === 'existing' ? value.existingCustomer : null,
               newCustomer: mode === 'new' ? defaultNewCustomer : value.newCustomer,
             })}
-            className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition-colors ${
+            className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 rounded-full px-3 sm:px-4 py-2 text-[11px] sm:text-xs font-bold transition-colors ${
               value.mode === mode
                 ? 'bg-[#071f52] text-white'
                 : 'bg-white text-[#071f52]/58 border border-[#071f52]/10 hover:bg-[#071f52]/8'

@@ -107,9 +107,9 @@ export default function Documents() {
   }
 
   return (
-    <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8">
-      <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52] sm:text-3xl">Documents</h1>
-      <p className="mt-1 text-sm font-medium text-[#071f52]/58">Upload your IDs and billing proof for Self Drive bookings.</p>
+    <div className="w-full px-3 py-4 sm:px-5 sm:py-6">
+      <h1 className="text-lg font-black tracking-[-0.02em] text-[#071f52] sm:text-2xl sm:tracking-[-0.03em]">Documents</h1>
+      <p className="mt-0.5 text-xs font-medium text-[#071f52]/58 sm:text-sm">Upload your IDs and billing proof for Self Drive bookings.</p>
 
       <input
         ref={fileInputRef}
@@ -120,20 +120,20 @@ export default function Documents() {
         aria-label="Upload document file"
       />
 
-      <div className="mt-6 space-y-3">
+      <div className="mt-4 space-y-2 sm:mt-6 sm:space-y-3">
         {isLoading ? (
-          <div className="space-y-3 animate-pulse">
+          <div className="space-y-2 animate-pulse sm:space-y-3">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="rounded-2xl border border-[#071f52]/10 bg-white p-4">
+              <div key={i} className="rounded-lg border border-[#071f52]/10 bg-white p-3 sm:p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-32 rounded-lg bg-[#071f52]/10" />
-                      <div className="h-4 w-16 rounded-full bg-[#071f52]/6" />
+                  <div className="flex-1 space-y-1.5 sm:space-y-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <div className="h-3.5 w-28 rounded bg-[#071f52]/10 sm:h-4 sm:w-32" />
+                      <div className="h-3.5 w-14 rounded-full bg-[#071f52]/6 sm:h-4 sm:w-16" />
                     </div>
-                    <div className="h-3 w-48 rounded-lg bg-[#071f52]/6" />
+                    <div className="h-2.5 w-40 rounded bg-[#071f52]/6 sm:h-3 sm:w-48" />
                   </div>
-                  <div className="h-8 w-20 rounded-full bg-[#071f52]/6" />
+                  <div className="h-7 w-16 rounded-full bg-[#071f52]/6 sm:h-8 sm:w-20" />
                 </div>
               </div>
             ))}
@@ -145,38 +145,40 @@ export default function Documents() {
 
             return (
               <div key={doc.key} className="card">
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start justify-between gap-2 sm:gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-[#071f52]">{doc.label}</p>
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <p className="text-xs font-bold text-[#071f52] sm:text-sm">{doc.label}</p>
                       {existing && (
-                        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${STATUS_STYLES[existing.status] || STATUS_STYLES.missing}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold sm:px-2.5 sm:py-0.5 sm:text-[10px] ${STATUS_STYLES[existing.status] || STATUS_STYLES.missing}`}>
                           {existing.status}
                         </span>
                       )}
                     </div>
-                    <p className="mt-0.5 text-xs font-medium text-[#071f52]/48">
+                    <p className="mt-0.5 text-[10px] font-medium text-[#071f52]/48 sm:text-xs">
                       {isUploaded ? existing.original_filename : 'Not uploaded'}
                     </p>
                     {existing && (
-                      <div className="mt-2 flex items-center gap-2">
+                      <div className="mt-1.5 flex items-center gap-1.5 sm:mt-2 sm:gap-2">
                         <button
                           type="button"
                           onClick={() => handleView(existing)}
                           disabled={openingId === existing.id}
-                          className="inline-flex items-center gap-1 text-xs font-bold text-[#071f52] underline hover:text-[#e92935] disabled:opacity-50"
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-[#071f52] underline hover:text-[#e92935] disabled:opacity-50 sm:text-xs"
                         >
-                          <FileText size={12} /> {openingId === existing.id ? 'Opening...' : 'View'}
+                          <FileText size={10} className="sm:hidden" />
+                          <FileText size={12} className="hidden sm:block" />
+                          {openingId === existing.id ? 'Opening...' : 'View'}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleUploadClick(doc.key)}
                           disabled={uploading[doc.key]}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-[#071f52]/58 underline transition-colors hover:text-[#e92935] disabled:opacity-50"
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-[#071f52]/58 underline transition-colors hover:text-[#e92935] disabled:opacity-50 sm:text-xs sm:gap-1.5"
                         >
                           {uploading[doc.key] ? (
                             <>
-                              <span className="h-3 w-3 animate-spin rounded-full border-2 border-current/20 border-t-current" />
+                              <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-current/20 border-t-current sm:h-3 sm:w-3" />
                               Replacing...
                             </>
                           ) : (
@@ -186,17 +188,19 @@ export default function Documents() {
                       </div>
                     )}
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                     {isUploaded ? (
                       <>
-                        <CheckCircle2 size={18} className="text-[#16a34a]" />
+                        <CheckCircle2 size={15} className="text-[#16a34a] sm:hidden" />
+                        <CheckCircle2 size={18} className="text-[#16a34a] hidden sm:block" />
                         <button
                           type="button"
                           onClick={() => setDeleting(existing)}
-                          className="rounded-lg p-1.5 text-[#071f52]/30 transition-colors hover:bg-[#e92935]/8 hover:text-[#e92935]"
+                          className="rounded p-1 text-[#071f52]/30 transition-colors hover:bg-[#e92935]/8 hover:text-[#e92935] sm:p-1.5"
                           aria-label={`Delete ${doc.label}`}
                         >
-                          <Trash2 size={15} />
+                          <Trash2 size={13} className="sm:hidden" />
+                          <Trash2 size={15} className="hidden sm:block" />
                         </button>
                       </>
                     ) : (
@@ -204,13 +208,14 @@ export default function Documents() {
                         type="button"
                         onClick={() => handleUploadClick(doc.key)}
                         disabled={uploading[doc.key]}
-                        className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#071f52] px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-[#112458] disabled:opacity-50"
+                        className="flex shrink-0 items-center gap-1 rounded-full bg-[#071f52] px-3 py-1.5 text-[10px] font-bold text-white transition-colors hover:bg-[#112458] disabled:opacity-50 sm:px-4 sm:py-2 sm:text-xs sm:gap-1.5"
                       >
                         {uploading[doc.key] ? (
-                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                          <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white sm:h-3.5 sm:w-3.5" />
                         ) : (
-                          <Upload size={13} />
+                          <Upload size={11} className="sm:hidden" />
                         )}
+                        <Upload size={13} className="hidden sm:block" />
                         Upload
                       </button>
                     )}
@@ -222,28 +227,28 @@ export default function Documents() {
         )}
       </div>
 
-      <p className="mt-4 text-xs font-medium leading-5 text-[#071f52]/48">
+      <p className="mt-3 text-[10px] font-medium leading-5 text-[#071f52]/48 sm:mt-4 sm:text-xs">
         Each document is saved automatically as soon as you add it. You can upload them one at a time.
       </p>
-      <p className="mt-2 text-xs font-medium leading-5 text-[#071f52]/48">
+      <p className="mt-1.5 text-[10px] font-medium leading-5 text-[#071f52]/48 sm:mt-2 sm:text-xs">
         Ready for Self Drive? Go back to <Link to="/our-fleet" className="font-bold text-[#071f52] underline">the fleet</Link> after all three show as uploaded.
       </p>
 
       <Dialog open={!!deleting} onClose={() => setDeleting(null)} title="Delete Document">
         {deleting && (
-          <div className="space-y-4">
-            <p className="text-sm text-[#071f52]/64">
+          <div className="space-y-3 sm:space-y-4">
+            <p className="text-xs text-[#071f52]/64 sm:text-sm">
               Are you sure you want to delete <span className="font-bold text-[#071f52]">{requiredDocs.find((d) => d.key === deleting.document_type)?.label}</span>? This cannot be undone.
             </p>
-            <div className="flex items-center justify-end gap-3">
+            <div className="flex items-center justify-end gap-2 sm:gap-3">
               <button
-                className="rounded-xl border border-[#071f52]/14 px-4 py-2 text-sm font-semibold text-[#071f52] hover:bg-[#f7f9ff] transition-colors"
+                className="rounded-lg border border-[#071f52]/14 px-3 py-1.5 text-xs font-semibold text-[#071f52] hover:bg-[#f7f9ff] transition-colors sm:px-4 sm:py-2 sm:text-sm"
                 onClick={() => setDeleting(null)}
               >
                 Cancel
               </button>
               <button
-                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 transition-colors disabled:opacity-50 sm:px-4 sm:py-2 sm:text-sm"
                 onClick={handleDelete}
                 disabled={deleteDocument.isPending}
               >

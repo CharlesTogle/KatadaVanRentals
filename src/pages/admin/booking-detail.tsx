@@ -96,7 +96,7 @@ export default function BookingDetail() {
 
   if (isLoading) {
     return (
-      <div className="px-6 py-8" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <div className="py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
         <div className="space-y-4">
           <div className="h-8 w-48 rounded-xl bg-[#071f52]/6 animate-pulse" />
           <div className="h-32 rounded-xl bg-[#071f52]/6 animate-pulse" />
@@ -111,7 +111,7 @@ export default function BookingDetail() {
 
   if (error || !data) {
     return (
-      <div className="px-6 py-8" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <div className="py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
         <Link to="/admin/bookings" className="inline-flex items-center gap-2 text-sm font-semibold text-[#071f52]/60 hover:text-[#071f52] mb-6">
           <ArrowLeft className="h-4 w-4" /> Back to Bookings
         </Link>
@@ -302,7 +302,7 @@ export default function BookingDetail() {
   }
 
   return (
-    <main className="min-h-[100dvh] bg-[#f4f7fb] px-4 py-6 sm:px-6 lg:px-8" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <main className="min-h-[100dvh] bg-[#f4f7fb] py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <div className="mx-auto max-w-[1440px]">
         <nav className="mb-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-[#071f52]/42">
           <Link to="/admin" className="transition-colors hover:text-[#071f52]">Dashboard</Link>
@@ -332,7 +332,7 @@ export default function BookingDetail() {
               </p>
             </div>
 
-            <div className="min-w-[220px] text-left sm:text-right">
+            <div className="w-full sm:w-auto sm:min-w-[220px] text-left sm:text-right">
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#071f52]/34">Created</p>
               <p className="mt-1 text-sm font-semibold text-[#071f52]/58">{formatDateTime(booking.created_at)}</p>
             </div>
@@ -341,7 +341,7 @@ export default function BookingDetail() {
           <div className="mt-7 border-t border-[#071f52]/8 pt-8">
             <div className="relative">
               <div className="absolute left-5 right-5 top-4 hidden h-px bg-[#071f52]/10 sm:block" />
-              <ol className="grid gap-6 sm:grid-cols-5 sm:gap-3">
+              <ol className="grid gap-3 sm:grid-cols-5 sm:gap-3">
                 {TIMELINE_STATUSES.map((status, index) => {
                   const reached = timelineIdx >= index
                   const current = booking.status === status
@@ -432,9 +432,9 @@ export default function BookingDetail() {
               <div className="px-6 py-6">
                 <div className="space-y-3">
                   {booking.price_line_items?.map((item, index) => (
-                    <div key={index} className="flex items-start justify-between gap-4 border-b border-[#071f52]/6 pb-3 text-sm last:border-0 last:pb-0">
-                      <span className="text-[#071f52]/64">{item.label}{item.detail ? ` (${item.detail})` : ''}</span>
-                      <span className="font-bold text-[#071f52] tabular-nums">{formatCurrency(item.amount)}</span>
+                    <div key={index} className="flex items-start justify-between gap-2 border-b border-[#071f52]/6 pb-3 text-sm last:border-0 last:pb-0">
+                      <span className="text-[#071f52]/64 min-w-0">{item.label}{item.detail ? ` (${item.detail})` : ''}</span>
+                      <span className="font-bold text-[#071f52] tabular-nums shrink-0">{formatCurrency(item.amount)}</span>
                     </div>
                   ))}
                 </div>

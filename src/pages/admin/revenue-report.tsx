@@ -323,7 +323,7 @@ export default function RevenueReport() {
   }
 
   return (
-    <div className="px-4 py-8 sm:px-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div className="py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       {/* ── header ── */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>

@@ -46,7 +46,7 @@ export default function AdminSettings({ tab: initialTab }: { tab?: string }) {
   })
 
   return (
-    <div className="p-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div className="py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52]">Settings</h1>
 
       {message && (
@@ -55,6 +55,19 @@ export default function AdminSettings({ tab: initialTab }: { tab?: string }) {
           messageType === 'success' ? 'border-[#16a34a]/30 bg-[#16a34a]/10 text-[#15803d]' : 'border-[#e92935]/30 bg-[#e92935]/8 text-[#b91c1c]',
         )}>{message}</div>
       )}
+
+      {/* Mobile tab selector */}
+      <div className="mt-4 lg:hidden">
+        <select
+          value={activeTab}
+          onChange={(e) => goToTab(e.target.value)}
+          className="w-full rounded-xl border border-[#071f52]/15 bg-white px-4 py-2.5 text-sm font-bold text-[#071f52] shadow-[0_2px_8px_rgba(7,31,82,0.06)]"
+        >
+          {tabs.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+      </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[220px_1fr]">
         <div className="hidden lg:block space-y-0.5">

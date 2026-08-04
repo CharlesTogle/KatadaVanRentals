@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 
 function sidebarLinkClasses(isActive: boolean) {
   return cn(
-    'flex items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium transition-colors',
+    'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-base',
     isActive
       ? 'bg-[#eef2fb] text-[#071f52]'
       : 'text-[#071f52]/72 hover:bg-[#f7f9ff] hover:text-[#071f52]',
@@ -39,18 +39,19 @@ export function CustomerShellFrame({ children }: { children: ReactNode }) {
 
   return (
     <div className="customer-shell min-h-screen bg-[#f7f9ff]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      <div className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-8">
-        <div className="sticky top-4 z-20 mb-4 flex items-center justify-between rounded-[24px] border border-[#071f52]/10 bg-white/92 px-4 py-3 shadow-[0_12px_32px_rgba(7,31,82,0.08)] backdrop-blur-md lg:hidden">
-          <p className="text-sm font-black text-[#071f52]">Account menu</p>
+      <div className="mx-auto max-w-[1440px] px-3 py-4 sm:px-5 sm:py-6 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-6 lg:px-6">
+        <div className="sticky top-4 z-20 mb-3 flex items-center justify-between rounded-xl border border-[#071f52]/10 bg-white/92 px-3 py-2.5 shadow-[0_8px_24px_rgba(7,31,82,0.06)] backdrop-blur-md lg:hidden">
+          <img src="/logo.jpg" alt="Katada Transportation Services" className="h-8 w-8 rounded-xl object-cover ring-1 ring-[#071f52]/10" />
+          <p className="text-xs font-black text-[#071f52]">Katada Van Rentals</p>
 
           <button
             type="button"
             aria-label="Toggle account menu"
             aria-expanded={sidebarOpen}
             onClick={() => setSidebarOpen((open) => !open)}
-            className="rounded-full p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8"
+            className="rounded-full p-1.5 text-[#071f52] transition-colors hover:bg-[#071f52]/8"
           >
-            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
         </div>
 
@@ -61,36 +62,37 @@ export function CustomerShellFrame({ children }: { children: ReactNode }) {
           />
         )}
 
-        <aside className={`fixed bottom-0 right-0 top-0 z-40 w-[min(320px,100vw)] transition-transform duration-300 lg:static lg:w-auto lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-          <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-[#071f52]/10 bg-white shadow-[0_18px_48px_rgba(7,31,82,0.08)] lg:sticky lg:top-8 lg:h-auto">
-            <div className="flex items-center justify-between border-b border-[#071f52]/10 px-5 py-4 lg:hidden">
-              <p className="text-sm font-black text-[#071f52]">Account menu</p>
+        <aside className={`fixed bottom-0 right-0 top-0 z-40 w-[min(300px,100vw)] transition-transform duration-300 lg:static lg:w-auto lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+          <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[#071f52]/10 bg-white shadow-[0_12px_36px_rgba(7,31,82,0.06)] lg:sticky lg:top-8 lg:h-auto">
+            <div className="flex items-center justify-between border-b border-[#071f52]/10 px-4 py-3 lg:hidden">
+              <img src="/logo.jpg" alt="Katada Transportation Services" className="h-8 w-8 rounded-xl object-cover ring-1 ring-[#071f52]/10" />
+              <p className="text-xs font-black text-[#071f52]">Katada Van Rentals</p>
               <button
                 type="button"
                 aria-label="Close account menu"
                 onClick={() => setSidebarOpen(false)}
-                className="rounded-full p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8"
+                className="rounded-full p-1.5 text-[#071f52] transition-colors hover:bg-[#071f52]/8"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
-            <div className="flex items-center gap-4 border-b border-[#071f52]/10 px-5 py-5">
+            <div className="flex items-center gap-3 border-b border-[#071f52]/10 px-4 py-4 sm:gap-4 sm:px-5 sm:py-5">
               {profile?.profile_image_path ? (
-                <img src={profile.profile_image_path} alt={name} className="h-14 w-14 rounded-full object-cover" />
+                <img src={profile.profile_image_path} alt={name} className="h-11 w-11 rounded-full object-cover sm:h-14 sm:w-14" />
               ) : (
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#071f52] text-lg font-black text-white">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#071f52] text-base font-black text-white sm:h-14 sm:w-14 sm:text-lg">
                   {name.charAt(0).toUpperCase()}
                 </div>
               )}
 
               <div className="min-w-0 flex-1">
-                <p className="truncate text-lg font-black tracking-[-0.03em] text-[#071f52]">{name}</p>
-                <p className="truncate text-sm font-medium text-[#071f52]/48">{user?.email}</p>
+                <p className="truncate text-sm font-black tracking-[-0.02em] text-[#071f52] sm:text-lg sm:tracking-[-0.03em]">{name}</p>
+                <p className="truncate text-xs font-medium text-[#071f52]/48 sm:text-sm">{user?.email}</p>
               </div>
             </div>
 
-            <nav className="flex-1 overflow-y-auto px-2 py-3">
+            <nav className="flex-1 overflow-y-auto px-2 py-2.5">
               {customerAccountLinks.map((item) => {
                 const Icon = navIcons[item.to as keyof typeof navIcons]
 
@@ -102,13 +104,13 @@ export function CustomerShellFrame({ children }: { children: ReactNode }) {
                     onClick={() => setSidebarOpen(false)}
                     className={({ isActive }) => sidebarLinkClasses(isActive)}
                   >
-                    <Icon size={18} />
+                    <Icon size={16} />
                     {item.label}
                   </NavLink>
                 )
               })}
 
-              <div className="mt-3 border-t border-[#071f52]/10 pt-3">
+              <div className="mt-2 border-t border-[#071f52]/10 pt-2">
                 <NavLink
                   to="/our-fleet"
                   end
@@ -143,13 +145,13 @@ export function CustomerShellFrame({ children }: { children: ReactNode }) {
                 </NavLink>
               </div>
 
-              <div className="mt-3 border-t border-[#071f52]/10 pt-3">
+              <div className="mt-2 border-t border-[#071f52]/10 pt-2">
                 <button
                   type="button"
                   onClick={handleSignOut}
-                  className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-base font-medium text-[#e92935] transition-colors hover:bg-[#fff5f5]"
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-[#e92935] transition-colors hover:bg-[#fff5f5] sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-base"
                 >
-                  <LogOut size={18} />
+                  <LogOut size={16} />
                   Logout
                 </button>
               </div>

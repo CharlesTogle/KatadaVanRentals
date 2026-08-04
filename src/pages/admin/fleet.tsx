@@ -82,36 +82,36 @@ export default function Fleet() {
   }
 
   return (
-    <div className="px-6 py-8" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div className="py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52]">Our Fleet</h1>
         <button
-          className="rounded-xl bg-[#071f52] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#112458] transition-colors"
+          className="rounded-xl bg-[#071f52] px-4 py-2 text-sm font-bold text-white hover:bg-[#112458] transition-colors"
           onClick={() => navigate('/admin/fleet/new')}
         >
-          Add Vehicle
+          + Add
         </button>
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
+        <div className="relative w-full min-w-[160px] flex-1 sm:flex-none sm:w-auto sm:max-w-[240px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#071f52]/38" />
           <input
-            className={cn(inputClass, 'pl-9')}
+            className={cn(inputClass, 'pl-9 w-full')}
             placeholder="Search vehicles..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <select className={cn(inputClass, 'w-auto')} value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}>
+        <select className={cn(inputClass, 'w-[calc(50%-0.375rem)] sm:w-auto')} value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}>
           <option value="">All Brands</option>
           {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
-        <select className={cn(inputClass, 'w-auto')} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+        <select className={cn(inputClass, 'w-[calc(50%-0.375rem)] sm:w-auto')} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
           <option value="">All Types</option>
           {vehicleTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
-        <select className={cn(inputClass, 'w-auto')} value={rentalFilter} onChange={(e) => setRentalFilter(e.target.value)}>
+        <select className={cn(inputClass, 'w-[calc(50%-0.375rem)] sm:w-auto')} value={rentalFilter} onChange={(e) => setRentalFilter(e.target.value)}>
           <option value="">All Rental Options</option>
           <option value="self_drive">Self-Drive</option>
           <option value="all_out">All Out</option>
@@ -119,7 +119,7 @@ export default function Fleet() {
           <option value="with_driver">With Driver</option>
           <option value="pickup">Pickup &amp; Drop-off</option>
         </select>
-        <select className={cn(inputClass, 'w-auto')} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <select className={cn(inputClass, 'w-[calc(50%-0.375rem)] sm:w-auto')} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">All Statuses</option>
           <option value="available">Available</option>
           <option value="unavailable">Not Available</option>

@@ -153,17 +153,15 @@ export default function BookingDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-[#f7f9ff] animate-pulse">
-        <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 sm:py-8 space-y-6">
-          <div className="h-4 w-24 rounded-lg bg-[#071f52]/10" />
-          <div className="h-40 rounded-[30px] bg-[#071f52]/6" />
-          <div className="grid gap-6 xl:grid-cols-[1.65fr_0.85fr]">
-            <div className="space-y-6">
-              {[...Array(3)].map((_, i) => <div key={i} className="h-56 rounded-[26px] bg-[#071f52]/6" />)}
-            </div>
-            <div className="space-y-6">
-              {[...Array(3)].map((_, i) => <div key={i} className="h-48 rounded-[26px] bg-[#071f52]/6" />)}
-            </div>
+      <div className="w-full animate-pulse px-3 py-4 sm:px-5 sm:py-6 space-y-4">
+        <div className="h-4 w-24 rounded bg-[#071f52]/10" />
+        <div className="h-32 rounded-lg bg-[#071f52]/6" />
+        <div className="grid gap-4 lg:grid-cols-[1.65fr_0.85fr]">
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => <div key={i} className="h-40 rounded-lg bg-[#071f52]/6" />)}
+          </div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => <div key={i} className="h-36 rounded-lg bg-[#071f52]/6" />)}
           </div>
         </div>
       </div>
@@ -172,8 +170,8 @@ export default function BookingDetail() {
 
   if (!data) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center bg-[#f7f9ff]">
-        <p className="text-lg font-bold text-[#071f52]">Booking not found</p>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <p className="text-sm font-bold text-[#071f52] sm:text-lg">Booking not found</p>
       </div>
     )
   }
@@ -328,468 +326,465 @@ export default function BookingDetail() {
   }
 
   return (
-    <main className="min-h-[100dvh] bg-[#f4f7fb] px-4 py-6 sm:px-6 lg:px-8" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      <div className="mx-auto max-w-[1440px]">
-        <button onClick={() => navigate('/bookings')} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-[#071f52]/60 transition-colors hover:text-[#071f52]">
-          <ArrowLeft size={16} /> Back to bookings
-        </button>
+    <div className="w-full px-3 py-4 sm:px-5 sm:py-6">
+        <button onClick={() => navigate('/bookings')} className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#071f52]/60 transition-colors hover:text-[#071f52] sm:text-sm">
+        <ArrowLeft size={14} /> Back to bookings
+      </button>
 
-        <section className="rounded-[30px] border border-[#071f52]/8 bg-white px-6 py-6 shadow-[0_18px_50px_rgba(7,31,82,0.08)] sm:px-7 lg:px-8">
-          <div className="flex flex-wrap items-start justify-between gap-6">
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-[1.65rem] font-black tracking-[-0.04em] text-[#3c42f6] sm:text-[1.9rem]">{booking.booking_number}</h1>
-                <Badge className={`${STATUS_COLORS[booking.status] || 'bg-gray-100 text-gray-500'} rounded-full px-4 py-1.5 text-xs font-bold`}>
-                  {formatBookingStatus(booking.status)}
-                </Badge>
-              </div>
-
-              <p className="mt-3 max-w-[900px] text-sm font-medium leading-7 text-[#071f52]/64 sm:text-[1rem]">
-                {bookingSummary}
-                <span className="ml-2 inline-block font-black text-[#071f52] tabular-nums">{formatCurrency(displayedTotal)}</span>
-              </p>
+      <section className="rounded-lg border border-[#071f52]/8 bg-white px-4 py-4 shadow-[0_8px_24px_rgba(7,31,82,0.06)] sm:px-5 sm:py-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-base font-black tracking-[-0.03em] text-[#3c42f6] sm:text-[1.65rem]">{booking.booking_number}</h1>
+              <Badge className={`${STATUS_COLORS[booking.status] || 'bg-gray-100 text-gray-500'} rounded-full px-2.5 py-1 text-[10px] font-bold sm:px-4 sm:py-1.5 sm:text-xs`}>
+                {formatBookingStatus(booking.status)}
+              </Badge>
             </div>
 
-            <div className="min-w-[220px] text-left sm:text-right">
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#071f52]/34">Created</p>
-              <p className="mt-1 text-sm font-semibold text-[#071f52]/58">{formatDateTime(booking.created_at)}</p>
-            </div>
+            <p className="mt-2 max-w-[700px] text-xs font-medium leading-5 text-[#071f52]/64 sm:text-sm">
+              {bookingSummary}
+              <span className="ml-2 inline-block font-black text-[#071f52] tabular-nums">{formatCurrency(displayedTotal)}</span>
+            </p>
           </div>
 
-          <div className="mt-7 border-t border-[#071f52]/8 pt-8">
-            <div className="relative">
+          <div className="text-left sm:text-right">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#071f52]/34 sm:text-[11px]">Created</p>
+            <p className="mt-0.5 text-xs font-semibold text-[#071f52]/58 sm:text-sm">{formatDateTime(booking.created_at)}</p>
+          </div>
+        </div>
+
+        <div className="mt-5 border-t border-[#071f52]/8 pt-5">
+          <div className="overflow-x-auto pb-1">
+            <div className="relative flex min-w-[480px] gap-2 sm:gap-3">
               <div className="absolute left-5 right-5 top-4 hidden h-px bg-[#071f52]/10 sm:block" />
-              <ol className="grid gap-6 sm:grid-cols-5 sm:gap-3">
-                {TIMELINE_STATUSES.map((status, index) => {
-                  const reached = timelineIdx >= index
-                  const current = booking.status === status
+              {TIMELINE_STATUSES.map((status, index) => {
+                const reached = timelineIdx >= index
+                const current = booking.status === status
 
-                  return (
-                    <li key={status} className="relative flex items-center gap-3 sm:flex-col sm:items-center sm:text-center">
-                      <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors ${
-                        current
-                          ? 'border-[#4f46e5]/20 bg-[#4f46e5]/10 shadow-[0_0_0_7px_rgba(79,70,229,0.08)]'
-                          : reached
-                            ? 'border-[#071f52]/12 bg-[#071f52]'
-                            : 'border-[#071f52]/10 bg-[#e9edf5]'
-                      }`}>
-                        {current ? <div className="h-3 w-3 rounded-full bg-[#4f46e5]" /> : <Circle className={`h-3.5 w-3.5 ${reached ? 'fill-white text-white' : 'fill-[#cfd6e2] text-[#cfd6e2]'}`} />}
-                      </div>
-
-                      <div>
-                        <p className={`text-[11px] font-bold ${current ? 'text-[#4f46e5]' : reached ? 'text-[#071f52]' : 'text-[#071f52]/38'}`}>
-                          {formatBookingStatus(status)}
-                        </p>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ol>
-            </div>
-          </div>
-        </section>
-
-        {booking.status === 'completed' && !hasSubmittedFeedback ? (
-          <div className="mt-6 rounded-[26px] border border-[#071f52]/8 bg-white px-6 py-6 shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
-            <h2 className="flex items-center gap-2 text-base font-black text-[#071f52]">
-              <Star size={16} /> Leave a Review
-            </h2>
-            <div className="mt-3 flex gap-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button key={star} type="button" onClick={() => setRating(star)} className={`transition-colors ${star <= rating ? 'text-[#ffd923]' : 'text-[#071f52]/20'}`}>
-                  <Star size={24} fill={star <= rating ? 'currentColor' : 'none'} />
-                </button>
-              ))}
-            </div>
-            <textarea
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              placeholder="Share your experience with this trip..."
-              className="mt-3 block w-full resize-none rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
-              rows={3}
-            />
-            <Button onClick={handleSubmitFeedback} disabled={!rating} className="mt-3 w-full gap-2 bg-[#071f52] text-white hover:bg-[#112458]" size="sm">
-              <Send size={14} /> Submit Review
-            </Button>
-          </div>
-        ) : null}
-
-        {submitted ? (
-          <div className="mt-6 rounded-2xl border border-[#16a34a]/20 bg-[#16a34a]/8 p-5 text-center">
-            <p className="text-sm font-bold text-[#16a34a]">{BOOKING_MESSAGES.success.review_submitted}</p>
-          </div>
-        ) : null}
-
-        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.85fr)]">
-          <div className="space-y-6">
-            <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
-              <div className="border-b border-[#071f52]/8 px-6 py-5">
-                <h2 className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1f2a44]">Booking Details</h2>
-              </div>
-
-              <div className="px-6 py-6">
-                <div className={`mb-6 rounded-2xl border px-4 py-4 ${statusTone.wrapper}`}>
-                  <div className="flex items-start gap-3">
-                    {booking.status !== 'rejected' && booking.status !== 'canceled' ? (
-                      <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${statusTone.icon}`} />
-                    ) : null}
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#071f52]/46">{statusMessage.title}</p>
-                      <p className={`mt-1 text-sm font-medium leading-6 ${statusTone.text}`}>{statusMessage.body}</p>
+                return (
+                  <div key={status} className="relative flex flex-1 flex-col items-center text-center gap-1.5">
+                    <div className={`relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                      current
+                        ? 'border-[#4f46e5]/20 bg-[#4f46e5]/10 shadow-[0_0_0_6px_rgba(79,70,229,0.08)]'
+                        : reached
+                          ? 'border-[#071f52]/12 bg-[#071f52]'
+                          : 'border-[#071f52]/10 bg-[#e9edf5]'
+                    }`}>
+                      {current ? <div className="h-2.5 w-2.5 rounded-full bg-[#4f46e5]" /> : <Circle className={`h-3 w-3 ${reached ? 'fill-white text-white' : 'fill-[#cfd6e2] text-[#cfd6e2]'}`} />}
                     </div>
-                  </div>
-                </div>
-
-                <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 xl:grid-cols-3">
-                  <Spec label="Vehicle" value={vehicle?.name || '—'} />
-                  <Spec label="Service" value={booking.rental_model === 'self_drive' ? 'Self Drive' : 'With Driver'} />
-                  <Spec label="Rental Model" value={toLabel(booking.rental_model)} />
-                  {booking.rental_model !== 'self_drive' ? (
-                    <Spec label="Booking Mode" value={formatBookingMode(booking.booking_mode)} />
-                  ) : null}
-                  <Spec label={getBookingCadenceLabel(booking)} value={getBookingCadenceValue(booking)} />
-                  <Spec label="Start Date" value={formatDateTime(booking.start_at)} />
-                  <Spec label="End Date" value={booking.end_at ? formatDateTime(booking.end_at) : '—'} />
-                  <Spec label="Pickup Location" value={booking.pickup_location || '—'} />
-                  <Spec label="Dropoff Location" value={booking.dropoff_location || '—'} />
-                  <Spec label="Destination" value={booking.destination || booking.dropoff_location || '—'} />
-                  <Spec label="Purpose of Travel" value={booking.purpose_of_travel || 'Not specified'} />
-                </div>
-
-                {booking.self_drive_address ? (
-                  <div className="mt-6 rounded-2xl bg-[#f7f9fc] px-4 py-4">
-                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#071f52]/42">Self-Drive Address</p>
-                    <p className="mt-2 text-sm font-medium leading-6 text-[#071f52]/70">
-                      {Object.values(booking.self_drive_address).filter(Boolean).join(', ')}
+                      <p className={`text-[10px] font-bold sm:text-[11px] ${current ? 'text-[#4f46e5]' : reached ? 'text-[#071f52]' : 'text-[#071f52]/38'}`}>
+                      {formatBookingStatus(status)}
                     </p>
                   </div>
-                ) : null}
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
 
-                {customerNote ? (
-                  <div className="mt-6 rounded-2xl bg-[#f7f9fc] px-4 py-4">
-                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#071f52]/42">Customer Note</p>
-                    <p className="mt-2 text-sm font-medium leading-6 text-[#071f52]/70">{customerNote}</p>
+      {booking.status === 'completed' && !hasSubmittedFeedback ? (
+        <div className="mt-4 rounded-lg border border-[#071f52]/8 bg-white px-4 py-4 shadow-[0_6px_20px_rgba(7,31,82,0.04)]">
+                  <h2 className="flex items-center gap-1.5 text-sm font-black text-[#071f52] sm:text-base">
+            <Star size={14} /> Leave a Review
+          </h2>
+          <div className="mt-2 flex gap-0.5">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button key={star} type="button" onClick={() => setRating(star)} className={`transition-colors ${star <= rating ? 'text-[#ffd923]' : 'text-[#071f52]/20'}`}>
+                <Star size={20} fill={star <= rating ? 'currentColor' : 'none'} />
+              </button>
+            ))}
+          </div>
+          <textarea
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            placeholder="Share your experience with this trip..."
+              className="mt-2 block w-full resize-none rounded-lg border border-[#071f52]/14 bg-[#f7f9ff] px-3 py-2 text-xs font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60 sm:text-sm"
+            rows={3}
+          />
+          <Button onClick={handleSubmitFeedback} disabled={!rating} className="mt-2 w-full gap-1.5 bg-[#071f52] text-xs text-white hover:bg-[#112458]" size="sm">
+            <Send size={12} /> Submit Review
+          </Button>
+        </div>
+      ) : null}
+
+      {submitted ? (
+        <div className="mt-4 rounded-lg border border-[#16a34a]/20 bg-[#16a34a]/8 p-4 text-center">
+          <p className="text-xs font-bold text-[#16a34a] sm:text-sm">{BOOKING_MESSAGES.success.review_submitted}</p>
+        </div>
+      ) : null}
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,0.85fr)]">
+        <div className="space-y-4">
+          <section className="rounded-lg border border-[#071f52]/8 bg-white shadow-[0_6px_20px_rgba(7,31,82,0.04)]">
+            <div className="border-b border-[#071f52]/8 px-4 py-3.5">
+                <h2 className="text-sm font-black tracking-[-0.02em] text-[#1f2a44] sm:text-[1.1rem]">Booking Details</h2>
+            </div>
+
+            <div className="px-4 py-4">
+              <div className={`mb-4 rounded-lg border px-3 py-3 ${statusTone.wrapper}`}>
+                <div className="flex items-start gap-2">
+                  {booking.status !== 'rejected' && booking.status !== 'canceled' ? (
+                    <CheckCircle2 className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${statusTone.icon}`} />
+                  ) : null}
+                  <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#071f52]/46 sm:text-xs">{statusMessage.title}</p>
+                      <p className={`mt-0.5 text-xs font-medium leading-5 sm:text-sm ${statusTone.text}`}>{statusMessage.body}</p>
                   </div>
+                </div>
+              </div>
+
+              <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+                <Spec label="Vehicle" value={vehicle?.name || '—'} />
+                <Spec label="Service" value={booking.rental_model === 'self_drive' ? 'Self Drive' : 'With Driver'} />
+                <Spec label="Rental Model" value={toLabel(booking.rental_model)} />
+                {booking.rental_model !== 'self_drive' ? (
+                  <Spec label="Booking Mode" value={formatBookingMode(booking.booking_mode)} />
                 ) : null}
+                <Spec label={getBookingCadenceLabel(booking)} value={getBookingCadenceValue(booking)} />
+                <Spec label="Start Date" value={formatDateTime(booking.start_at)} />
+                <Spec label="End Date" value={booking.end_at ? formatDateTime(booking.end_at) : '—'} />
+                <Spec label="Pickup Location" value={booking.pickup_location || '—'} />
+                <Spec label="Dropoff Location" value={booking.dropoff_location || '—'} />
+                <Spec label="Destination" value={booking.destination || booking.dropoff_location || '—'} />
+                <Spec label="Purpose of Travel" value={booking.purpose_of_travel || 'Not specified'} />
               </div>
-            </section>
 
-            <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
-              <div className="border-b border-[#071f52]/8 px-6 py-5">
-                <h2 className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1f2a44]">Price Breakdown</h2>
-              </div>
+              {booking.self_drive_address ? (
+                <div className="mt-4 rounded-lg bg-[#f7f9fc] px-3 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#071f52]/42 sm:text-xs">Self-Drive Address</p>
+                  <p className="mt-1.5 text-xs font-medium leading-5 text-[#071f52]/70 sm:text-sm sm:leading-6">
+                    {Object.values(booking.self_drive_address).filter(Boolean).join(', ')}
+                  </p>
+                </div>
+              ) : null}
 
-              <div className="px-6 py-6">
-                <div className="space-y-3">
+              {customerNote ? (
+                <div className="mt-4 rounded-lg bg-[#f7f9fc] px-3 py-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#071f52]/42 sm:text-xs">Customer Note</p>
+                  <p className="mt-1.5 text-xs font-medium leading-5 text-[#071f52]/70 sm:text-sm sm:leading-6">{customerNote}</p>
+                </div>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-[#071f52]/8 bg-white shadow-[0_6px_20px_rgba(7,31,82,0.04)]">
+            <div className="border-b border-[#071f52]/8 px-4 py-3.5">
+                <h2 className="text-sm font-black tracking-[-0.02em] text-[#1f2a44] sm:text-[1.1rem]">Price Breakdown</h2>
+            </div>
+
+            <div className="px-4 py-4">
+              <div className="min-w-0 overflow-x-auto">
+                <div className="space-y-2 min-w-[320px]">
                   {(booking.price_line_items || []).map((item, index) => (
-                    <div key={index} className="flex items-start justify-between gap-4 border-b border-[#071f52]/6 pb-3 text-sm last:border-0 last:pb-0">
+                      <div key={index} className="flex items-start justify-between gap-3 border-b border-[#071f52]/6 pb-2 text-xs last:border-0 last:pb-0 sm:text-sm">
                       <span className="text-[#071f52]/64">{item.label}{item.detail ? ` (${item.detail})` : ''}</span>
-                      <span className="font-bold text-[#071f52] tabular-nums">{formatCurrency(item.amount)}</span>
+                      <span className="font-bold text-[#071f52] tabular-nums shrink-0">{formatCurrency(item.amount)}</span>
                     </div>
                   ))}
                 </div>
-
-                <div className="mt-6 space-y-3 rounded-[22px] bg-[#f7f9fc] px-5 py-5">
-                  <SummaryRow label="Total" value={formatCurrency(displayedTotal)} strong valueClassName="text-[#4f46e5]" />
-                  {booking.rental_model === 'all_in' && booking.status !== 'completed' ? <SummaryRow label="Fuel Estimate" value={formatCurrency(Number(booking.fuel_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
-                  {booking.rental_model === 'all_in' && booking.status !== 'completed' ? <SummaryRow label="Toll Estimate" value={formatCurrency(Number(booking.toll_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
-                  {booking.status === 'completed' && booking.rental_model === 'all_in' ? <SummaryRow label="Trip Reconciliation" value={`${tripReconciliationAmount >= 0 ? '+' : '-'}${formatCurrency(Math.abs(tripReconciliationAmount))}`} valueClassName={tripReconciliationAmount >= 0 ? 'text-[#f97316]' : 'text-[#16a34a]'} note={`Toll ${formatCurrency(Number(booking.actual_toll_amount || 0))} · Gas ${formatCurrency(Number(booking.actual_fuel_amount || 0))}`} /> : null}
-                  {Math.abs(balanceSummary?.adjustmentAmount || 0) > 0.009 ? <SummaryRow label="Price Adjustment" value={`${balanceSummary?.isIncrease ? '+' : '-'}${formatCurrency(Math.abs(balanceSummary?.adjustmentAmount || 0))}`} valueClassName={balanceSummary?.isIncrease ? 'text-[#f97316]' : 'text-[#16a34a]'} /> : null}
-                  {balanceSummary && balanceSummary.extensionAmount > 0 ? <SummaryRow label={getExtensionChargeLabel(balanceSummary.extensionDays)} value={`+${formatCurrency(balanceSummary.extensionAmount)}`} valueClassName="text-[#f97316]" /> : null}
-                  <SummaryRow label="Security Deposit" value={`-${formatCurrency(depositAmount)}`} valueClassName="text-[#16a34a]" note="non-refundable" />
-                  {paymentMadeAmount > 0 ? <SummaryRow label="Payment Made" value={`-${formatCurrency(paymentMadeAmount)}`} valueClassName="text-[#16a34a]" /> : null}
-                  <SummaryRow label="Remaining Balance" value={formatCurrency(displayedRemainingBalance)} strong valueClassName="text-[#f97316]" />
-                </div>
-              </div>
-            </section>
-
-            <section id="payments-section" className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
-              <div className="border-b border-[#071f52]/8 px-6 py-5">
-                <h2 className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1f2a44]">Payments</h2>
               </div>
 
-              <div className="px-6 py-6">
-                {payments.length ? (
-                  <div className="space-y-4">
-                    {payments.map((payment) => (
-                      <div key={payment.id} className="flex flex-col justify-between gap-4 rounded-[22px] border border-[#071f52]/8 bg-[#fbfcfe] px-4 py-4 sm:flex-row sm:items-start">
-                        <div className="flex gap-4">
-                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#4f46e5]">
-                            <Receipt className="h-5 w-5" />
+              <div className="mt-4 space-y-2 rounded-lg bg-[#f7f9fc] px-4 py-4">
+                <SummaryRow label="Total" value={formatCurrency(displayedTotal)} strong valueClassName="text-[#4f46e5]" />
+                {booking.rental_model === 'all_in' && booking.status !== 'completed' ? <SummaryRow label="Fuel Estimate" value={formatCurrency(Number(booking.fuel_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
+                {booking.rental_model === 'all_in' && booking.status !== 'completed' ? <SummaryRow label="Toll Estimate" value={formatCurrency(Number(booking.toll_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
+                {booking.status === 'completed' && booking.rental_model === 'all_in' ? <SummaryRow label="Trip Reconciliation" value={`${tripReconciliationAmount >= 0 ? '+' : '-'}${formatCurrency(Math.abs(tripReconciliationAmount))}`} valueClassName={tripReconciliationAmount >= 0 ? 'text-[#f97316]' : 'text-[#16a34a]'} note={`Toll ${formatCurrency(Number(booking.actual_toll_amount || 0))} · Gas ${formatCurrency(Number(booking.actual_fuel_amount || 0))}`} /> : null}
+                {Math.abs(balanceSummary?.adjustmentAmount || 0) > 0.009 ? <SummaryRow label="Price Adjustment" value={`${balanceSummary?.isIncrease ? '+' : '-'}${formatCurrency(Math.abs(balanceSummary?.adjustmentAmount || 0))}`} valueClassName={balanceSummary?.isIncrease ? 'text-[#f97316]' : 'text-[#16a34a]'} /> : null}
+                {balanceSummary && balanceSummary.extensionAmount > 0 ? <SummaryRow label={getExtensionChargeLabel(balanceSummary.extensionDays)} value={`+${formatCurrency(balanceSummary.extensionAmount)}`} valueClassName="text-[#f97316]" /> : null}
+                <SummaryRow label="Security Deposit" value={`-${formatCurrency(depositAmount)}`} valueClassName="text-[#16a34a]" note="non-refundable" />
+                {paymentMadeAmount > 0 ? <SummaryRow label="Payment Made" value={`-${formatCurrency(paymentMadeAmount)}`} valueClassName="text-[#16a34a]" /> : null}
+                <SummaryRow label="Remaining Balance" value={formatCurrency(displayedRemainingBalance)} strong valueClassName="text-[#f97316]" />
+              </div>
+            </div>
+          </section>
+
+          <section id="payments-section" className="rounded-lg border border-[#071f52]/8 bg-white shadow-[0_6px_20px_rgba(7,31,82,0.04)]">
+            <div className="border-b border-[#071f52]/8 px-4 py-3.5">
+                <h2 className="text-sm font-black tracking-[-0.02em] text-[#1f2a44] sm:text-[1.1rem]">Payments</h2>
+            </div>
+
+            <div className="px-4 py-4">
+              {payments.length ? (
+                <div className="space-y-3">
+                  {payments.map((payment) => (
+                    <div key={payment.id} className="flex flex-col justify-between gap-3 rounded-lg border border-[#071f52]/8 bg-[#fbfcfe] px-3 py-3 sm:flex-row sm:items-start">
+                      <div className="flex gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eef2ff] text-[#4f46e5] sm:h-11 sm:w-11 sm:rounded-2xl">
+                          <Receipt className="h-4 w-4" />
+                        </div>
+
+                        <div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <p className="text-sm font-black text-[#1f2a44] tabular-nums sm:text-base">{formatCurrency(payment.amount)}</p>
+                             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold sm:text-xs ${payment.status === 'verified' ? 'bg-[#16a34a]/10 text-[#16a34a]' : 'bg-[#eef2ff] text-[#4f46e5]'}`}>
+                              {payment.status}
+                            </span>
                           </div>
 
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-base font-black text-[#1f2a44] tabular-nums">{formatCurrency(payment.amount)}</p>
-                              <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${payment.status === 'verified' ? 'bg-[#16a34a]/10 text-[#16a34a]' : 'bg-[#eef2ff] text-[#4f46e5]'}`}>
-                                {payment.status}
-                              </span>
-                            </div>
+                          <p className="mt-0.5 text-xs font-medium text-[#071f52]/62 sm:text-sm">
+                            via {toLabel(payment.channel)}{payment.reference_number ? ` · ${payment.reference_number}` : ''}
+                          </p>
+                          <p className="mt-0.5 text-[10px] font-medium text-[#071f52]/40 sm:text-xs">{formatDateTime(payment.paid_at || payment.created_at)}</p>
 
-                            <p className="mt-1 text-sm font-medium text-[#071f52]/62">
-                              via {toLabel(payment.channel)}{payment.reference_number ? ` · ${payment.reference_number}` : ''}
-                            </p>
-                            <p className="mt-1 text-xs font-medium text-[#071f52]/40">{formatDateTime(payment.paid_at || payment.created_at)}</p>
-
-                            {payment.receipt_path ? (
-                              <a href="#" onClick={(event) => { event.preventDefault(); handleViewReceipt(payment.id, payment.receipt_path!) }} className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[#4f46e5] transition-colors hover:text-[#3639d4]">
-                                <FileText className="h-4 w-4" /> {openingId === payment.id ? 'Opening...' : 'View receipt'}
-                              </a>
-                            ) : null}
-                          </div>
+                          {payment.receipt_path ? (
+                            <a href="#" onClick={(event) => { event.preventDefault(); handleViewReceipt(payment.id, payment.receipt_path!) }} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-[#4f46e5] transition-colors hover:text-[#3639d4] sm:text-sm">
+                              <FileText className="h-3.5 w-3.5" /> {openingId === payment.id ? 'Opening...' : 'View receipt'}
+                            </a>
+                          ) : null}
                         </div>
                       </div>
-                    ))}
-
-                    <div className="flex items-center justify-between border-t border-[#071f52]/8 pt-4 text-sm font-semibold text-[#071f52]/62">
-                      <span>Recorded Payments</span>
-                      <span className="font-black text-[#1f2a44] tabular-nums">{formatCurrency(payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0))}</span>
                     </div>
-                  </div>
-                ) : (
-                  <EmptyNote>No payments recorded.</EmptyNote>
-                )}
-              </div>
-            </section>
+                  ))}
 
-          </div>
-
-          <aside className="space-y-6">
-            {booking.status === 'pending_price_approval' && balanceSummary ? (
-              <section className="rounded-[26px] border border-[#f2c96a] bg-[#fff9eb] shadow-[0_16px_40px_rgba(204,152,34,0.12)]">
-                <div className="px-6 py-5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c76a00]">Pending price approval</p>
-                  <div className="mt-4 space-y-2 border-b border-[#f2c96a]/70 pb-4">
-                    <SummaryRow label="Old Remaining Balance" value={formatCurrency(balanceSummary.previousRemainingBalance)} />
-                    {Math.abs(balanceSummary.adjustmentAmount) > 0.009 ? <SummaryRow label="Price Adjustment" value={`${balanceSummary.isIncrease ? '+' : '-'}${formatCurrency(Math.abs(balanceSummary.adjustmentAmount))}`} valueClassName={balanceSummary.isIncrease ? 'text-[#f97316]' : 'text-[#16a34a]'} /> : null}
-                    {balanceSummary.extensionAmount > 0 ? <SummaryRow label={getExtensionChargeLabel(balanceSummary.extensionDays)} value={`+${formatCurrency(balanceSummary.extensionAmount)}`} valueClassName="text-[#f97316]" /> : null}
-                    <SummaryRow label="New Remaining Balance" value={formatCurrency(balanceSummary.newRemainingBalance)} strong valueClassName="text-[#ea580c]" />
-                  </div>
-
-                  {balanceSummary.reason ? <p className="mt-3 text-sm font-medium text-[#7c5b2b]"><span className="font-bold text-[#5b3b10]">Reason:</span> {balanceSummary.reason}</p> : null}
-                  <p className="mt-3 text-sm font-medium leading-6 text-[#6f5a32]">Respond by {formatDateTime(priceApprovalDeadline.toISOString())} — if you don't confirm, the booking is canceled and we won't charge the new price without your approval.</p>
-
-                  <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                    <button type="button" onClick={handleAcceptAdjustment} disabled={adjustmentAction !== null || acceptPriceAdjustment.isPending || cancelBooking.isPending} className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#16a34a] px-4 py-3 text-sm font-bold text-white shadow-[0_10px_25px_rgba(22,163,74,0.18)] transition hover:bg-[#15803d] disabled:opacity-50">
-                      {adjustmentAction === 'accept' ? <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : null}
-                      {adjustmentAction === 'accept' ? 'Accepting...' : 'Accept Adjustment'}
-                    </button>
-                    <button type="button" onClick={handleCancelBooking} disabled={adjustmentAction !== null || acceptPriceAdjustment.isPending || cancelBooking.isPending} className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#f0a1a8] bg-white px-4 py-3 text-sm font-bold text-[#e11d48] transition hover:bg-[#fff1f2] disabled:opacity-50">
-                      {adjustmentAction === 'cancel' ? <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-current/20 border-t-current" /> : null}
-                      {adjustmentAction === 'cancel' ? 'Canceling...' : 'Decline & Cancel'}
-                    </button>
+                  <div className="flex items-center justify-between border-t border-[#071f52]/8 pt-3 text-xs font-semibold text-[#071f52]/62 sm:text-sm">
+                    <span>Recorded Payments</span>
+                    <span className="font-black text-[#1f2a44] tabular-nums">{formatCurrency(payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0))}</span>
                   </div>
                 </div>
-              </section>
-            ) : null}
+              ) : (
+                <EmptyNote>No payments recorded.</EmptyNote>
+              )}
+            </div>
+          </section>
 
-            {requested_document_types.length > 0 ? (() => {
-              const canEditDocs = booking.status === 'awaiting_documents'
-              const visibleTypes = canEditDocs ? requested_document_types : requested_document_types
-
-              if (visibleTypes.length === 0) return null
-
-              return (
-                <section className={`rounded-[26px] border shadow-[0_16px_40px_rgba(79,70,229,0.1)] ${canEditDocs ? 'border-[#c7d2fe] bg-[#eef2ff]' : 'border-[#071f52]/8 bg-white'}`}>
-                  <div className="px-6 py-5">
-                    <p className={`text-[11px] font-bold uppercase tracking-[0.18em] ${canEditDocs ? 'text-[#4f46e5]' : 'text-[#071f52]/48'}`}>Requested documents</p>
-                    {adminRequestSentAt ? (
-                      <p className="mt-2 text-xs font-semibold text-[#4f46e5]/60">Request sent {formatDateTime(adminRequestSentAt)}</p>
-                    ) : null}
-
-                    <input
-                      ref={docInputRef}
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => uploadingTypeId ? handleDocUpload(e, uploadingTypeId) : null}
-                      className="hidden"
-                      aria-label="Upload requested document"
-                    />
-
-                    <div className="mt-4 space-y-3">
-                      {visibleTypes.map((type) => (
-                        <div key={type.id} className={`rounded-xl border bg-white px-4 py-3 ${canEditDocs ? 'border-[#c7d2fe]/50' : 'border-[#071f52]/8'}`}>
-                          <p className="text-sm font-bold text-[#1f2a44]">{type.label}</p>
-
-                          {type.upload ? (
-                            <>
-                              <div className="mt-2 flex items-center justify-between gap-2">
-                                <div className="min-w-0 flex-1">
-                                  {uploadingTypeId === type.id ? (
-                                    <div className="flex items-center gap-2">
-                                      <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[#4f46e5]/30 border-t-[#4f46e5]" />
-                                      <span className="text-xs font-semibold text-[#4f46e5]">Uploading...</span>
-                                    </div>
-                                  ) : (
-                                    <>
-                                      <p className="truncate text-xs font-semibold text-[#16a34a]">{type.upload.original_filename || type.upload.file_path}</p>
-                                      <p className="text-[10px] font-medium text-[#16a34a]/70">Uploaded</p>
-                                    </>
-                                  )}
-                                </div>
-                                <div className="flex shrink-0 items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleViewDoc({ id: type.upload!.id, file_path: type.upload!.file_path, mime_type: type.upload!.mime_type })}
-                                    disabled={openingId === type.upload.id || uploadingTypeId !== null}
-                                    className="rounded-lg px-2 py-1 text-xs font-bold text-[#4f46e5] underline hover:text-[#3639d4] disabled:opacity-50"
-                                  >
-                                    {openingId === type.upload.id ? 'Opening...' : 'View'}
-                                  </button>
-                                  {canEditDocs ? (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() => { if (!uploadingTypeId && type.upload) { uploadHandledRef.current = false; oldUploadRef.current = { file_path: type.upload.file_path, original_filename: type.upload.original_filename || '', mime_type: type.upload.mime_type || '', size_bytes: type.upload.size_bytes ?? 0 }; setUploadingTypeId(type.id); docInputRef.current?.click() } }}
-                                        disabled={uploadingTypeId !== null}
-                                        className="rounded-lg px-2 py-1 text-xs font-bold text-[#4f46e5] underline hover:text-[#3639d4] disabled:opacity-50"
-                                      >
-                                        Replace
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleDeleteDoc(type.upload!.id)}
-                                        disabled={uploadingTypeId !== null}
-                                        className="rounded-lg p-1 text-[#071f52]/30 transition-colors hover:bg-[#e92935]/8 hover:text-[#e92935] disabled:opacity-20"
-                                        aria-label={`Delete ${type.label}`}
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
-                                    </>
-                                  ) : null}
-                                </div>
-                              </div>
-                              {sizeError === type.id ? (
-                                <p className="mt-1 text-[10px] font-semibold text-[#e92935]">File must be under 5 MB.</p>
-                              ) : null}
-                            </>
-                          ) : canEditDocs ? (
-                            <>
-                              <div
-                                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-                                onDragLeave={() => setDragOver(false)}
-                                onDrop={(e) => handleDrop(e, type.id)}
-                                onClick={() => { if (!uploadingTypeId) { uploadHandledRef.current = false; setSizeError(null); oldUploadRef.current = null; setUploadingTypeId(type.id); docInputRef.current?.click() } }}
-                                className={`mt-2 cursor-pointer rounded-xl border-2 border-dashed px-4 py-4 text-center transition-colors ${
-                                  dragOver
-                                    ? 'border-[#4f46e5] bg-[#4f46e5]/8'
-                                    : 'border-[#4f46e5]/25 bg-[#f8f9ff] hover:border-[#4f46e5]/40'
-                                } ${uploadingTypeId !== null ? 'pointer-events-none opacity-50' : ''}`}
-                              >
-                                {uploadingTypeId === type.id ? (
-                                  <div className="flex items-center justify-center gap-2">
-                                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#4f46e5]/30 border-t-[#4f46e5]" />
-                                    <span className="text-xs font-semibold text-[#4f46e5]">Uploading...</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center justify-center gap-2">
-                                    <Upload size={14} className="text-[#4f46e5]" />
-                                    <span className="text-xs font-semibold text-[#4f46e5]">Upload file</span>
-                                  </div>
-                                )}
-                              </div>
-                              {sizeError === type.id ? (
-                                <p className="mt-1 text-[10px] font-semibold text-[#e92935]">File must be under 5 MB.</p>
-                              ) : (
-                                <p className="mt-1 text-[10px] text-[#4f46e5]/50">Max 5 MB per file</p>
-                              )}
-                            </>
-                          ) : (
-                            <p className="mt-2 text-xs font-medium text-[#071f52]/42">No uploaded document</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </section>
-              )
-            })() : null}
-
-            <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
-              <div className="border-b border-[#071f52]/8 px-6 py-5">
-                <h2 className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1f2a44]">Status History</h2>
-              </div>
-
-              <div className="px-6 py-6">
-                {status_events.length ? (
-                  <div className="space-y-4">
-                    {status_events.map((event) => (
-                      <div key={event.id} className="relative pl-6">
-                        <div className="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full bg-[#4f46e5]" />
-                        <p className="text-sm font-bold text-[#1f2a44]">{event.from_status ? `${formatBookingStatus(event.from_status)} → ` : ''}{formatBookingStatus(event.to_status)}</p>
-                        <p className="mt-1 text-xs font-medium text-[#071f52]/40">{formatDateTime(event.created_at)}</p>
-                        {event.note ? <p className="mt-1 text-sm font-medium leading-6 text-[#071f52]/62">{event.to_status === 'canceled' ? formatCancellationReason(event.note) : event.note}</p> : null}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyNote>No status events.</EmptyNote>
-                )}
-              </div>
-            </section>
-
-            {extensions.length > 0 ? (
-              <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
-                <div className="border-b border-[#071f52]/8 px-6 py-5">
-                  <h2 className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1f2a44]">Extensions</h2>
-                </div>
-
-                <div className="px-6 py-6">
-                  <div className="space-y-3">
-                    {extensions.map((extension) => (
-                      <div key={extension.id} className="rounded-[20px] border border-[#071f52]/8 bg-[#fbfcfe] px-4 py-4">
-                        <p className="text-sm font-bold text-[#1f2a44]">Extended to {formatDateTime(extension.new_end_at)}</p>
-                        {extension.extension_amount > 0 ? <p className="mt-1 text-sm font-semibold text-[#16a34a]">+{formatCurrency(extension.extension_amount)}</p> : null}
-                        {extension.reason ? <p className="mt-2 text-sm font-medium text-[#071f52]/62">{extension.reason}</p> : null}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
-            ) : null}
-
-            {invoice ? (
-              <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
-                <div className="border-b border-[#071f52]/8 px-6 py-5">
-                  <h2 className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1f2a44]">Invoice</h2>
-                </div>
-
-                <div className="px-6 py-6">
-                  <SummaryRow label="Invoice #" value={invoice.invoice_number} />
-                  <SummaryRow label="Amount" value={formatCurrency(invoice.total_amount)} />
-                  <SummaryRow label="Status" value={toLabel(invoice.status)} />
-
-                  <Button variant="outline" className="mt-4 w-full gap-2 text-sm" onClick={handleDownloadInvoice} disabled={isDownloadingInvoice}>
-                    <FileText size={14} /> {isDownloadingInvoice ? 'Preparing...' : 'Download Invoice'}
-                  </Button>
-                </div>
-              </section>
-            ) : null}
-
-            {canCustomerCancelBooking(booking.status) && booking.status !== 'pending_price_approval' ? (
-              <Button
-                variant="outline"
-                className="w-full gap-2 rounded-2xl border-[#e92935]/30 py-6 text-sm text-[#e92935] hover:bg-[#e92935]/8"
-                onClick={handleCancelBooking}
-                disabled={cancelBooking.isPending}
-              >
-                Cancel Booking
-              </Button>
-            ) : null}
-          </aside>
         </div>
 
-        <ImageViewer open={!!viewing} onClose={closeViewer} src={viewing?.src || ''} alt={viewing?.alt || ''} />
+        <aside className="space-y-4">
+          {booking.status === 'pending_price_approval' && balanceSummary ? (
+            <section className="rounded-lg border border-[#f2c96a] bg-[#fff9eb] shadow-[0_6px_20px_rgba(204,152,34,0.08)]">
+              <div className="px-4 py-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#c76a00] sm:text-xs">Pending price approval</p>
+                <div className="mt-3 space-y-1.5 border-b border-[#f2c96a]/70 pb-3">
+                  <SummaryRow label="Old Remaining Balance" value={formatCurrency(balanceSummary.previousRemainingBalance)} />
+                  {Math.abs(balanceSummary.adjustmentAmount) > 0.009 ? <SummaryRow label="Price Adjustment" value={`${balanceSummary.isIncrease ? '+' : '-'}${formatCurrency(Math.abs(balanceSummary.adjustmentAmount))}`} valueClassName={balanceSummary.isIncrease ? 'text-[#f97316]' : 'text-[#16a34a]'} /> : null}
+                  {balanceSummary.extensionAmount > 0 ? <SummaryRow label={getExtensionChargeLabel(balanceSummary.extensionDays)} value={`+${formatCurrency(balanceSummary.extensionAmount)}`} valueClassName="text-[#f97316]" /> : null}
+                  <SummaryRow label="New Remaining Balance" value={formatCurrency(balanceSummary.newRemainingBalance)} strong valueClassName="text-[#ea580c]" />
+                </div>
+
+                {balanceSummary.reason ? <p className="mt-2 text-xs font-medium text-[#7c5b2b]"><span className="font-bold text-[#5b3b10]">Reason:</span> {balanceSummary.reason}</p> : null}
+                <p className="mt-2 text-xs font-medium leading-5 text-[#6f5a32]">Respond by {formatDateTime(priceApprovalDeadline.toISOString())} — if you don't confirm, the booking is canceled and we won't charge the new price without your approval.</p>
+
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <button type="button" onClick={handleAcceptAdjustment} disabled={adjustmentAction !== null || acceptPriceAdjustment.isPending || cancelBooking.isPending} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#16a34a] px-3 py-2.5 text-xs font-bold text-white shadow-[0_6px_16px_rgba(22,163,74,0.14)] transition hover:bg-[#15803d] disabled:opacity-50">
+                    {adjustmentAction === 'accept' ? <span aria-hidden="true" className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : null}
+                    {adjustmentAction === 'accept' ? 'Accepting...' : 'Accept Adjustment'}
+                  </button>
+                  <button type="button" onClick={handleCancelBooking} disabled={adjustmentAction !== null || acceptPriceAdjustment.isPending || cancelBooking.isPending} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#f0a1a8] bg-white px-3 py-2.5 text-xs font-bold text-[#e11d48] transition hover:bg-[#fff1f2] disabled:opacity-50">
+                    {adjustmentAction === 'cancel' ? <span aria-hidden="true" className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current/20 border-t-current" /> : null}
+                    {adjustmentAction === 'cancel' ? 'Canceling...' : 'Decline & Cancel'}
+                  </button>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          {requested_document_types.length > 0 ? (() => {
+            const canEditDocs = booking.status === 'awaiting_documents'
+            const visibleTypes = canEditDocs ? requested_document_types : requested_document_types
+
+            if (visibleTypes.length === 0) return null
+
+            return (
+              <section className={`rounded-lg border shadow-[0_6px_20px_rgba(79,70,229,0.06)] ${canEditDocs ? 'border-[#c7d2fe] bg-[#eef2ff]' : 'border-[#071f52]/8 bg-white'}`}>
+                <div className="px-4 py-4">
+                  <p className={`text-sm font-black tracking-[-0.02em] sm:text-[1.1rem] ${canEditDocs ? 'text-[#4f46e5]' : 'text-[#1f2a44]'}`}>Requested documents</p>
+                  {adminRequestSentAt ? (
+                    <p className="mt-1.5 text-[10px] font-semibold text-[#4f46e5]/60 sm:text-xs">Request sent {formatDateTime(adminRequestSentAt)}</p>
+                  ) : null}
+
+                  <input
+                    ref={docInputRef}
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={(e) => uploadingTypeId ? handleDocUpload(e, uploadingTypeId) : null}
+                    className="hidden"
+                    aria-label="Upload requested document"
+                  />
+
+                  <div className="mt-3 space-y-2">
+                    {visibleTypes.map((type) => (
+                      <div key={type.id} className={`rounded-lg border bg-white px-3 py-2.5 ${canEditDocs ? 'border-[#c7d2fe]/50' : 'border-[#071f52]/8'}`}>
+                          <p className="text-xs font-bold text-[#1f2a44] sm:text-sm">{type.label}</p>
+
+                        {type.upload ? (
+                          <>
+                            <div className="mt-1.5 flex items-center justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                {uploadingTypeId === type.id ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-[#4f46e5]/30 border-t-[#4f46e5]" />
+                                      <span className="text-[10px] font-semibold text-[#4f46e5] sm:text-xs">Uploading...</span>
+                                  </div>
+                                ) : (
+                                  <>
+                                      <p className="truncate text-[10px] font-semibold text-[#16a34a] sm:text-xs">{type.upload.original_filename || type.upload.file_path}</p>
+                                      <p className="text-[9px] font-medium text-[#16a34a]/70 sm:text-[10px]">Uploaded</p>
+                                  </>
+                                )}
+                              </div>
+                              <div className="flex shrink-0 items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleViewDoc({ id: type.upload!.id, file_path: type.upload!.file_path, mime_type: type.upload!.mime_type })}
+                                  disabled={openingId === type.upload.id || uploadingTypeId !== null}
+                                   className="rounded px-1.5 py-0.5 text-[10px] font-bold text-[#4f46e5] underline hover:text-[#3639d4] disabled:opacity-50 sm:text-xs"
+                                >
+                                  {openingId === type.upload.id ? 'Opening...' : 'View'}
+                                </button>
+                                {canEditDocs ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => { if (!uploadingTypeId && type.upload) { uploadHandledRef.current = false; oldUploadRef.current = { file_path: type.upload.file_path, original_filename: type.upload.original_filename || '', mime_type: type.upload.mime_type || '', size_bytes: type.upload.size_bytes ?? 0 }; setUploadingTypeId(type.id); docInputRef.current?.click() } }}
+                                      disabled={uploadingTypeId !== null}
+                                      className="rounded px-1.5 py-0.5 text-[10px] font-bold text-[#4f46e5] underline hover:text-[#3639d4] disabled:opacity-50 sm:text-xs"
+                                    >
+                                      Replace
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteDoc(type.upload!.id)}
+                                      disabled={uploadingTypeId !== null}
+                                      className="rounded p-1 text-[#071f52]/30 transition-colors hover:bg-[#e92935]/8 hover:text-[#e92935] disabled:opacity-20"
+                                      aria-label={`Delete ${type.label}`}
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </>
+                                ) : null}
+                              </div>
+                            </div>
+                            {sizeError === type.id ? (
+                                <p className="mt-0.5 text-[9px] font-semibold text-[#e92935] sm:text-[10px]">File must be under 5 MB.</p>
+                            ) : null}
+                          </>
+                        ) : canEditDocs ? (
+                          <>
+                            <div
+                              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                              onDragLeave={() => setDragOver(false)}
+                              onDrop={(e) => handleDrop(e, type.id)}
+                              onClick={() => { if (!uploadingTypeId) { uploadHandledRef.current = false; setSizeError(null); oldUploadRef.current = null; setUploadingTypeId(type.id); docInputRef.current?.click() } }}
+                              className={`mt-1.5 cursor-pointer rounded-lg border-2 border-dashed px-3 py-2.5 text-center transition-colors ${
+                                dragOver
+                                  ? 'border-[#4f46e5] bg-[#4f46e5]/8'
+                                  : 'border-[#4f46e5]/25 bg-[#f8f9ff] hover:border-[#4f46e5]/40'
+                              } ${uploadingTypeId !== null ? 'pointer-events-none opacity-50' : ''}`}
+                            >
+                              {uploadingTypeId === type.id ? (
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#4f46e5]/30 border-t-[#4f46e5]" />
+                                  <span className="text-[10px] font-semibold text-[#4f46e5] sm:text-xs">Uploading...</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <Upload size={12} className="text-[#4f46e5]" />
+                                    <span className="text-[10px] font-semibold text-[#4f46e5] sm:text-xs">Upload file</span>
+                                </div>
+                              )}
+                            </div>
+                            {sizeError === type.id ? (
+                                <p className="mt-0.5 text-[9px] font-semibold text-[#e92935] sm:text-[10px]">File must be under 5 MB.</p>
+                            ) : (
+                                <p className="mt-0.5 text-[9px] text-[#4f46e5]/50 sm:text-[10px]">Max 5 MB per file</p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="mt-1.5 text-[10px] font-medium text-[#071f52]/42 sm:text-xs">No uploaded document</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )
+          })() : null}
+
+          <section className="rounded-lg border border-[#071f52]/8 bg-white shadow-[0_6px_20px_rgba(7,31,82,0.04)]">
+            <div className="border-b border-[#071f52]/8 px-4 py-3.5">
+                <h2 className="text-sm font-black tracking-[-0.02em] text-[#1f2a44] sm:text-[1.1rem]">Status History</h2>
+            </div>
+
+            <div className="px-4 py-4">
+              {status_events.length ? (
+                <div className="space-y-3">
+                  {status_events.map((event) => (
+                    <div key={event.id} className="relative pl-5">
+                      <div className="absolute left-0 top-1.5 h-2 w-2 rounded-full bg-[#4f46e5]" />
+                      <p className="text-xs font-bold text-[#1f2a44] sm:text-sm">{event.from_status ? `${formatBookingStatus(event.from_status)} → ` : ''}{formatBookingStatus(event.to_status)}</p>
+                      <p className="mt-0.5 text-[10px] font-medium text-[#071f52]/40 sm:text-xs">{formatDateTime(event.created_at)}</p>
+                      {event.note ? <p className="mt-0.5 text-xs font-medium leading-5 text-[#071f52]/62 sm:text-sm sm:leading-6">{event.to_status === 'canceled' ? formatCancellationReason(event.note) : event.note}</p> : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyNote>No status events.</EmptyNote>
+              )}
+            </div>
+          </section>
+
+          {extensions.length > 0 ? (
+            <section className="rounded-lg border border-[#071f52]/8 bg-white shadow-[0_6px_20px_rgba(7,31,82,0.04)]">
+              <div className="border-b border-[#071f52]/8 px-4 py-3.5">
+                  <h2 className="text-sm font-black tracking-[-0.02em] text-[#1f2a44] sm:text-[1.1rem]">Extensions</h2>
+              </div>
+
+              <div className="px-4 py-4">
+                <div className="space-y-2">
+                  {extensions.map((extension) => (
+                    <div key={extension.id} className="rounded-lg border border-[#071f52]/8 bg-[#fbfcfe] px-3 py-3">
+                      <p className="text-xs font-bold text-[#1f2a44] sm:text-sm">Extended to {formatDateTime(extension.new_end_at)}</p>
+                      {extension.extension_amount > 0 ? <p className="mt-0.5 text-xs font-semibold text-[#16a34a] sm:text-sm">+{formatCurrency(extension.extension_amount)}</p> : null}
+                      {extension.reason ? <p className="mt-1.5 text-xs font-medium text-[#071f52]/62 sm:text-sm">{extension.reason}</p> : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          {invoice ? (
+            <section className="rounded-lg border border-[#071f52]/8 bg-white shadow-[0_6px_20px_rgba(7,31,82,0.04)]">
+              <div className="border-b border-[#071f52]/8 px-4 py-3.5">
+                <h2 className="text-sm font-black tracking-[-0.02em] text-[#1f2a44] sm:text-[1.1rem]">Invoice</h2>
+              </div>
+
+              <div className="px-4 py-4">
+                <SummaryRow label="Invoice #" value={invoice.invoice_number} />
+                <SummaryRow label="Amount" value={formatCurrency(invoice.total_amount)} />
+                <SummaryRow label="Status" value={toLabel(invoice.status)} />
+
+                <Button variant="outline" className="mt-3 w-full gap-1.5 text-xs" onClick={handleDownloadInvoice} disabled={isDownloadingInvoice}>
+                  <FileText size={12} /> {isDownloadingInvoice ? 'Preparing...' : 'Download Invoice'}
+                </Button>
+              </div>
+            </section>
+          ) : null}
+
+          {canCustomerCancelBooking(booking.status) && booking.status !== 'pending_price_approval' ? (
+            <Button
+              variant="outline"
+              className="w-full gap-1.5 rounded-lg border-[#e92935]/30 py-4 text-xs text-[#e92935] hover:bg-[#e92935]/8"
+              onClick={handleCancelBooking}
+              disabled={cancelBooking.isPending}
+            >
+              Cancel Booking
+            </Button>
+          ) : null}
+        </aside>
       </div>
-    </main>
+
+      <ImageViewer open={!!viewing} onClose={closeViewer} src={viewing?.src || ''} alt={viewing?.alt || ''} />
+    </div>
   )
 }
 
 function Spec({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#97a5bb]">{label}</p>
-      <p className="mt-2 text-[1.02rem] font-bold leading-6 text-[#1f2a44]">{value}</p>
+      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#97a5bb] sm:text-xs sm:tracking-[0.12em]">{label}</p>
+      <p className="mt-1.5 text-sm font-bold leading-5 text-[#1f2a44] sm:text-[1.02rem] sm:leading-6">{value}</p>
     </div>
   )
 }
@@ -808,19 +803,19 @@ function SummaryRow({
   valueClassName?: string
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex items-start justify-between gap-3">
       <div>
-        <p className={`text-sm ${strong ? 'font-black text-[#1f2a44]' : 'font-medium text-[#071f52]/62'}`}>{label}</p>
-        {note ? <p className="mt-1 text-xs font-medium text-[#071f52]/38">{note}</p> : null}
+        <p className={`text-xs sm:text-sm ${strong ? 'font-black text-[#1f2a44]' : 'font-medium text-[#071f52]/62'}`}>{label}</p>
+        {note ? <p className="mt-0.5 text-[10px] font-medium text-[#071f52]/38 sm:text-xs">{note}</p> : null}
       </div>
-      <p className={`text-right tabular-nums ${strong ? 'text-base font-black text-[#1f2a44]' : 'text-sm font-bold text-[#1f2a44]'} ${valueClassName}`}>{value}</p>
+      <p className={`shrink-0 text-right tabular-nums ${strong ? 'text-sm font-black text-[#1f2a44] sm:text-base' : 'text-xs font-bold text-[#1f2a44] sm:text-sm'} ${valueClassName}`}>{value}</p>
     </div>
   )
 }
 
 function EmptyNote({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-[20px] bg-[#f7f9fc] px-4 py-4 text-sm font-medium text-[#071f52]/52">
+    <div className="rounded-lg bg-[#f7f9fc] px-3 py-3 text-xs font-medium text-[#071f52]/52 sm:text-sm">
       {children}
     </div>
   )

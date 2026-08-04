@@ -67,7 +67,7 @@ export default function Profile() {
   const updateProfile = useUpdateProfile()
 
   const getProfileFieldClassName = (invalid: boolean) => cn(
-    'block w-full rounded-2xl border bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] transition-colors focus:bg-white focus:outline-none focus:ring-2',
+    'block w-full rounded-lg border bg-[#f7f9ff] px-3 py-2 text-xs font-semibold text-[#071f52] transition-colors focus:bg-white focus:outline-none focus:ring-2 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-sm',
     invalid
       ? 'border-[#e92935] focus:border-[#e92935] focus:ring-[#e92935]/30'
       : 'border-[#071f52]/14 focus:border-[#071f52] focus:ring-[#ffd923]/60',
@@ -249,14 +249,14 @@ export default function Profile() {
   if (isLoading) return <ProfileSkeleton />
 
   return (
-    <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8">
-      <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52] sm:text-3xl">My Profile</h1>
-      <p className="mt-1 text-sm font-medium text-[#071f52]/58">Manage your personal information and password.</p>
+    <div className="w-full px-3 py-4 sm:px-5 sm:py-6">
+      <h1 className="text-lg font-black tracking-[-0.02em] text-[#071f52] sm:text-2xl sm:tracking-[-0.03em]">My Profile</h1>
+      <p className="mt-0.5 text-xs font-medium text-[#071f52]/58 sm:text-sm">Manage your personal information and password.</p>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1fr]">
-        <div className="rounded-2xl border border-[#071f52]/10 bg-white p-6 shadow-[0_8px_24px_rgba(7,31,82,0.06)]">
-          <div className="mb-6 flex items-center gap-4">
-            <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#071f52] text-2xl font-black text-white">
+      <div className="mt-4 grid gap-4 sm:mt-6 sm:gap-6 lg:grid-cols-[1fr_1fr]">
+        <div className="rounded-lg border border-[#071f52]/10 bg-white p-4 shadow-[0_4px_16px_rgba(7,31,82,0.04)] sm:rounded-2xl sm:p-6 sm:shadow-[0_8px_24px_rgba(7,31,82,0.06)]">
+          <div className="mb-4 flex items-center gap-3 sm:mb-6 sm:gap-4">
+            <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#071f52] text-xl font-black text-white sm:h-16 sm:w-16 sm:text-2xl">
               {profile.profile_image_path ? (
                 <img src={profile.profile_image_path} alt={name} className="h-full w-full object-cover" />
               ) : (
@@ -267,26 +267,27 @@ export default function Profile() {
                 disabled={uploading}
                 onClick={() => fileInputRef.current?.click()}
                 aria-label="Upload profile photo"
-                className="absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#ffd923] text-[#071f52] shadow-sm"
+                className="absolute bottom-0.5 right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#ffd923] text-[#071f52] shadow-sm sm:bottom-1 sm:right-1 sm:h-6 sm:w-6"
               >
-                <Camera size={12} />
+                <Camera size={10} className="sm:hidden" />
+                <Camera size={12} className="hidden sm:block" />
               </button>
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUploadPhoto} className="hidden" />
             </div>
             <div>
-              <p className="text-base font-bold text-[#071f52]">{name}</p>
-              <p className="text-sm font-medium text-[#071f52]/48">{profile.email || user?.email}</p>
+              <p className="text-sm font-bold text-[#071f52] sm:text-base">{name}</p>
+              <p className="text-xs font-medium text-[#071f52]/48 sm:text-sm">{profile.email || user?.email}</p>
             </div>
           </div>
 
-          <form noValidate onSubmit={handleSaveProfile} className="space-y-4">
-            <p className="px-1 py-1 text-sm font-black text-[#b91c1c]">
+          <form noValidate onSubmit={handleSaveProfile} className="space-y-3 sm:space-y-4">
+            <p className="px-1 py-0.5 text-[10px] font-black text-[#b91c1c] sm:py-1 sm:text-sm">
               Fields with (*) are required to make a booking.
             </p>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#071f52]">First Name <span className="text-[#e92935]">*</span></label>
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+              <div className="space-y-1 sm:space-y-1.5">
+                <label className="text-[10px] font-bold text-[#071f52] sm:text-xs">First Name <span className="text-[#e92935]">*</span></label>
                 <input
                   value={profile.first_name}
                   onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
@@ -294,10 +295,10 @@ export default function Profile() {
                   required
                   className={getProfileFieldClassName(invalidProfileFields.first_name)}
                 />
-                {profileFieldErrors.first_name ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.first_name}</p> : null}
+                {profileFieldErrors.first_name ? <p className="text-[10px] font-bold text-[#b91c1c] sm:text-xs">{profileFieldErrors.first_name}</p> : null}
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#071f52]">Last Name <span className="text-[#e92935]">*</span></label>
+              <div className="space-y-1 sm:space-y-1.5">
+                <label className="text-[10px] font-bold text-[#071f52] sm:text-xs">Last Name <span className="text-[#e92935]">*</span></label>
                 <input
                   value={profile.last_name}
                   onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
@@ -305,23 +306,24 @@ export default function Profile() {
                   required
                   className={getProfileFieldClassName(invalidProfileFields.last_name)}
                 />
-                {profileFieldErrors.last_name ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.last_name}</p> : null}
+                {profileFieldErrors.last_name ? <p className="text-[10px] font-bold text-[#b91c1c] sm:text-xs">{profileFieldErrors.last_name}</p> : null}
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#071f52]">Email</label>
+            <div className="space-y-1 sm:space-y-1.5">
+              <label className="text-[10px] font-bold text-[#071f52] sm:text-xs">Email</label>
               <input
                 value={profile.email || user?.email || ''}
                 readOnly
-                className="block w-full rounded-2xl border border-[#071f52]/14 bg-gray-100 px-4 py-2.5 text-sm font-semibold text-[#071f52]/48"
+                className="block w-full rounded-lg border border-[#071f52]/14 bg-gray-100 px-3 py-2 text-xs font-semibold text-[#071f52]/48 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:text-sm"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#071f52]">Mobile <span className="text-[#e92935]">*</span></label>
+            <div className="space-y-1 sm:space-y-1.5">
+              <label className="text-[10px] font-bold text-[#071f52] sm:text-xs">Mobile <span className="text-[#e92935]">*</span></label>
               <div className="relative">
-                <Phone size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#071f52]/38" />
+                <Phone size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[#071f52]/38 sm:left-3 sm:hidden" />
+                <Phone size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#071f52]/38 hidden sm:block" />
                 <input
                   ref={mobileInputRef}
                   value={profile.mobile}
@@ -337,15 +339,15 @@ export default function Profile() {
                   placeholder="+63 9171234567"
                   className={cn(
                     getProfileFieldClassName(invalidProfileFields.mobile),
-                    'py-2.5 pl-9 pr-4 placeholder:text-[#071f52]/38',
+                    'py-2 pl-8 pr-3 placeholder:text-[#071f52]/38 sm:py-2.5 sm:pl-9 sm:pr-4',
                   )}
                 />
               </div>
-              {profileFieldErrors.mobile ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.mobile}</p> : null}
+              {profileFieldErrors.mobile ? <p className="text-[10px] font-bold text-[#b91c1c] sm:text-xs">{profileFieldErrors.mobile}</p> : null}
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#071f52]">Address Line 1 <span className="text-[#e92935]">*</span></label>
+            <div className="space-y-1 sm:space-y-1.5">
+              <label className="text-[10px] font-bold text-[#071f52] sm:text-xs">Address Line 1 <span className="text-[#e92935]">*</span></label>
               <input
                 value={profile.address_line_1}
                 onChange={(e) => setProfile({ ...profile, address_line_1: e.target.value })}
@@ -354,11 +356,11 @@ export default function Profile() {
                 placeholder="Unit / House No. / Building"
                 className={cn(getProfileFieldClassName(invalidProfileFields.address_line_1), 'placeholder:text-[#071f52]/38')}
               />
-              {profileFieldErrors.address_line_1 ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.address_line_1}</p> : null}
+              {profileFieldErrors.address_line_1 ? <p className="text-[10px] font-bold text-[#b91c1c] sm:text-xs">{profileFieldErrors.address_line_1}</p> : null}
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#071f52]">Address Line 2</label>
+            <div className="space-y-1 sm:space-y-1.5">
+              <label className="text-[10px] font-bold text-[#071f52] sm:text-xs">Address Line 2</label>
               <input
                 value={profile.address_line_2}
                 onChange={(e) => setProfile({ ...profile, address_line_2: e.target.value })}
@@ -367,9 +369,9 @@ export default function Profile() {
               />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#071f52]">Street Address <span className="text-[#e92935]">*</span></label>
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+              <div className="space-y-1 sm:space-y-1.5">
+                <label className="text-[10px] font-bold text-[#071f52] sm:text-xs">Street Address <span className="text-[#e92935]">*</span></label>
                 <input
                   value={profile.street_address}
                   onChange={(e) => setProfile({ ...profile, street_address: e.target.value })}
@@ -378,10 +380,10 @@ export default function Profile() {
                   placeholder="Street name"
                   className={cn(getProfileFieldClassName(invalidProfileFields.street_address), 'placeholder:text-[#071f52]/38')}
                 />
-                {profileFieldErrors.street_address ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.street_address}</p> : null}
+                {profileFieldErrors.street_address ? <p className="text-[10px] font-bold text-[#b91c1c] sm:text-xs">{profileFieldErrors.street_address}</p> : null}
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#071f52]">Barangay <span className="text-[#e92935]">*</span></label>
+              <div className="space-y-1 sm:space-y-1.5">
+                <label className="text-[10px] font-bold text-[#071f52] sm:text-xs">Barangay <span className="text-[#e92935]">*</span></label>
                 <input
                   value={profile.barangay}
                   onChange={(e) => setProfile({ ...profile, barangay: e.target.value })}
@@ -390,13 +392,13 @@ export default function Profile() {
                   placeholder="Barangay"
                   className={cn(getProfileFieldClassName(invalidProfileFields.barangay), 'placeholder:text-[#071f52]/38')}
                 />
-                {profileFieldErrors.barangay ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.barangay}</p> : null}
+                {profileFieldErrors.barangay ? <p className="text-[10px] font-bold text-[#b91c1c] sm:text-xs">{profileFieldErrors.barangay}</p> : null}
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#071f52]">City <span className="text-[#e92935]">*</span></label>
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+              <div className="space-y-1 sm:space-y-1.5">
+                <label className="text-[10px] font-bold text-[#071f52] sm:text-xs">City <span className="text-[#e92935]">*</span></label>
                 <input
                   value={profile.city}
                   onChange={(e) => setProfile({ ...profile, city: e.target.value })}
@@ -405,10 +407,10 @@ export default function Profile() {
                   placeholder="Pasay City"
                   className={getProfileFieldClassName(invalidProfileFields.city)}
                 />
-                {profileFieldErrors.city ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.city}</p> : null}
+                {profileFieldErrors.city ? <p className="text-[10px] font-bold text-[#b91c1c] sm:text-xs">{profileFieldErrors.city}</p> : null}
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#071f52]">Province <span className="text-[#e92935]">*</span></label>
+              <div className="space-y-1 sm:space-y-1.5">
+                <label className="text-[10px] font-bold text-[#071f52] sm:text-xs">Province <span className="text-[#e92935]">*</span></label>
                 <input
                   value={profile.province}
                   onChange={(e) => setProfile({ ...profile, province: e.target.value })}
@@ -417,13 +419,13 @@ export default function Profile() {
                   placeholder="Metro Manila"
                   className={getProfileFieldClassName(invalidProfileFields.province)}
                 />
-                {profileFieldErrors.province ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.province}</p> : null}
+                {profileFieldErrors.province ? <p className="text-[10px] font-bold text-[#b91c1c] sm:text-xs">{profileFieldErrors.province}</p> : null}
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#071f52]">ZIP Code <span className="text-[#e92935]">*</span></label>
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+              <div className="space-y-1 sm:space-y-1.5">
+                <label className="text-[10px] font-bold text-[#071f52] sm:text-xs">ZIP Code <span className="text-[#e92935]">*</span></label>
                 <input
                   value={profile.zip_code}
                   onChange={(e) => setProfile({ ...profile, zip_code: e.target.value })}
@@ -432,10 +434,10 @@ export default function Profile() {
                   placeholder="1309"
                   className={getProfileFieldClassName(invalidProfileFields.zip_code)}
                 />
-                {profileFieldErrors.zip_code ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.zip_code}</p> : null}
+                {profileFieldErrors.zip_code ? <p className="text-[10px] font-bold text-[#b91c1c] sm:text-xs">{profileFieldErrors.zip_code}</p> : null}
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#071f52]">Country <span className="text-[#e92935]">*</span></label>
+              <div className="space-y-1 sm:space-y-1.5">
+                <label className="text-[10px] font-bold text-[#071f52] sm:text-xs">Country <span className="text-[#e92935]">*</span></label>
                 <select
                   value={profile.country}
                   onChange={(e) => setProfile({ ...profile, country: e.target.value })}
@@ -445,17 +447,17 @@ export default function Profile() {
                 >
                   {countries.map((c) => (<option key={c}>{c}</option>))}
                 </select>
-                {profileFieldErrors.country ? <p className="text-xs font-bold text-[#b91c1c]">{profileFieldErrors.country}</p> : null}
+                {profileFieldErrors.country ? <p className="text-[10px] font-bold text-[#b91c1c] sm:text-xs">{profileFieldErrors.country}</p> : null}
               </div>
             </div>
 
-            <Button type="submit" disabled={saving} size="lg" className="w-full bg-[#071f52] text-white hover:bg-[#112458]">
+            <Button type="submit" disabled={saving} size="sm" className="w-full bg-[#071f52] text-xs text-white hover:bg-[#112458] sm:size-lg">
               {saving ? 'Saving...' : 'Save Profile'}
             </Button>
 
             {message && messageScope === 'profile' ? (
               <div className={cn(
-                'rounded-2xl border px-4 py-3 text-sm font-bold',
+                'rounded-lg border px-3 py-2.5 text-xs font-bold sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm',
                 messageType === 'success'
                   ? 'border-[#16a34a]/30 bg-[#16a34a]/10 text-[#15803d]'
                   : 'border-[#e92935]/30 bg-[#e92935]/8 text-[#b91c1c]',
@@ -466,16 +468,14 @@ export default function Profile() {
           </form>
         </div>
 
-        <div className="rounded-2xl border border-[#071f52]/10 bg-white p-6 shadow-[0_8px_24px_rgba(7,31,82,0.06)]">
-          <h2 className="text-lg font-black tracking-[-0.02em] text-[#071f52]">Change Password</h2>
-          <p className="mt-1 text-sm font-medium text-[#071f52]/58">Update your password to keep your account secure.</p>
+        <div className="rounded-lg border border-[#071f52]/10 bg-white p-4 shadow-[0_4px_16px_rgba(7,31,82,0.04)] sm:rounded-2xl sm:p-6 sm:shadow-[0_8px_24px_rgba(7,31,82,0.06)]">
+          <h2 className="text-sm font-black tracking-[-0.02em] text-[#071f52] sm:text-lg">Change Password</h2>
+          <p className="mt-0.5 text-xs font-medium text-[#071f52]/58 sm:text-sm">Update your password to keep your account secure.</p>
 
-          <form onSubmit={handleChangePassword} className="mt-5 space-y-4">
+          <form onSubmit={handleChangePassword} className="mt-4 space-y-3 sm:mt-5 sm:space-y-4">
             {(['current', 'new', 'confirm'] as const).map((field) => (
-              <div key={field} className="space-y-1.5">
-                <label className="text-xs font-bold text-[#071f52]">
-                  {field === 'current' ? 'Current Password' : field === 'new' ? 'New Password' : 'Confirm Password'}
-                </label>
+              <div key={field} className="space-y-1 sm:space-y-1.5">
+                <label className="text-[10px] font-bold text-[#071f52] sm:text-xs">{field === 'current' ? 'Current Password' : field === 'new' ? 'New Password' : 'Confirm Password'}</label>
                 <div className="relative">
                   <input
                     type={show[field] ? 'text' : 'password'}
@@ -487,7 +487,7 @@ export default function Profile() {
                       : 'Re-enter new password'
                     }
                     className={cn(
-                      'block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 pr-10 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:border-[#071f52] focus:ring-[#ffd923]/60',
+                      'block w-full rounded-lg border border-[#071f52]/14 bg-[#f7f9ff] px-3 py-2 pr-9 text-xs font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:bg-white focus:outline-none focus:ring-2 focus:border-[#071f52] focus:ring-[#ffd923]/60 sm:rounded-2xl sm:px-4 sm:py-2.5 sm:pr-10 sm:text-sm',
                       field !== 'current' && password[field] &&
                         (field === 'confirm'
                           ? password[field] === password.new
@@ -501,9 +501,10 @@ export default function Profile() {
                   <button
                     type="button"
                     onClick={() => setShow({ ...show, [field]: !show[field] })}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#071f52]/38 hover:text-[#071f52]"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#071f52]/38 hover:text-[#071f52] sm:right-3"
                   >
-                    {show[field] ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {show[field] ? <EyeOff size={14} className="sm:hidden" /> : <Eye size={14} className="sm:hidden" />}
+                    {show[field] ? <EyeOff size={16} className="hidden sm:block" /> : <Eye size={16} className="hidden sm:block" />}
                   </button>
                 </div>
               </div>
@@ -512,15 +513,15 @@ export default function Profile() {
             <Button
               type="submit"
               disabled={!password.current || !password.new || !password.confirm || passwordSaving}
-              size="lg"
-              className="w-full bg-[#071f52] text-white hover:bg-[#112458]"
+              size="sm"
+              className="w-full bg-[#071f52] text-xs text-white hover:bg-[#112458] sm:size-lg"
             >
               {passwordSaving ? 'Updating...' : 'Update Password'}
             </Button>
 
             {message && messageScope === 'password' ? (
               <div className={cn(
-                'rounded-2xl border px-4 py-3 text-sm font-bold',
+                'rounded-lg border px-3 py-2.5 text-xs font-bold sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm',
                 messageType === 'success'
                   ? 'border-[#16a34a]/30 bg-[#16a34a]/10 text-[#15803d]'
                   : 'border-[#e92935]/30 bg-[#e92935]/8 text-[#b91c1c]',
@@ -537,43 +538,43 @@ export default function Profile() {
 
 function ProfileSkeleton() {
   return (
-    <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8 animate-pulse">
-      <div className="mb-2 h-8 w-40 rounded-xl bg-[#071f52]/10" />
-      <div className="mb-6 h-4 w-72 rounded-xl bg-[#071f52]/8" />
+    <div className="w-full px-3 py-4 sm:px-5 sm:py-6 animate-pulse">
+      <div className="mb-1.5 h-7 w-36 rounded bg-[#071f52]/10 sm:mb-2 sm:h-8 sm:w-40" />
+      <div className="mb-4 h-3.5 w-60 rounded bg-[#071f52]/8 sm:mb-6 sm:h-4 sm:w-72" />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-        <div className="rounded-2xl border border-[#071f52]/10 bg-white p-6">
-          <div className="mb-6 flex items-center gap-4">
-            <div className="h-16 w-16 rounded-full bg-[#071f52]/10" />
-            <div className="space-y-2">
-              <div className="h-4 w-32 rounded-lg bg-[#071f52]/10" />
-              <div className="h-3 w-48 rounded-lg bg-[#071f52]/8" />
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1fr_1fr]">
+        <div className="rounded-lg border border-[#071f52]/10 bg-white p-4 sm:rounded-2xl sm:p-6">
+          <div className="mb-4 flex items-center gap-3 sm:mb-6 sm:gap-4">
+            <div className="h-14 w-14 rounded-full bg-[#071f52]/10 sm:h-16 sm:w-16" />
+            <div className="space-y-1.5 sm:space-y-2">
+              <div className="h-3.5 w-28 rounded bg-[#071f52]/10 sm:h-4 sm:w-32" />
+              <div className="h-2.5 w-44 rounded bg-[#071f52]/8 sm:h-3 sm:w-48" />
             </div>
           </div>
-          <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="h-14 rounded-2xl bg-[#071f52]/6" />
-              <div className="h-14 rounded-2xl bg-[#071f52]/6" />
+          <div className="space-y-3 sm:space-y-4">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+              <div className="h-10 rounded-lg bg-[#071f52]/6 sm:h-14 sm:rounded-2xl" />
+              <div className="h-10 rounded-lg bg-[#071f52]/6 sm:h-14 sm:rounded-2xl" />
             </div>
-            <div className="h-14 rounded-2xl bg-[#071f52]/6" />
-            <div className="h-14 rounded-2xl bg-[#071f52]/6" />
-            <div className="h-14 rounded-2xl bg-[#071f52]/6" />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="h-14 rounded-2xl bg-[#071f52]/6" />
-              <div className="h-14 rounded-2xl bg-[#071f52]/6" />
+            <div className="h-10 rounded-lg bg-[#071f52]/6 sm:h-14 sm:rounded-2xl" />
+            <div className="h-10 rounded-lg bg-[#071f52]/6 sm:h-14 sm:rounded-2xl" />
+            <div className="h-10 rounded-lg bg-[#071f52]/6 sm:h-14 sm:rounded-2xl" />
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+              <div className="h-10 rounded-lg bg-[#071f52]/6 sm:h-14 sm:rounded-2xl" />
+              <div className="h-10 rounded-lg bg-[#071f52]/6 sm:h-14 sm:rounded-2xl" />
             </div>
-            <div className="h-12 rounded-2xl bg-[#071f52]/10" />
+            <div className="h-9 rounded-lg bg-[#071f52]/10 sm:h-12 sm:rounded-2xl" />
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[#071f52]/10 bg-white p-6">
-          <div className="mb-2 h-5 w-36 rounded-lg bg-[#071f52]/10" />
-          <div className="mb-5 h-3 w-64 rounded-lg bg-[#071f52]/8" />
-          <div className="space-y-4">
-            <div className="h-14 rounded-2xl bg-[#071f52]/6" />
-            <div className="h-14 rounded-2xl bg-[#071f52]/6" />
-            <div className="h-14 rounded-2xl bg-[#071f52]/6" />
-            <div className="h-12 rounded-2xl bg-[#071f52]/10" />
+        <div className="rounded-lg border border-[#071f52]/10 bg-white p-4 sm:rounded-2xl sm:p-6">
+          <div className="mb-1.5 h-4 w-32 rounded bg-[#071f52]/10 sm:mb-2 sm:h-5 sm:w-36" />
+          <div className="mb-4 h-2.5 w-56 rounded bg-[#071f52]/8 sm:mb-5 sm:h-3 sm:w-64" />
+          <div className="space-y-3 sm:space-y-4">
+            <div className="h-10 rounded-lg bg-[#071f52]/6 sm:h-14 sm:rounded-2xl" />
+            <div className="h-10 rounded-lg bg-[#071f52]/6 sm:h-14 sm:rounded-2xl" />
+            <div className="h-10 rounded-lg bg-[#071f52]/6 sm:h-14 sm:rounded-2xl" />
+            <div className="h-9 rounded-lg bg-[#071f52]/10 sm:h-12 sm:rounded-2xl" />
           </div>
         </div>
       </div>

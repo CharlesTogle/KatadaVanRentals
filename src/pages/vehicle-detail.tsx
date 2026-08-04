@@ -31,14 +31,14 @@ export default function VehicleDetail() {
 
   if (isLoading) {
     const loadingContent = (
-      <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8 animate-pulse">
-        <div className="mb-6 h-4 w-24 rounded-lg bg-[#071f52]/10" />
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,0.82fr)_minmax(380px,0.58fr)]">
-          <div className="aspect-[16/10] rounded-[28px] bg-[#071f52]/10" />
-          <div className="space-y-4">
-            <div className="h-8 w-3/4 rounded-lg bg-[#071f52]/10" />
-            <div className="h-4 w-full rounded-lg bg-[#071f52]/8" />
-            <div className="h-24 rounded-lg bg-[#071f52]/6" />
+      <div className="w-full px-3 py-4 sm:px-5 sm:py-6 animate-pulse">
+        <div className="mb-4 h-4 w-20 rounded bg-[#071f52]/10 sm:mb-6" />
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,0.58fr)] sm:gap-8">
+          <div className="aspect-[16/10] rounded-lg bg-[#071f52]/10 sm:rounded-[28px]" />
+          <div className="space-y-3 sm:space-y-4">
+            <div className="h-6 w-3/4 rounded bg-[#071f52]/10 sm:h-8" />
+            <div className="h-3 w-full rounded bg-[#071f52]/8 sm:h-4" />
+            <div className="h-20 rounded bg-[#071f52]/6 sm:h-24" />
           </div>
         </div>
       </div>
@@ -53,8 +53,8 @@ export default function VehicleDetail() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="text-center">
-          <p className="text-lg font-bold text-[#071f52]">Vehicle not found</p>
-          <Button asChild className="mt-4">
+          <p className="text-sm font-bold text-[#071f52] sm:text-lg">Vehicle not found</p>
+          <Button asChild size="sm" className="mt-3 text-xs sm:mt-4">
             <Link to="/our-fleet">Back to fleet</Link>
           </Button>
         </div>
@@ -83,15 +83,16 @@ export default function VehicleDetail() {
   ]
 
   const content = (
-    <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8">
-      <Link to="/our-fleet" className="mb-6 flex w-fit items-center gap-2 text-sm font-bold text-[#071f52]/60 transition-colors hover:text-[#e92935]">
-        <ArrowLeft size={16} />
+    <div className="w-full px-3 py-4 sm:px-5 sm:py-6">
+      <Link to="/our-fleet" className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#071f52]/60 transition-colors hover:text-[#e92935] sm:mb-6 sm:gap-2 sm:text-sm">
+        <ArrowLeft size={14} className="sm:hidden" />
+        <ArrowLeft size={16} className="hidden sm:block" />
         Back to fleet
       </Link>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,0.82fr)_minmax(380px,0.58fr)]">
-        <div className="space-y-4">
-          <div className="overflow-hidden rounded-[28px] border border-[#071f52]/10 bg-white shadow-[0_12px_40px_rgba(7,31,82,0.08)]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,0.58fr)] sm:gap-8">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="overflow-hidden rounded-lg border border-[#071f52]/10 bg-white shadow-[0_8px_24px_rgba(7,31,82,0.06)] sm:rounded-[28px] sm:shadow-[0_12px_40px_rgba(7,31,82,0.08)]">
             <img
               src={images[selectedImage] || images[0]}
               alt={vehicle.name}
@@ -99,15 +100,15 @@ export default function VehicleDetail() {
             />
           </div>
           {images.length > 1 && (
-            <div className="flex gap-3 overflow-x-auto">
+            <div className="flex gap-2 overflow-x-auto sm:gap-3">
               {images.map((img, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => setSelectedImage(i)}
-                  className={`shrink-0 overflow-hidden rounded-2xl border-2 transition-all ${i === selectedImage ? 'border-[#e92935]' : 'border-transparent'}`}
+                  className={`shrink-0 overflow-hidden rounded-lg border-2 transition-all sm:rounded-2xl ${i === selectedImage ? 'border-[#e92935]' : 'border-transparent'}`}
                 >
-                  <img src={img} alt={`${vehicle.name} ${i + 1}`} className="h-20 w-28 object-cover" />
+                  <img src={img} alt={`${vehicle.name} ${i + 1}`} className="h-16 w-24 object-cover sm:h-20 sm:w-28" />
                 </button>
               ))}
             </div>
@@ -115,42 +116,43 @@ export default function VehicleDetail() {
         </div>
 
         <div className="lg:sticky lg:top-6 lg:self-start">
-          <div className="rounded-[24px] border border-[#071f52]/10 bg-white p-6 shadow-[0_12px_40px_rgba(7,31,82,0.08)]">
-            <div className="flex items-start justify-between gap-3">
+          <div className="rounded-lg border border-[#071f52]/10 bg-white p-5 shadow-[0_8px_24px_rgba(7,31,82,0.06)] sm:rounded-[24px] sm:p-6 sm:shadow-[0_12px_40px_rgba(7,31,82,0.08)]">
+            <div className="flex items-start justify-between gap-2 sm:gap-3">
               <div>
-                <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52] sm:text-3xl">{vehicle.name}</h1>
-                <p className="mt-1 text-sm font-semibold text-[#071f52]/48">{vehicle.plate_number}</p>
+                <h1 className="text-lg font-black tracking-[-0.02em] text-[#071f52] sm:text-2xl sm:tracking-[-0.03em]">{vehicle.name}</h1>
+                <p className="mt-0.5 text-xs font-semibold text-[#071f52]/48 sm:text-sm">{vehicle.plate_number}</p>
               </div>
               {vehicle.is_available && (
-                <Badge className="rounded-full bg-[#16a34a]/10 px-3 py-1 text-xs font-bold text-[#16a34a]">Available</Badge>
+                <span className="rounded-full bg-[#16a34a]/10 px-2.5 py-0.5 text-[10px] font-bold text-[#16a34a] sm:px-3 sm:py-1 sm:text-xs">Available</span>
               )}
             </div>
 
-            <p className="mt-4 text-sm leading-6 text-[#071f52]/68">
+            <p className="mt-3 text-xs leading-5 text-[#071f52]/68 sm:mt-4 sm:text-sm sm:leading-6">
               {vehicle.description || 'Comfortable van for groups, airport transfers, and long-distance trips.'}
             </p>
 
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-1.5 sm:mt-4 sm:gap-2">
               {specs.map((spec) => {
                 const [count] = spec.split(' ')
                 const key = count.toLowerCase()
                 const Icon = specIconMap[key] || Gauge
                 return (
-                  <div key={spec} className="flex items-center gap-1.5 rounded-full bg-[#071f52]/8 px-3 py-1.5 text-[11px] font-bold text-[#071f52]/66">
-                    <Icon size={12} />
+                  <div key={spec} className="flex items-center gap-1 rounded-full bg-[#071f52]/8 px-2.5 py-1 text-[10px] font-bold text-[#071f52]/66 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-[11px]">
+                    <Icon size={10} className="sm:hidden" />
+                    <Icon size={12} className="hidden sm:block" />
                     {spec}
                   </div>
                 )
               })}
             </div>
 
-            <div className="mt-6 rounded-2xl border border-[#071f52]/8 bg-[#f7f9ff] p-5">
-              <h3 className="text-sm font-black text-[#071f52]">Booking</h3>
-              <p className="mt-1 text-sm leading-6 text-[#071f52]/58">
+            <div className="mt-4 rounded-lg border border-[#071f52]/8 bg-[#f7f9ff] p-4 sm:mt-6 sm:rounded-2xl sm:p-5">
+              <h3 className="text-xs font-black text-[#071f52] sm:text-sm">Booking</h3>
+              <p className="mt-1 text-xs leading-5 text-[#071f52]/58 sm:text-sm sm:leading-6">
                 Continue to the dedicated booking page to choose dates, rental type, pickup details, and payment method.
               </p>
 
-              <Button asChild className="mt-4 w-full bg-[#e92935] text-white hover:bg-[#c91f2a]" size="lg">
+              <Button asChild className="mt-3 w-full bg-[#e92935] text-xs text-white hover:bg-[#c91f2a] sm:mt-4 sm:size-lg" size="sm">
                 <Link to={bookingUrl}>{user ? 'Continue to booking' : 'Sign in to book'}</Link>
               </Button>
             </div>
@@ -163,8 +165,4 @@ export default function VehicleDetail() {
   return inCustomerShell
     ? <CustomerShellFrame>{content}</CustomerShellFrame>
     : <div className="min-h-[100dvh] bg-[#f7f9ff]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}><AppHeader />{content}</div>
-}
-
-function Badge({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <span className={className}>{children}</span>
 }

@@ -10,7 +10,6 @@ import { isAdminRole } from '@/lib/rbac'
 import { loadBookingDateSelection, saveBookingDateSelection } from '@/lib/booking-date-storage'
 import { useBookingStore } from '@/store/booking-store'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { Search, ArrowRight } from 'lucide-react'
 
@@ -107,22 +106,22 @@ export default function OurFleet() {
   }
 
   const content = (
-    <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-6 sm:py-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-black tracking-[-0.04em] text-[#071f52] sm:text-5xl">Browse Vehicles</h1>
-        <p className="mt-3 text-base font-medium leading-7 text-[#071f52]/68">Find the perfect vehicle for your trip</p>
+    <div className="w-full px-3 py-4 sm:px-5 sm:py-6">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-xl font-black tracking-[-0.03em] text-[#071f52] sm:text-4xl sm:tracking-[-0.04em]">Browse Vehicles</h1>
+        <p className="mt-1.5 text-xs font-medium leading-6 text-[#071f52]/68 sm:mt-3 sm:text-base sm:leading-7">Find the perfect vehicle for your trip</p>
       </div>
 
-      <div className="mb-10 rounded-[24px] border border-[#071f52]/10 bg-white p-5 shadow-[0_12px_40px_rgba(7,31,82,0.08)] sm:p-6">
+      <div className="mb-6 rounded-lg border border-[#071f52]/10 bg-white p-4 shadow-[0_8px_24px_rgba(7,31,82,0.06)] sm:mb-10 sm:rounded-[24px] sm:p-6 sm:shadow-[0_12px_40px_rgba(7,31,82,0.08)]">
         <div
           className={returnToDifferentLocation
-            ? 'grid gap-3 sm:grid-cols-2'
-            : 'grid gap-3 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(180px,0.9fr)] lg:items-end'}
+            ? 'grid gap-2 sm:grid-cols-2 sm:gap-3'
+            : 'grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(160px,0.9fr)] lg:items-end sm:gap-3 lg:gap-3'}
         >
           <div
             className={returnToDifferentLocation
-              ? 'space-y-2 [&_label]:text-xs [&_label]:font-bold [&_label]:text-[#071f52]'
-              : 'space-y-2 [&_label]:flex [&_label]:min-h-[2rem] [&_label]:items-end [&_label]:text-[11px] [&_label]:whitespace-nowrap'}
+              ? 'space-y-1.5 [&_label]:text-[10px] [&_label]:font-bold [&_label]:text-[#071f52] sm:space-y-2 sm:[&_label]:text-xs'
+              : 'space-y-1.5 [&_label]:flex [&_label]:items-end [&_label]:text-[10px] [&_label]:font-bold [&_label]:whitespace-nowrap sm:space-y-2 sm:[&_label]:min-h-[2rem] sm:[&_label]:text-[11px]'}
           >
             <LocationSelector
               id="fleet-pickup"
@@ -138,7 +137,7 @@ export default function OurFleet() {
               }}
             />
           </div>
-          {returnToDifferentLocation ? <div className="space-y-2 [&_label]:text-xs [&_label]:font-bold [&_label]:text-[#071f52]">
+          {returnToDifferentLocation ? <div className="space-y-1.5 [&_label]:text-[10px] [&_label]:font-bold [&_label]:text-[#071f52] sm:space-y-2 sm:[&_label]:text-xs">
             <LocationSelector
               id="fleet-dropoff"
               label="DROP-OFF LOCATION"
@@ -154,8 +153,8 @@ export default function OurFleet() {
             label="PICK-UP DATE & TIME"
             value={mergeDateTimeValue(startDatePart, startTimePart)}
             placeholder="Select date & time"
-            labelClassName={returnToDifferentLocation ? 'text-xs font-bold text-[#071f52]' : 'text-[11px] font-bold text-[#071f52]'}
-            triggerClassName={returnToDifferentLocation ? 'min-h-[48px] text-sm text-[#071f52]' : 'min-h-[48px] text-sm text-[#071f52]'}
+            labelClassName={returnToDifferentLocation ? 'text-[10px] font-bold text-[#071f52] sm:text-xs' : 'text-[10px] font-bold text-[#071f52] sm:text-[11px]'}
+            triggerClassName={returnToDifferentLocation ? 'min-h-[44px] text-xs text-[#071f52] sm:min-h-[48px] sm:text-sm' : 'min-h-[44px] text-xs text-[#071f52] sm:min-h-[48px] sm:text-sm'}
             onChange={(value) => {
               const nextStart = splitDateTimeValue(value)
               const nextEnd = addHoursToDateTimeValue(value, 24)
@@ -177,8 +176,8 @@ export default function OurFleet() {
             label="DROP-OFF DATE & TIME"
             value={mergeDateTimeValue(endDatePart, endTimePart)}
             placeholder="Select date & time"
-            labelClassName={returnToDifferentLocation ? 'text-xs font-bold text-[#071f52]' : 'text-[11px] font-bold text-[#071f52]'}
-            triggerClassName={returnToDifferentLocation ? 'min-h-[48px] text-sm text-[#071f52]' : 'min-h-[48px] text-sm text-[#071f52]'}
+            labelClassName={returnToDifferentLocation ? 'text-[10px] font-bold text-[#071f52] sm:text-xs' : 'text-[10px] font-bold text-[#071f52] sm:text-[11px]'}
+            triggerClassName={returnToDifferentLocation ? 'min-h-[44px] text-xs text-[#071f52] sm:min-h-[48px] sm:text-sm' : 'min-h-[44px] text-xs text-[#071f52] sm:min-h-[48px] sm:text-sm'}
             onChange={(value) => {
               const nextEnd = splitDateTimeValue(value)
               setEndDatePart(nextEnd.date)
@@ -188,13 +187,15 @@ export default function OurFleet() {
           />
           {!returnToDifferentLocation ? (
             <div className="flex items-end">
-              <Button type="button" onClick={applyFilters} className="h-[50px] w-full gap-2 rounded-2xl bg-[#e92935] text-white hover:bg-[#c91f2a]">
-                <Search size={16} /> Find a Car
+              <Button type="button" onClick={applyFilters} className="h-[44px] w-full gap-1.5 rounded-lg bg-[#e92935] text-xs text-white hover:bg-[#c91f2a] sm:h-[50px] sm:gap-2 sm:rounded-2xl">
+                <Search size={14} className="sm:hidden" />
+                <Search size={16} className="hidden sm:block" />
+                Find a Car
               </Button>
             </div>
           ) : null}
         </div>
-        <label className="mt-4 inline-flex w-full items-center justify-start gap-2 text-sm font-bold text-[#071f52]/70">
+        <label className="mt-3 inline-flex w-full items-center justify-start gap-1.5 text-xs font-bold text-[#071f52]/70 sm:mt-4 sm:gap-2 sm:text-sm">
           <input
             type="checkbox"
             checked={returnToDifferentLocation}
@@ -202,15 +203,17 @@ export default function OurFleet() {
               setReturnToDifferentLocation(e.target.checked)
               setLocations({ dropoff: e.target.checked ? locations.dropoff : locations.pickup })
             }}
-            className="h-4 w-4 rounded border border-[#071f52]/20 accent-[#071f52]"
+            className="h-3.5 w-3.5 rounded border border-[#071f52]/20 accent-[#071f52] sm:h-4 sm:w-4"
           />
           Return to a different location
         </label>
         {returnToDifferentLocation ? (
-          <div className="mt-4">
+          <div className="mt-3 sm:mt-4">
             <div className="flex items-end">
-              <Button type="button" onClick={applyFilters} className="h-[50px] w-full gap-2 rounded-2xl bg-[#e92935] text-white hover:bg-[#c91f2a]">
-                <Search size={16} /> Find a Car
+              <Button type="button" onClick={applyFilters} className="h-[44px] w-full gap-1.5 rounded-lg bg-[#e92935] text-xs text-white hover:bg-[#c91f2a] sm:h-[50px] sm:gap-2 sm:rounded-2xl">
+                <Search size={14} className="sm:hidden" />
+                <Search size={16} className="hidden sm:block" />
+                Find a Car
               </Button>
             </div>
           </div>
@@ -218,14 +221,14 @@ export default function OurFleet() {
       </div>
 
       {appliedFiltersRows.length ? (
-        <div className="-mt-5 mb-8 rounded-2xl border border-[#071f52]/10 bg-white/70 px-4 py-3 text-sm font-semibold text-[#071f52]/78">
-          <p className="font-bold text-[#071f52]">Showing results for:</p>
-          <table className="mt-2 w-full border-separate border-spacing-y-1">
+        <div className="-mt-4 mb-6 rounded-lg border border-[#071f52]/10 bg-white/70 px-3 py-2.5 text-xs font-semibold text-[#071f52]/78 sm:-mt-5 sm:mb-8 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm">
+          <p className="font-bold text-[#071f52] text-xs sm:text-sm">Showing results for:</p>
+          <table className="mt-1.5 w-full border-separate border-spacing-y-0.5 sm:mt-2 sm:border-spacing-y-1">
             <tbody>
               {appliedFiltersRows.map((row) => (
                 <tr key={row.label}>
-                  <th className="w-[92px] pr-3 text-left align-top font-bold text-[#071f52]">{row.label}:</th>
-                  <td className="text-[#071f52]/78">{row.value}</td>
+                  <th className="w-[80px] pr-2 text-left align-top font-bold text-[#071f52] text-xs sm:w-[92px] sm:pr-3">{row.label}:</th>
+                  <td className="text-[#071f52]/78 text-xs sm:text-sm">{row.value}</td>
                 </tr>
               ))}
             </tbody>
@@ -234,26 +237,26 @@ export default function OurFleet() {
       ) : null}
 
       {isLoading ? (
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-5">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="animate-pulse rounded-[28px] border border-[#071f52]/10 bg-white p-0">
-              <div className="aspect-[4/3] w-full rounded-t-[28px] bg-[#071f52]/10" />
-              <div className="space-y-3 p-5">
-                <div className="h-5 w-3/4 rounded-lg bg-[#071f52]/10" />
-                <div className="h-4 w-full rounded-lg bg-[#071f52]/8" />
-                <div className="h-8 rounded-lg bg-[#071f52]/6" />
+            <div key={i} className="animate-pulse rounded-lg border border-[#071f52]/10 bg-white p-0 sm:rounded-[28px]">
+              <div className="aspect-[4/3] w-full rounded-t-lg bg-[#071f52]/10 sm:rounded-t-[28px]" />
+              <div className="space-y-2 p-4 sm:space-y-3 sm:p-5">
+                <div className="h-4 w-3/4 rounded bg-[#071f52]/10 sm:h-5" />
+                <div className="h-3 w-full rounded bg-[#071f52]/8 sm:h-4" />
+                <div className="h-6 rounded bg-[#071f52]/6 sm:h-8" />
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-5">
           {vehicles.map((v) => {
             const image = v.image_paths?.[0] || '/van-1.jpg'
             return (
               <article
                 key={v.id}
-                className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-[#071f52]/10 bg-white shadow-[0_14px_40px_rgba(7,31,82,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(7,31,82,0.14)]"
+                className="group flex h-full flex-col overflow-hidden rounded-lg border border-[#071f52]/10 bg-white shadow-[0_8px_24px_rgba(7,31,82,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(7,31,82,0.1)] sm:rounded-[28px] sm:shadow-[0_14px_40px_rgba(7,31,82,0.08)] sm:hover:shadow-[0_20px_50px_rgba(7,31,82,0.14)]"
               >
                 <div className="relative overflow-hidden">
                   <img
@@ -261,31 +264,32 @@ export default function OurFleet() {
                     alt={v.name}
                     className="aspect-[4/3] w-full object-cover transition-transform duration-700 group-hover:scale-[1.05]"
                   />
-                  <Badge className="absolute left-3 top-3 rounded-full bg-[#071f52] px-3 py-1.5 text-xs font-bold text-white">
+                  <span className="absolute left-2.5 top-2.5 rounded-full bg-[#071f52] px-2.5 py-1 text-[10px] font-bold text-white sm:left-3 sm:top-3 sm:px-3 sm:py-1.5 sm:text-xs">
                     Available
-                  </Badge>
-                  <Badge className="absolute right-3 top-3 rounded-full bg-[#ffd923]/90 px-3 py-1.5 text-xs font-bold text-[#071f52]">
+                  </span>
+                  <span className="absolute right-2.5 top-2.5 rounded-full bg-[#ffd923]/90 px-2.5 py-1 text-[10px] font-bold text-[#071f52] sm:right-3 sm:top-3 sm:px-3 sm:py-1.5 sm:text-xs">
                     Van
-                  </Badge>
+                  </span>
                 </div>
-                <div className="flex flex-1 flex-col p-5 sm:p-6">
-                  <h3 className="text-xl font-black tracking-[-0.03em] text-[#071f52]">{v.name}</h3>
-                  <div className="mt-2 flex flex-wrap gap-2">
+                <div className="flex flex-1 flex-col p-4 sm:p-6">
+                  <h3 className="text-sm font-black tracking-[-0.02em] text-[#071f52] sm:text-xl sm:tracking-[-0.03em]">{v.name}</h3>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5 sm:mt-2 sm:gap-2">
                     {['Aircon', `${v.passenger_count} Seats`, 'Diesel'].map((f) => (
-                      <span key={f} className="rounded-full bg-[#071f52]/8 px-3 py-1 text-[11px] font-bold text-[#071f52]/66">
+                      <span key={f} className="rounded-full bg-[#071f52]/8 px-2 py-0.5 text-[10px] font-bold text-[#071f52]/66 sm:px-3 sm:py-1 sm:text-[11px]">
                         {f}
                       </span>
                     ))}
                   </div>
-                  <p className="mt-3 text-xs font-bold text-[#071f52]/48">Self-Drive & Driver</p>
-                  <div className="mt-auto flex items-center justify-between border-t border-[#071f52]/8 pt-4">
+                  <p className="mt-2 text-[10px] font-bold text-[#071f52]/48 sm:mt-3 sm:text-xs">Self-Drive & Driver</p>
+                  <div className="mt-auto flex items-center justify-between border-t border-[#071f52]/8 pt-3 sm:pt-4">
                     <div>
-                      <span className="text-2xl font-black tracking-[-0.03em] text-[#071f52]">₱{v.base_price_per_day.toLocaleString()}</span>
-                      <span className="text-sm font-bold text-[#071f52]/48">/day</span>
+                      <span className="text-base font-black tracking-[-0.02em] text-[#071f52] sm:text-2xl sm:tracking-[-0.03em]">₱{v.base_price_per_day.toLocaleString()}</span>
+                      <span className="text-xs font-bold text-[#071f52]/48 sm:text-sm">/day</span>
                     </div>
-                    <Button asChild className="gap-1.5 bg-[#071f52] text-white hover:bg-[#112458]">
+                    <Button asChild size="sm" className="gap-1 bg-[#071f52] text-xs text-white hover:bg-[#112458] sm:gap-1.5">
                       <Link to={`/our-fleet/${v.slug}`}>
-                        View <ArrowRight size={14} />
+                        View <ArrowRight size={12} className="sm:hidden" />
+                        <ArrowRight size={14} className="hidden sm:block" />
                       </Link>
                     </Button>
                   </div>

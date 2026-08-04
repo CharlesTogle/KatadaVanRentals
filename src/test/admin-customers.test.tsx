@@ -113,7 +113,7 @@ describe('Admin Customers', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByPlaceholderText('Name, email, or mobile...')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Search customers...')).toBeInTheDocument()
   })
 
   it('renders Export CSV button', () => {
