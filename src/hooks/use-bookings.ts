@@ -16,6 +16,13 @@ export function useAdminBookings(params: { status?: string; search?: string }) {
   })
 }
 
+export function useAdminFeedback() {
+  return useQuery({
+    queryKey: ['admin', 'feedback'],
+    queryFn: () => bookingService.getAdminFeedback(),
+  })
+}
+
 export function useMyBookings(status?: string) {
   return useQuery({
     queryKey: ['customer', 'bookings', status],

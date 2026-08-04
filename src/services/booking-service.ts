@@ -87,6 +87,46 @@ export async function getMyBookings(status?: string) {
   return data || []
 }
 
+
+export interface AdminFeedbackRow {
+  id: string
+  rating: number
+  feedback: string | null
+  created_at: string
+  booking_number: string
+  customer_name: string
+  customer_email: string
+  profile_image_path: string | null
+  vehicle_plate: string
+}
+
+export async function getAdminFeedback() {
+  const { data, error } = await supabase
+    .from('booking_feedback')
+    .select('id,rating,feedback,created_at,bookings!booking_id(booking_number),profiles!customer_id(first_name,last_name,email,profile_image_path),vehicles!vehicle_id(plate_number)')
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+
+  return (data || []).map((row: any) => {
+    const booking = row.bookings && !Array.isArray(row.bookings) ? row.bookings : null
+    const profile = row.profiles && !Array.isArray(row.profiles) ? row.profiles : null
+    const vehicle = row.vehicles && !Array.isArray(row.vehicles) ? row.vehicles : null
+
+    return {
+      id: row.id,
+      rating: row.rating,
+      feedback: row.feedback,
+      created_at: row.created_at,
+      booking_number: booking?.booking_number || '',
+      customer_name: [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || profile?.email || 'Unknown customer',
+      customer_email: profile?.email || '—',
+      profile_image_path: profile?.profile_image_path || null,
+      vehicle_plate: vehicle?.plate_number || '—',
+    }
+  }) as AdminFeedbackRow[]
+}
+
 export async function getAdminBookings(params: { status?: string; search?: string }) {
   let query = supabase
     .from('bookings')

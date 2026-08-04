@@ -9,6 +9,7 @@ import Customers from '@/pages/admin/customers'
 import CustomerDetail from '@/pages/admin/customer-detail'
 import Fleet from '@/pages/admin/fleet'
 import FleetNew from '@/pages/admin/fleet/new'
+import AdminUserFeedback from '@/pages/admin/user-feedback'
 import AdminSettings from '@/pages/admin/settings'
 import RevenueReport from '@/pages/admin/revenue-report'
 import UtilizationReport from '@/pages/admin/utilization-report'
@@ -27,6 +28,7 @@ export const adminRoutes = (
     <Route path="bookings/:bookingNumber" element={<BookingDetail />} />
     <Route path="customers" element={<Customers />} />
     <Route path="customers/:customerId" element={<CustomerDetail />} />
+    <Route path="feedback" element={<AdminUserFeedback />} />
     <Route path="fleet" element={<Fleet />} />
     <Route path="fleet/new" element={<FleetNew />} />
     <Route path="settings" element={<AdminSettings />} />
