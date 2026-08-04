@@ -11,6 +11,7 @@ export interface CustomerBookingDetail {
   extensions: AdminBookingDetail['extensions']
   invoice: AdminBookingDetail['invoice']
   requested_document_types: Array<{ id: string; label: string; upload: { id: string; file_path: string; original_filename: string | null; mime_type: string | null; size_bytes: number | null; status: string; created_at: string } | null }>
+  feedback: { id: string; rating: number; feedback: string | null; created_at: string } | null
 }
 
 type BookingCancellation = {
@@ -28,7 +29,7 @@ export async function getBookingById(id: string): Promise<CustomerBookingDetail>
 
   if (bookingError) throw bookingError
 
-  const [paymentsRes, eventsRes, extensionsRes, invoiceRes, cancellationRes, typesRes, uploadsRes] = await Promise.all([
+  const [paymentsRes, eventsRes, extensionsRes, invoiceRes, cancellationRes, typesRes, uploadsRes, feedbackRes] = await Promise.all([
     supabase.from('payments').select('id,channel,status,amount,reference_number,receipt_path,paid_at,created_at').eq('booking_id', id).order('created_at', { ascending: false }),
     supabase.from('booking_status_events').select('id,from_status,to_status,note,created_at').eq('booking_id', id).order('created_at', { ascending: false }),
     supabase.from('booking_extensions').select('id,previous_end_at,new_end_at,extension_amount,reason,payment_id,created_at').eq('booking_id', id).order('created_at', { ascending: false }),
@@ -36,6 +37,7 @@ export async function getBookingById(id: string): Promise<CustomerBookingDetail>
     supabase.from('booking_cancellations').select('cancellation_type,reason,created_at').eq('booking_id', id).order('created_at', { ascending: false }).maybeSingle(),
     supabase.from('booking_requested_document_types').select('id,label,created_at').eq('booking_id', id).order('created_at', { ascending: true }),
     supabase.from('booking_requested_documents').select('id,requested_type_id,file_path,original_filename,mime_type,size_bytes,status,created_at').eq('booking_id', id).order('created_at', { ascending: true }),
+    supabase.from('booking_feedback').select('id,rating,feedback,created_at').eq('booking_id', id).maybeSingle(),
   ])
 
   const vehicle = booking.vehicles && !Array.isArray(booking.vehicles)
@@ -71,6 +73,7 @@ export async function getBookingById(id: string): Promise<CustomerBookingDetail>
     extensions: extensionsRes.data || [],
     invoice: invoiceRes.data,
     requested_document_types: requestedDocumentTypes as CustomerBookingDetail['requested_document_types'],
+    feedback: feedbackRes.data,
   }
 }
 

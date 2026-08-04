@@ -41,6 +41,10 @@ const mocks = vi.hoisted(() => {
   const docTypesEqWithOrder = vi.fn(() => ({ order: docTypesOrder }))
   const docTypesSelect = vi.fn(() => ({ eq: docTypesEqWithOrder }))
 
+  const bookingFeedbackMaybeSingle = vi.fn()
+  const bookingFeedbackEq = vi.fn(() => ({ maybeSingle: bookingFeedbackMaybeSingle }))
+  const bookingFeedbackSelect = vi.fn(() => ({ eq: bookingFeedbackEq }))
+
   const from = vi.fn((table: string) => {
     if (table === 'bookings') return { select: bookingsSelect }
     if (table === 'payments') return { select: paymentsSelect }
@@ -51,6 +55,7 @@ const mocks = vi.hoisted(() => {
     if (table === 'booking_cancellations') return { select: bookingCancellationsSelect }
     if (table === 'booking_requested_documents') return { select: bookingDocsSelect }
     if (table === 'booking_requested_document_types') return { select: docTypesSelect }
+    if (table === 'booking_feedback') return { select: bookingFeedbackSelect }
 
     throw new Error(`Unexpected table: ${table}`)
   })
@@ -85,6 +90,8 @@ const mocks = vi.hoisted(() => {
     bookingDocsOrder,
     bookingDocsSelect,
     docTypesOrder,
+    bookingFeedbackMaybeSingle,
+    bookingFeedbackSelect,
     from,
     rpc,
   }
@@ -105,6 +112,7 @@ describe('booking-service', () => {
     mocks.bookingCancellationsMaybeSingle.mockResolvedValue({ data: null, error: null })
     mocks.bookingDocsOrder.mockResolvedValue({ data: [], error: null })
     mocks.docTypesOrder.mockResolvedValue({ data: [], error: null })
+    mocks.bookingFeedbackMaybeSingle.mockResolvedValue({ data: null, error: null })
     mocks.rpc.mockResolvedValue({ error: null })
   })
 
@@ -220,6 +228,56 @@ describe('booking-service', () => {
     expect(result.status_events).toHaveLength(1)
     expect(result.extensions).toHaveLength(1)
     expect(result.invoice?.invoice_number).toBe('INV-1')
+    expect(result.feedback).toBeNull()
+  })
+
+  it('loads existing feedback with customer booking details', async () => {
+    mocks.bookingsSingle.mockResolvedValue({
+      data: {
+        id: 'booking-1',
+        booking_number: 'CR-260723-F84D',
+        customer_id: 'customer-1',
+        created_by: 'customer-1',
+        vehicle_id: 'vehicle-1',
+        rental_model: 'all_out',
+        status: 'completed',
+        start_at: '2026-07-23T00:00:00.000Z',
+        end_at: '2026-07-24T00:00:00.000Z',
+        duration_days: 1,
+        pickup_location: 'Manila',
+        dropoff_location: 'Taguig City',
+        destination: 'Taguig City',
+        purpose_of_travel: 'Client Visit',
+        notes: null,
+        discount_amount: 0,
+        deposit_amount: 250,
+        total_amount: 2250,
+        paid_amount: 2250,
+        remaining_amount: 0,
+        price_line_items: [],
+        guest_name: null,
+        guest_email: null,
+        guest_mobile: null,
+        created_at: '2026-07-23T12:18:00.000Z',
+        updated_at: '2026-07-23T12:18:00.000Z',
+        vehicles: {
+          id: 'vehicle-1',
+          name: 'Test Vehicle',
+          plate_number: 'ABC1234',
+          image_paths: [],
+        },
+      },
+      error: null,
+    })
+    mocks.bookingFeedbackMaybeSingle.mockResolvedValue({
+      data: { id: 'feedback-1', rating: 5, feedback: 'Great trip', created_at: '2026-07-24T12:18:00.000Z' },
+      error: null,
+    })
+
+    const result = await getBookingById('booking-1')
+
+    expect(mocks.bookingFeedbackSelect).toHaveBeenCalledWith('id,rating,feedback,created_at')
+    expect(result.feedback).toEqual({ id: 'feedback-1', rating: 5, feedback: 'Great trip', created_at: '2026-07-24T12:18:00.000Z' })
   })
 
   it('returns the latest booking cancellation alongside the status events', async () => {

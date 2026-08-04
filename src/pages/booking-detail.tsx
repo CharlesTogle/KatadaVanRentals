@@ -63,6 +63,7 @@ export default function BookingDetail() {
   const [sizeError, setSizeError] = useState<string | null>(null)
   const oldUploadRef = useRef<{ file_path: string; original_filename: string; mime_type: string; size_bytes: number } | null>(null)
   const uploadHandledRef = useRef(false)
+  const hasSubmittedFeedback = submitted || Boolean(data?.feedback)
 
   useEffect(() => {
     const el = docInputRef.current
@@ -112,7 +113,10 @@ export default function BookingDetail() {
       feedback: feedback || null,
     })
 
-    if (!error) setSubmitted(true)
+    if (!error) {
+      setSubmitted(true)
+      setTimeout(() => setSubmitted(false), 5000)
+    }
   }
 
   const handleDownloadInvoice = async () => {
@@ -174,7 +178,7 @@ export default function BookingDetail() {
     )
   }
 
-  const { booking, vehicle, payments, status_events, cancellation, extensions, invoice, requested_document_types } = data
+  const { booking, vehicle, payments, status_events, cancellation, extensions, invoice, requested_document_types = [] } = data
   const adminRequestSentAt = booking.status === 'awaiting_documents'
     ? status_events.find((e) => e.to_status === 'awaiting_documents')?.created_at || null
     : null
@@ -385,6 +389,37 @@ export default function BookingDetail() {
           </div>
         </section>
 
+        {booking.status === 'completed' && !hasSubmittedFeedback ? (
+          <div className="mt-6 rounded-[26px] border border-[#071f52]/8 bg-white px-6 py-6 shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
+            <h2 className="flex items-center gap-2 text-base font-black text-[#071f52]">
+              <Star size={16} /> Leave a Review
+            </h2>
+            <div className="mt-3 flex gap-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button key={star} type="button" onClick={() => setRating(star)} className={`transition-colors ${star <= rating ? 'text-[#ffd923]' : 'text-[#071f52]/20'}`}>
+                  <Star size={24} fill={star <= rating ? 'currentColor' : 'none'} />
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="Share your experience with this trip..."
+              className="mt-3 block w-full resize-none rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+              rows={3}
+            />
+            <Button onClick={handleSubmitFeedback} disabled={!rating} className="mt-3 w-full gap-2 bg-[#071f52] text-white hover:bg-[#112458]" size="sm">
+              <Send size={14} /> Submit Review
+            </Button>
+          </div>
+        ) : null}
+
+        {submitted ? (
+          <div className="mt-6 rounded-2xl border border-[#16a34a]/20 bg-[#16a34a]/8 p-5 text-center">
+            <p className="text-sm font-bold text-[#16a34a]">{BOOKING_MESSAGES.success.review_submitted}</p>
+          </div>
+        ) : null}
+
         <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.85fr)]">
           <div className="space-y-6">
             <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
@@ -517,36 +552,6 @@ export default function BookingDetail() {
               </div>
             </section>
 
-            {booking.status === 'completed' && !submitted ? (
-              <div className="rounded-[26px] border border-[#071f52]/8 bg-white px-6 py-6 shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
-                <h2 className="flex items-center gap-2 text-base font-black text-[#071f52]">
-                  <Star size={16} /> Leave a Review
-                </h2>
-                <div className="mt-3 flex gap-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button key={star} type="button" onClick={() => setRating(star)} className={`transition-colors ${star <= rating ? 'text-[#ffd923]' : 'text-[#071f52]/20'}`}>
-                      <Star size={24} fill={star <= rating ? 'currentColor' : 'none'} />
-                    </button>
-                  ))}
-                </div>
-                <textarea
-                  value={feedback}
-                  onChange={(e) => setFeedback(e.target.value)}
-                  placeholder="Share your experience with this trip..."
-                  className="mt-3 block w-full resize-none rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
-                  rows={3}
-                />
-                <Button onClick={handleSubmitFeedback} disabled={!rating} className="mt-3 w-full gap-2 bg-[#071f52] text-white hover:bg-[#112458]" size="sm">
-                  <Send size={14} /> Submit Review
-                </Button>
-              </div>
-            ) : null}
-
-            {submitted ? (
-              <div className="rounded-2xl border border-[#16a34a]/20 bg-[#16a34a]/8 p-5 text-center">
-                <p className="text-sm font-bold text-[#16a34a]">{BOOKING_MESSAGES.success.review_submitted}</p>
-              </div>
-            ) : null}
           </div>
 
           <aside className="space-y-6">
@@ -578,114 +583,127 @@ export default function BookingDetail() {
               </section>
             ) : null}
 
-            {booking.status === 'awaiting_documents' ? (
-              <section className="rounded-[26px] border border-[#c7d2fe] bg-[#eef2ff] shadow-[0_16px_40px_rgba(79,70,229,0.1)]">
-                <div className="px-6 py-5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#4f46e5]">Requested documents</p>
-                  {adminRequestSentAt ? (
-                    <p className="mt-2 text-xs font-semibold text-[#4f46e5]/60">Request sent {formatDateTime(adminRequestSentAt)}</p>
-                  ) : null}
+            {requested_document_types.length > 0 ? (() => {
+              const canEditDocs = booking.status === 'awaiting_documents'
+              const visibleTypes = canEditDocs ? requested_document_types : requested_document_types
 
-                  <input
-                    ref={docInputRef}
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => uploadingTypeId ? handleDocUpload(e, uploadingTypeId) : null}
-                    className="hidden"
-                    aria-label="Upload requested document"
-                  />
+              if (visibleTypes.length === 0) return null
 
-                  <div className="mt-4 space-y-3">
-                    {requested_document_types.map((type) => (
-                      <div key={type.id} className="rounded-xl border border-[#c7d2fe]/50 bg-white px-4 py-3">
-                        <p className="text-sm font-bold text-[#1f2a44]">{type.label}</p>
+              return (
+                <section className={`rounded-[26px] border shadow-[0_16px_40px_rgba(79,70,229,0.1)] ${canEditDocs ? 'border-[#c7d2fe] bg-[#eef2ff]' : 'border-[#071f52]/8 bg-white'}`}>
+                  <div className="px-6 py-5">
+                    <p className={`text-[11px] font-bold uppercase tracking-[0.18em] ${canEditDocs ? 'text-[#4f46e5]' : 'text-[#071f52]/48'}`}>Requested documents</p>
+                    {adminRequestSentAt ? (
+                      <p className="mt-2 text-xs font-semibold text-[#4f46e5]/60">Request sent {formatDateTime(adminRequestSentAt)}</p>
+                    ) : null}
 
-                        {type.upload ? (
-                          <>
-                            <div className="mt-2 flex items-center justify-between gap-2">
-                              <div className="min-w-0 flex-1">
+                    <input
+                      ref={docInputRef}
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => uploadingTypeId ? handleDocUpload(e, uploadingTypeId) : null}
+                      className="hidden"
+                      aria-label="Upload requested document"
+                    />
+
+                    <div className="mt-4 space-y-3">
+                      {visibleTypes.map((type) => (
+                        <div key={type.id} className={`rounded-xl border bg-white px-4 py-3 ${canEditDocs ? 'border-[#c7d2fe]/50' : 'border-[#071f52]/8'}`}>
+                          <p className="text-sm font-bold text-[#1f2a44]">{type.label}</p>
+
+                          {type.upload ? (
+                            <>
+                              <div className="mt-2 flex items-center justify-between gap-2">
+                                <div className="min-w-0 flex-1">
+                                  {uploadingTypeId === type.id ? (
+                                    <div className="flex items-center gap-2">
+                                      <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[#4f46e5]/30 border-t-[#4f46e5]" />
+                                      <span className="text-xs font-semibold text-[#4f46e5]">Uploading...</span>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <p className="truncate text-xs font-semibold text-[#16a34a]">{type.upload.original_filename || type.upload.file_path}</p>
+                                      <p className="text-[10px] font-medium text-[#16a34a]/70">Uploaded</p>
+                                    </>
+                                  )}
+                                </div>
+                                <div className="flex shrink-0 items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleViewDoc({ id: type.upload!.id, file_path: type.upload!.file_path, mime_type: type.upload!.mime_type })}
+                                    disabled={openingId === type.upload.id || uploadingTypeId !== null}
+                                    className="rounded-lg px-2 py-1 text-xs font-bold text-[#4f46e5] underline hover:text-[#3639d4] disabled:opacity-50"
+                                  >
+                                    {openingId === type.upload.id ? 'Opening...' : 'View'}
+                                  </button>
+                                  {canEditDocs ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => { if (!uploadingTypeId && type.upload) { uploadHandledRef.current = false; oldUploadRef.current = { file_path: type.upload.file_path, original_filename: type.upload.original_filename || '', mime_type: type.upload.mime_type || '', size_bytes: type.upload.size_bytes ?? 0 }; setUploadingTypeId(type.id); docInputRef.current?.click() } }}
+                                        disabled={uploadingTypeId !== null}
+                                        className="rounded-lg px-2 py-1 text-xs font-bold text-[#4f46e5] underline hover:text-[#3639d4] disabled:opacity-50"
+                                      >
+                                        Replace
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteDoc(type.upload!.id)}
+                                        disabled={uploadingTypeId !== null}
+                                        className="rounded-lg p-1 text-[#071f52]/30 transition-colors hover:bg-[#e92935]/8 hover:text-[#e92935] disabled:opacity-20"
+                                        aria-label={`Delete ${type.label}`}
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    </>
+                                  ) : null}
+                                </div>
+                              </div>
+                              {sizeError === type.id ? (
+                                <p className="mt-1 text-[10px] font-semibold text-[#e92935]">File must be under 5 MB.</p>
+                              ) : null}
+                            </>
+                          ) : canEditDocs ? (
+                            <>
+                              <div
+                                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                                onDragLeave={() => setDragOver(false)}
+                                onDrop={(e) => handleDrop(e, type.id)}
+                                onClick={() => { if (!uploadingTypeId) { uploadHandledRef.current = false; setSizeError(null); oldUploadRef.current = null; setUploadingTypeId(type.id); docInputRef.current?.click() } }}
+                                className={`mt-2 cursor-pointer rounded-xl border-2 border-dashed px-4 py-4 text-center transition-colors ${
+                                  dragOver
+                                    ? 'border-[#4f46e5] bg-[#4f46e5]/8'
+                                    : 'border-[#4f46e5]/25 bg-[#f8f9ff] hover:border-[#4f46e5]/40'
+                                } ${uploadingTypeId !== null ? 'pointer-events-none opacity-50' : ''}`}
+                              >
                                 {uploadingTypeId === type.id ? (
-                                  <div className="flex items-center gap-2">
-                                    <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[#4f46e5]/30 border-t-[#4f46e5]" />
+                                  <div className="flex items-center justify-center gap-2">
+                                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#4f46e5]/30 border-t-[#4f46e5]" />
                                     <span className="text-xs font-semibold text-[#4f46e5]">Uploading...</span>
                                   </div>
                                 ) : (
-                                  <>
-                                    <p className="truncate text-xs font-semibold text-[#16a34a]">{type.upload.original_filename || type.upload.file_path}</p>
-                                    <p className="text-[10px] font-medium text-[#16a34a]/70">Uploaded</p>
-                                  </>
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Upload size={14} className="text-[#4f46e5]" />
+                                    <span className="text-xs font-semibold text-[#4f46e5]">Upload file</span>
+                                  </div>
                                 )}
                               </div>
-                              <div className="flex shrink-0 items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleViewDoc({ id: type.upload!.id, file_path: type.upload!.file_path, mime_type: type.upload!.mime_type })}
-                                  disabled={openingId === type.upload.id || uploadingTypeId !== null}
-                                  className="rounded-lg px-2 py-1 text-xs font-bold text-[#4f46e5] underline hover:text-[#3639d4] disabled:opacity-50"
-                                >
-                                  {openingId === type.upload.id ? 'Opening...' : 'View'}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => { if (!uploadingTypeId && type.upload) { uploadHandledRef.current = false; oldUploadRef.current = { file_path: type.upload.file_path, original_filename: type.upload.original_filename || '', mime_type: type.upload.mime_type || '', size_bytes: type.upload.size_bytes ?? 0 }; setUploadingTypeId(type.id); docInputRef.current?.click() } }}
-                                  disabled={uploadingTypeId !== null}
-                                  className="rounded-lg px-2 py-1 text-xs font-bold text-[#4f46e5] underline hover:text-[#3639d4] disabled:opacity-50"
-                                >
-                                  Replace
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteDoc(type.upload!.id)}
-                                  disabled={uploadingTypeId !== null}
-                                  className="rounded-lg p-1 text-[#071f52]/30 transition-colors hover:bg-[#e92935]/8 hover:text-[#e92935] disabled:opacity-20"
-                                  aria-label={`Delete ${type.label}`}
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            </div>
-                            {sizeError === type.id ? (
-                              <p className="mt-1 text-[10px] font-semibold text-[#e92935]">File must be under 5 MB.</p>
-                            ) : null}
-                          </>
-                        ) : (
-                          <>
-                            <div
-                              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-                              onDragLeave={() => setDragOver(false)}
-                              onDrop={(e) => handleDrop(e, type.id)}
-                              onClick={() => { if (!uploadingTypeId) { uploadHandledRef.current = false; setSizeError(null); oldUploadRef.current = null; setUploadingTypeId(type.id); docInputRef.current?.click() } }}
-                              className={`mt-2 cursor-pointer rounded-xl border-2 border-dashed px-4 py-4 text-center transition-colors ${
-                                dragOver
-                                  ? 'border-[#4f46e5] bg-[#4f46e5]/8'
-                                  : 'border-[#4f46e5]/25 bg-[#f8f9ff] hover:border-[#4f46e5]/40'
-                              } ${uploadingTypeId !== null ? 'pointer-events-none opacity-50' : ''}`}
-                            >
-                              {uploadingTypeId === type.id ? (
-                                <div className="flex items-center justify-center gap-2">
-                                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#4f46e5]/30 border-t-[#4f46e5]" />
-                                  <span className="text-xs font-semibold text-[#4f46e5]">Uploading...</span>
-                                </div>
+                              {sizeError === type.id ? (
+                                <p className="mt-1 text-[10px] font-semibold text-[#e92935]">File must be under 5 MB.</p>
                               ) : (
-                                <div className="flex items-center justify-center gap-2">
-                                  <Upload size={14} className="text-[#4f46e5]" />
-                                  <span className="text-xs font-semibold text-[#4f46e5]">Upload file</span>
-                                </div>
+                                <p className="mt-1 text-[10px] text-[#4f46e5]/50">Max 5 MB per file</p>
                               )}
-                            </div>
-                            {sizeError === type.id ? (
-                              <p className="mt-1 text-[10px] font-semibold text-[#e92935]">File must be under 5 MB.</p>
-                            ) : (
-                              <p className="mt-1 text-[10px] text-[#4f46e5]/50">Max 5 MB per file</p>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    ))}
+                            </>
+                          ) : (
+                            <p className="mt-2 text-xs font-medium text-[#071f52]/42">No uploaded document</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </section>
-            ) : null}
+                </section>
+              )
+            })() : null}
 
             <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
               <div className="border-b border-[#071f52]/8 px-6 py-5">

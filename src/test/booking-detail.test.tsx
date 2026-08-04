@@ -111,6 +111,7 @@ describe('BookingDetail', () => {
         status_events: [{ id: 'event-1', from_status: 'for_review', to_status: 'confirmed', note: 'Approved', created_at: '2026-07-23T10:30:00Z' }],
         extensions: [{ id: 'extension-1', previous_end_at: '2026-07-27T08:00:00Z', new_end_at: '2026-07-28T08:00:00Z', extension_amount: 1500, reason: 'Extended one day', created_at: '2026-07-26T09:00:00Z' }],
         invoice: { id: 'invoice-1', invoice_number: 'INV-1001', status: 'issued', total_amount: 9000, file_path: null, issued_at: '2026-07-23T11:00:00Z' },
+        feedback: null,
       },
       isLoading: false,
     })
@@ -182,6 +183,7 @@ describe('BookingDetail', () => {
         status_events: [],
         extensions: [],
         invoice: null,
+        feedback: null,
       },
       isLoading: false,
     })
@@ -253,6 +255,70 @@ describe('BookingDetail', () => {
       expect(screen.getByText('Toll Estimate')).toBeInTheDocument()
       expect(screen.getAllByText('estimate only - settled after trip').length).toBeGreaterThanOrEqual(2)
     })
+  })
+
+  it('does not ask for another review when feedback already exists', async () => {
+    useBooking.mockReturnValue({
+      data: {
+        booking: {
+          id: 'booking-1',
+          booking_number: 'CR-260723-ABCD',
+          customer_id: 'user-1',
+          guest_name: null,
+          guest_email: null,
+          guest_mobile: null,
+          vehicle_id: 'veh-1',
+          rental_model: 'all_out',
+          booking_mode: 'keep',
+          status: 'completed',
+          start_at: '2026-07-25T08:00:00Z',
+          end_at: '2026-07-27T08:00:00Z',
+          duration_days: 2,
+          pickup_location: 'Manila',
+          dropoff_location: 'Batangas',
+          destination: 'Taal',
+          purpose_of_travel: 'Leisure',
+          notes: null,
+          distance_km: null,
+          duration_minutes: null,
+          toll_estimate_amount: 0,
+          toll_segments: [],
+          fuel_estimate_liters: 0,
+          fuel_estimate_amount: 0,
+          delivery_fee: 0,
+          recovery_fee: 0,
+          discount_amount: 0,
+          deposit_amount: 900,
+          subtotal_amount: 9000,
+          total_amount: 9000,
+          paid_amount: 9000,
+          remaining_amount: 0,
+          price_line_items: [],
+          idempotency_key: null,
+          created_by: 'user-1',
+          created_at: '2026-07-23T10:00:00Z',
+          updated_at: '2026-07-23T10:00:00Z',
+        },
+        vehicle: { id: 'veh-1', name: 'Toyota Commuter', plate_number: 'ABC123', image_paths: [] },
+        payments: [],
+        status_events: [],
+        cancellation: null,
+        extensions: [],
+        invoice: null,
+        requested_document_types: [],
+        feedback: { id: 'feedback-1', rating: 5, feedback: 'Great trip', created_at: '2026-07-28T10:00:00Z' },
+      },
+      isLoading: false,
+    })
+
+    renderDetail()
+
+    await waitFor(() => {
+      expect(screen.getByText('Review submitted! Thank you for your feedback.')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText('Leave a Review')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /submit review/i })).not.toBeInTheDocument()
   })
 
   it('does not show the complete address block as customer note', async () => {

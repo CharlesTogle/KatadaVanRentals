@@ -601,12 +601,12 @@ export default function BookingDetail() {
             </section>
 
             {actions.length > 0 ? (
-              <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)] xl:sticky xl:top-6">
+              <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
                 <div className="border-b border-[#071f52]/8 px-6 py-5">
                   <h2 className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1f2a44]">Actions</h2>
                 </div>
 
-                <div className="px-6 py-6">
+                <div className={primaryActions.length === 0 && destructiveActions.length === 1 ? 'px-6 py-4' : 'px-6 py-6'}>
                   <div className="space-y-3">
                     {primaryActions.map((action) => (
                       <button
