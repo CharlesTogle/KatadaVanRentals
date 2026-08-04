@@ -261,7 +261,7 @@ export default function Dashboard() {
     const filteredBookings = bookings
       .filter((b) => !bookingSearch || JSON.stringify(b).toLowerCase().includes(bookingSearch.toLowerCase()))
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 10)
+      .slice(0, 5)
 
     return {
       stats: {
