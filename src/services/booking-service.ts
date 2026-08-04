@@ -402,6 +402,58 @@ export type AdminBookingActionInput =
   | { type: 'cancel'; bookingId: string; cancellationType: string; reason: string }
   | { type: 'delete'; bookingId: string }
 
+
+export interface VerifiedPaymentRow {
+  id: string
+  booking_id: string
+  channel: string
+  status: string
+  amount: number
+  reference_number: string | null
+  verified_at: string | null
+  paid_at: string | null
+  created_at: string
+  booking_number: string
+  customer_id: string | null
+  customer_first_name: string | null
+  customer_last_name: string | null
+  customer_email: string | null
+  vehicle_id: string
+  vehicle_name: string
+  vehicle_plate: string | null
+  payment_method_provider: string | null
+}
+
+export async function getVerifiedPayments(from?: string, to?: string): Promise<VerifiedPaymentRow[]> {
+  const { data, error } = await supabase.rpc('get_revenue_report', {
+    from_date: from || null,
+    to_date: to || null,
+  })
+
+  if (error) throw error
+
+  return ((data || []) as any[]).map((row: any) => ({
+    id: row.id,
+    booking_id: row.booking_id,
+    channel: row.channel,
+    status: row.status,
+    amount: row.amount,
+    reference_number: row.reference_number,
+    verified_at: row.verified_at,
+    paid_at: row.paid_at,
+    created_at: row.created_at,
+    booking_number: row.booking_number,
+    customer_id: row.customer_id,
+    customer_first_name: row.customer_first_name,
+    customer_last_name: row.customer_last_name,
+    customer_email: row.customer_email,
+    vehicle_id: row.vehicle_id,
+    vehicle_name: row.vehicle_name,
+    vehicle_plate: row.vehicle_plate,
+    payment_method_provider: row.payment_method_provider,
+  }))
+}
+
 export async function runAdminBookingAction(input: AdminBookingActionInput): Promise<void> {
   const { type, bookingId, ...params } = input
 
