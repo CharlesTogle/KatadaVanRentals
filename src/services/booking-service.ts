@@ -90,6 +90,18 @@ export async function getMyBookings(status?: string) {
   return data || []
 }
 
+export async function getAdminBookings(params: { status?: string; search?: string }) {
+  let query = supabase
+    .from('bookings')
+    .select('*, profiles!customer_id(first_name,last_name,email), vehicles!vehicle_id(name,plate_number)')
+    .order('created_at', { ascending: false })
+
+  if (params.status) query = query.eq('status', params.status)
+  if (params.search) query = query.or(`booking_number.ilike.%${params.search}%,profiles.first_name.ilike.%${params.search}%,profiles.last_name.ilike.%${params.search}%`)
+
+  const { data } = await query
+  return data || []
+}
 
 export interface AdminFeedbackRow {
   id: string
@@ -128,19 +140,6 @@ export async function getAdminFeedback() {
       vehicle_plate: vehicle?.plate_number || '—',
     }
   }) as AdminFeedbackRow[]
-}
-
-export async function getAdminBookings(params: { status?: string; search?: string }) {
-  let query = supabase
-    .from('bookings')
-    .select('*, profiles!customer_id(first_name,last_name,email), vehicles!vehicle_id(name,plate_number)')
-    .order('created_at', { ascending: false })
-
-  if (params.status) query = query.eq('status', params.status)
-  if (params.search) query = query.or(`booking_number.ilike.%${params.search}%,profiles.first_name.ilike.%${params.search}%,profiles.last_name.ilike.%${params.search}%`)
-
-  const { data } = await query
-  return data || []
 }
 
 export async function getAdminDashboardData() {
@@ -404,7 +403,6 @@ export type AdminBookingActionInput =
   | { type: 'make_payment'; bookingId: string; collectedAmount: number; paymentMethodId?: string; paymentChannel?: string; referenceNumber?: string; receiptPath?: string }
   | { type: 'cancel'; bookingId: string; cancellationType: string; reason: string }
   | { type: 'delete'; bookingId: string }
-
 
 export interface VerifiedPaymentRow {
   id: string
