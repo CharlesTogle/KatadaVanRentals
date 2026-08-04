@@ -60,7 +60,7 @@ function channelCategory(channel: string): string {
 
 function getPeriodRange(period: Period, customFrom?: string, customTo?: string): { from?: string; to?: string } {
   if (period === 'custom' && customFrom && customTo) {
-    return { from: new Date(customFrom).toISOString(), to: new Date(`${customTo}T23:59:59.999`) }
+    return { from: new Date(customFrom).toISOString(), to: new Date(`${customTo}T23:59:59.999`).toISOString() }
   }
   if (period === 'all') return {}
   const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 365
