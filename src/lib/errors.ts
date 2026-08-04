@@ -31,6 +31,10 @@ export function showError(error: PostgrestError | AuthError | Error | null): str
 
   const path = typeof window !== 'undefined' ? window.location.pathname : undefined
 
+  if ('code' in error && error.code && error.code === 'P0001' && 'message' in error && error.message) {
+    return error.message
+  }
+
   if ('code' in error && error.code && postgrestMap[error.code]) {
     return postgrestMap[error.code]
   }

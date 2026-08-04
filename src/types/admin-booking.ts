@@ -4,6 +4,7 @@ export interface AdminCustomerOption {
   last_name: string | null
   email: string
   mobile: string | null
+  hasRequiredSelfDriveDocuments: boolean
 }
 
 export interface AdminCustomerSearchPage {
@@ -23,11 +24,14 @@ export interface AdminBookingCreateInput {
   } | null
   vehicleId: string
   rentalModel: 'all_out' | 'self_drive' | 'all_in'
+  bookingMode: 'dropoff' | 'keep'
   startAt: string
-  endAt: string
+  endAt: string | null
   pickupLocation: string
   dropoffLocation: string
-  depositAmount: string
+  destination: string
+  purposeOfTravel: string
+  notes: string
   pickupLat: number | null
   pickupLng: number | null
   dropoffLat: number | null
@@ -44,6 +48,16 @@ export interface AdminBookingCreateInput {
   tollExitExpressway: string | null
   tollVehicleClass: 1 | 2 | 3
   tollRfidBreakdown: { system: string; amount: number }[]
+  selfDriveAddress: {
+    addressLine1: string
+    addressLine2: string
+    streetAddress: string
+    barangay: string
+    city: string
+    province: string
+    zipCode: string
+    country: string
+  } | null
 }
 
 export interface AdminBookingCreateResult {

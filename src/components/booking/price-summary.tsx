@@ -1,5 +1,4 @@
 import type { CustomerRentalType } from '@/lib/booking-utils'
-import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 
 interface PriceSummaryProps {
@@ -24,9 +23,11 @@ interface PriceSummaryProps {
   disabled?: boolean
   disabledMessage?: React.ReactNode
   error?: string
+  submitLabel?: string
+  footerNote?: React.ReactNode
 }
 
-export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, driverRatePerDay, baseTotal, driverTotal, fuelEstimateAmount = 0, tollEstimateAmount = 0, tollMessage, distanceKm = 0, baseLoading = false, fuelLoading = false, tollLoading = false, grandTotal, deposit, remaining, submitting, disabled = false, disabledMessage, error }: PriceSummaryProps) {
+export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, driverRatePerDay, baseTotal, driverTotal, fuelEstimateAmount = 0, tollEstimateAmount = 0, tollMessage, distanceKm = 0, baseLoading = false, fuelLoading = false, tollLoading = false, grandTotal, deposit, remaining, submitting, disabled = false, disabledMessage, error, submitLabel = 'Submit Booking', footerNote = 'Your booking will be reviewed by our team before confirmation.' }: PriceSummaryProps) {
   const isDistanceMode = bookingMode === 'dropoff' && rentalType !== 'self-drive'
   const amount = (value: number, loading?: boolean) => loading
     ? <span className="font-bold text-[#071f52]/48">Computing...</span>
@@ -95,7 +96,7 @@ export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, d
         className="w-full bg-[#071f52] text-white shadow-[0_12px_28px_rgba(7,31,82,0.18)] hover:bg-[#112458]"
         size="lg"
       >
-        {submitting ? 'Submitting...' : 'Submit Booking'}
+        {submitting ? 'Submitting...' : submitLabel}
       </Button>
 
       {disabled && disabledMessage ? (
@@ -107,14 +108,9 @@ export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, d
       ) : null}
 
       <p className="text-center text-sm font-medium leading-5 text-[#071f52]/48">
-        Your booking will be reviewed by our team before confirmation.
+        {footerNote}
       </p>
 
-      {rentalType === 'self-drive' && disabled ? (
-        <p className="text-center text-sm font-medium text-[#071f52]/48">
-          Need to upload documents first? <Link to="/documents" className="font-bold text-[#071f52] underline">Go to Documents</Link>
-        </p>
-      ) : null}
     </div>
   )
 }

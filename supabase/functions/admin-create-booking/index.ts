@@ -47,7 +47,8 @@ function generateBookingNumber(): string {
   return `CR-${date}-${rand}`
 }
 
-function computeDurationDays(startAt: string, endAt: string): number {
+function computeDurationDays(startAt: string, endAt?: string | null): number {
+  if (!endAt) return 1
   const ms = new Date(endAt).getTime() - new Date(startAt).getTime()
   return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)))
 }
@@ -99,17 +100,20 @@ serve(async (req) => {
     return json(req, { error: 'Invalid request body' }, 400)
   }
 
-  const { customerMode, existingCustomerId, newCustomer, vehicleId, rentalModel, startAt, endAt, pickupLocation, dropoffLocation, depositAmount, pickupLat, pickupLng, dropoffLat, dropoffLng, distanceKm, durationMinutes, fuelEstimateLiters, fuelEstimateAmount, tollEstimateAmount, tollSegments, tollEntryPlaza, tollEntryExpressway, tollExitPlaza, tollExitExpressway, tollVehicleClass, tollRfidBreakdown } = body as {
+  const { customerMode, existingCustomerId, newCustomer, vehicleId, rentalModel, bookingMode, startAt, endAt, pickupLocation, dropoffLocation, destination, purposeOfTravel, notes, pickupLat, pickupLng, dropoffLat, dropoffLng, distanceKm, durationMinutes, fuelEstimateLiters, fuelEstimateAmount, tollEstimateAmount, tollSegments, tollEntryPlaza, tollEntryExpressway, tollExitPlaza, tollExitExpressway, tollVehicleClass, tollRfidBreakdown, selfDriveAddress } = body as {
     customerMode: string
     existingCustomerId?: string
     newCustomer?: { firstName: string; lastName: string; email: string; mobile?: string; sendInvite: boolean }
     vehicleId: string
     rentalModel: string
+    bookingMode?: 'dropoff' | 'keep'
     startAt: string
-    endAt: string
+    endAt?: string
     pickupLocation?: string
     dropoffLocation?: string
-    depositAmount?: number
+    destination?: string
+    purposeOfTravel?: string
+    notes?: string
     pickupLat?: number
     pickupLng?: number
     dropoffLat?: number
@@ -126,6 +130,7 @@ serve(async (req) => {
     tollExitExpressway?: string
     tollVehicleClass?: 1 | 2 | 3
     tollRfidBreakdown?: Record<string, unknown>[]
+    selfDriveAddress?: Record<string, unknown>
   }
 
   // Validate
@@ -138,10 +143,17 @@ serve(async (req) => {
   if (customerMode === 'new' && (!newCustomer?.firstName || !newCustomer?.lastName || !newCustomer?.email)) {
     return json(req, { error: 'New customer requires first name, last name, and email' }, 400)
   }
-  if (!vehicleId || !rentalModel || !startAt || !endAt) {
-    return json(req, { error: 'Vehicle, rental model, start, and end are required' }, 400)
+  if (!vehicleId || !rentalModel || !startAt) {
+    return json(req, { error: 'Vehicle, rental model, and start are required' }, 400)
   }
-  if (new Date(endAt) <= new Date(startAt)) {
+  if (!bookingMode || !['dropoff', 'keep'].includes(bookingMode)) {
+    return json(req, { error: 'Invalid booking mode' }, 400)
+  }
+  const requiresEndAt = rentalModel === 'self_drive' || bookingMode === 'keep'
+  if (requiresEndAt && !endAt) {
+    return json(req, { error: 'End date is required for this booking' }, 400)
+  }
+  if (endAt && new Date(endAt) <= new Date(startAt)) {
     return json(req, { error: 'End date must be after start date' }, 400)
   }
 
@@ -211,12 +223,13 @@ serve(async (req) => {
   }
 
   // Check vehicle availability — no overlapping live bookings
+  const overlapEndAt = endAt ?? new Date(new Date(startAt).getTime() + 24 * 60 * 60 * 1000).toISOString()
   const { data: overlapping } = await supabase
     .from('bookings')
     .select('id, booking_number')
     .eq('vehicle_id', vehicleId)
     .in('status', [...LIVE_BOOKING_STATUSES])
-    .lt('start_at', endAt)
+    .lt('start_at', overlapEndAt)
     .or(`end_at.is.null,end_at.gt.${startAt}`)
 
   if (overlapping && overlapping.length > 0) {
@@ -235,9 +248,10 @@ serve(async (req) => {
       customer_id: customerId,
       vehicle_id: vehicleId,
       rental_model: rentalModel,
+      booking_mode: bookingMode,
       status: 'confirmed',
       start_at: startAt,
-      end_at: endAt,
+      end_at: endAt ?? null,
       duration_days: durationDays,
       pickup_location: pickupLocation || null,
       pickup_lat: pickupLat ?? null,
@@ -245,6 +259,9 @@ serve(async (req) => {
       dropoff_location: dropoffLocation || null,
       dropoff_lat: dropoffLat ?? null,
       dropoff_lng: dropoffLng ?? null,
+      destination: destination || null,
+      purpose_of_travel: purposeOfTravel || null,
+      notes: notes || null,
       distance_km: distanceKm ?? null,
       duration_minutes: durationMinutes ?? null,
       fuel_estimate_liters: fuelEstimateLiters ?? 0,
@@ -257,6 +274,7 @@ serve(async (req) => {
       toll_exit_expressway: tollExitExpressway ?? null,
       toll_vehicle_class: tollVehicleClass ?? 1,
       toll_rfid_breakdown: tollRfidBreakdown ?? [],
+      self_drive_address: selfDriveAddress ?? null,
       created_by: user.id,
     })
     .select('id, booking_number, customer_id, total_amount, deposit_amount, remaining_amount, price_line_items')
@@ -265,21 +283,6 @@ serve(async (req) => {
   if (bookingError) {
     log('ERROR', 'Failed to create booking', { error: bookingError.message })
     return json(req, { error: 'Failed to create booking' }, 500)
-  }
-
-  // Insert deposit payment — use trigger-computed amount as fallback
-  const effectiveDeposit = Number(depositAmount) || booking.deposit_amount || 0
-  if (effectiveDeposit > 0) {
-    await supabase.from('payments').insert({
-      booking_id: booking.id,
-      channel: 'cash',
-      status: 'verified',
-      amount: effectiveDeposit,
-      paid_at: new Date().toISOString(),
-      submitted_by: user.id,
-      verified_by: user.id,
-      verified_at: new Date().toISOString(),
-    })
   }
 
   // Send booking confirmation email to customer
@@ -296,7 +299,7 @@ serve(async (req) => {
         <p style="font-size: 14px; color: #071f52; opacity: 0.6; margin: 0 0 24px;">Hi ${customerProfile.first_name ?? 'there'}, your booking has been confirmed.</p>
         <div style="background: #f7f9ff; border-radius: 12px; padding: 20px; margin: 0 0 20px;">
           <p style="font-size: 13px; color: #071f52; margin: 0 0 4px;"><strong>Booking #:</strong> ${booking.booking_number}</p>
-          <p style="font-size: 13px; color: #071f52; margin: 0 0 4px;"><strong>Dates:</strong> ${new Date(startAt).toLocaleDateString()} — ${new Date(endAt).toLocaleDateString()}</p>
+          <p style="font-size: 13px; color: #071f52; margin: 0 0 4px;"><strong>Dates:</strong> ${new Date(startAt).toLocaleDateString()}${endAt ? ` — ${new Date(endAt).toLocaleDateString()}` : ''}</p>
           <p style="font-size: 13px; color: #071f52; margin: 0 0 4px;"><strong>Duration:</strong> ${durationDays} day${durationDays > 1 ? 's' : ''}</p>
           <p style="font-size: 13px; color: #071f52; margin: 0;"><strong>Total:</strong> ₱${booking.total_amount?.toLocaleString()}.00</p>
         </div>

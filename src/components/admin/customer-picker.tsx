@@ -65,20 +65,27 @@ export function CustomerPicker({ value, onChange }: CustomerPickerProps) {
       {value.mode === 'existing' ? (
         <div>
           {value.existingCustomer ? (
-            <div className="flex items-center justify-between rounded-xl border border-[#071f52]/10 bg-[#f7f9ff] p-3">
-              <div>
-                <p className="text-sm font-bold text-[#071f52]">
-                  {value.existingCustomer.first_name} {value.existingCustomer.last_name}
-                </p>
-                <p className="text-xs text-[#071f52]/48">{value.existingCustomer.email}</p>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-xl border border-[#071f52]/10 bg-[#f7f9ff] p-3">
+                <div>
+                  <p className="text-sm font-bold text-[#071f52]">
+                    {value.existingCustomer.first_name} {value.existingCustomer.last_name}
+                  </p>
+                  <p className="text-xs text-[#071f52]/48">{value.existingCustomer.email}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDialogOpen(true)}
+                  className="rounded-full px-3 py-1 text-[11px] font-bold text-[#071f52]/58 hover:text-[#071f52]"
+                >
+                  Change
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setDialogOpen(true)}
-                className="rounded-full px-3 py-1 text-[11px] font-bold text-[#071f52]/58 hover:text-[#071f52]"
-              >
-                Change
-              </button>
+              {!value.existingCustomer.hasRequiredSelfDriveDocuments ? (
+                <p className="rounded-xl border border-[#f59e0b]/20 bg-[#fffbeb] px-3 py-2 text-xs font-semibold text-[#b45309]">
+                  This customer has not uploaded the required documents yet.
+                </p>
+              ) : null}
             </div>
           ) : (
             <button

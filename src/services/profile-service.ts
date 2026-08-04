@@ -1,7 +1,9 @@
 import { supabase } from '@/lib/supabase'
+import { hasRequiredSelfDriveDocuments } from '@/lib/booking-utils'
 import type { Profile } from '@/types/profile'
 import type { AdminCustomerRow } from '@/types/admin-customer'
 import type { AdminCustomerSearchPage } from '@/types/admin-booking'
+import type { CustomerDocument } from '@/types/document'
 
 export async function getProfile(id: string): Promise<Profile> {
   const { data, error } = await supabase.from('profiles').select('*').eq('id', id).single()
@@ -24,6 +26,7 @@ export async function paginateAdminCustomers(params: { query?: string; offset: n
   let query = supabase
     .from('profiles')
     .select('id,first_name,last_name,email,mobile', { count: 'exact' })
+    .eq('role', 'customer')
     .order('created_at', { ascending: false })
     .range(params.offset, params.offset + params.limit - 1)
 
@@ -38,7 +41,36 @@ export async function paginateAdminCustomers(params: { query?: string; offset: n
     ? params.offset + params.limit
     : null
 
-  return { items: (data || []) as AdminCustomerSearchPage['items'], nextOffset }
+  const customerIds = (data || []).map((item) => item.id)
+  let documentsByCustomerId = new Map<string, CustomerDocument[]>()
+
+  if (customerIds.length) {
+    const { data: documents, error: documentsError } = await supabase
+      .from('customer_documents')
+      .select('customer_id,document_type,status,file_path')
+      .in('customer_id', customerIds)
+
+    if (documentsError) throw documentsError
+
+    documentsByCustomerId = (documents || []).reduce((map, document) => {
+      const customerDocuments = map.get(document.customer_id) || []
+      customerDocuments.push(document as CustomerDocument)
+      map.set(document.customer_id, customerDocuments)
+      return map
+    }, new Map<string, CustomerDocument[]>())
+  }
+
+  return {
+    items: (data || []).map((item) => ({
+      id: item.id,
+      first_name: item.first_name,
+      last_name: item.last_name,
+      email: item.email,
+      mobile: item.mobile,
+      hasRequiredSelfDriveDocuments: hasRequiredSelfDriveDocuments(documentsByCustomerId.get(item.id) || []),
+    })) as AdminCustomerSearchPage['items'],
+    nextOffset,
+  }
 }
 
 export async function deactivateCustomer(id: string): Promise<void> {

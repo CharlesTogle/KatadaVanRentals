@@ -4,7 +4,14 @@ import { usePaymentMethods } from '@/hooks/use-payment-methods'
 import { cn } from '@/lib/utils'
 import { Upload } from 'lucide-react'
 
-export function PaymentFields({ depositAmount }: { depositAmount: number }) {
+interface PaymentFieldsProps {
+  depositAmount: number
+  methodRequired?: boolean
+  receiptRequired?: boolean
+  autoSelectMethod?: boolean
+}
+
+export function PaymentFields({ depositAmount, methodRequired = true, receiptRequired = true, autoSelectMethod = true }: PaymentFieldsProps) {
   const payment = useBookingStore((s) => s.payment)
   const setPayment = useBookingStore((s) => s.setPayment)
   const receiptFile = useBookingStore((s) => s.receiptFile)
@@ -12,10 +19,10 @@ export function PaymentFields({ depositAmount }: { depositAmount: number }) {
   const { data: paymentMethods = [] } = usePaymentMethods()
 
   useEffect(() => {
-    if (paymentMethods.length && !payment.method) {
+    if (autoSelectMethod && paymentMethods.length && !payment.method) {
       setPayment({ method: paymentMethods[0].id })
     }
-  }, [payment.method, paymentMethods, setPayment])
+  }, [autoSelectMethod, payment.method, paymentMethods, setPayment])
 
   useEffect(() => {
     if (payment.amount !== String(depositAmount)) {
@@ -32,11 +39,11 @@ export function PaymentFields({ depositAmount }: { depositAmount: number }) {
   return (
     <div className="space-y-5">
       <div className="space-y-1.5">
-        <label className="text-sm font-bold text-[#071f52]">Payment Method <span className="text-[#e92935]">*</span></label>
+        <label className="text-sm font-bold text-[#071f52]">Payment Method {methodRequired ? <span className="text-[#e92935]">*</span> : null}</label>
         <select value={payment.method} onChange={(e) => setPayment({ ...payment, method: e.target.value })}
           className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
         >
-          {!paymentMethods.length ? <option value="">- Select payment method -</option> : null}
+          {!paymentMethods.length || !autoSelectMethod ? <option value="">- Select payment method -</option> : null}
           {paymentMethods.map((pm) => (
             <option key={pm.id} value={pm.id}>{methodLabel(pm.id)}</option>
           ))}
@@ -60,7 +67,7 @@ export function PaymentFields({ depositAmount }: { depositAmount: number }) {
       </div>
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-3">
-          <label className="text-sm font-bold text-[#071f52]">Upload Receipt / Proof of Payment <span className="text-[#e92935]">*</span></label>
+          <label className="text-sm font-bold text-[#071f52]">Upload Receipt / Proof of Payment {receiptRequired ? <span className="text-[#e92935]">*</span> : null}</label>
           <label className="cursor-pointer rounded-xl bg-[#071f52] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#112458]">
             Choose File
             <input type="file" accept="image/*,.pdf" onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} className="hidden" />
@@ -77,6 +84,7 @@ export function PaymentFields({ depositAmount }: { depositAmount: number }) {
           <span className="text-xs font-medium">JPG, PNG, WEBP, PDF - max 5 MB</span>
           <input type="file" accept="image/*,.pdf" onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} className="hidden" />
         </label>
+        {!receiptRequired ? <p className="text-xs font-medium text-[#071f52]/48">Receipt is optional for admin-created bookings.</p> : null}
       </div>
     </div>
   )

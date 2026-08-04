@@ -7,7 +7,7 @@ const mutateAsync = vi.fn()
 const fetchNextPage = vi.fn()
 
 interface SearchResult {
-  data: { pages: { items: { id: string; first_name: string | null; last_name: string | null; email: string; mobile: string | null }[]; nextOffset: number | null }[] }
+  data: { pages: { items: { id: string; first_name: string | null; last_name: string | null; email: string; mobile: string | null; hasRequiredSelfDriveDocuments: boolean }[]; nextOffset: number | null }[] }
   hasNextPage: boolean
   isFetchingNextPage: boolean
   fetchNextPage: () => void
@@ -24,7 +24,8 @@ const customerSearchResult: SearchResult = {
   data: {
     pages: [{
       items: [
-        { id: 'customer-1', first_name: 'Alex', last_name: 'Customer', email: 'alex@example.com', mobile: null },
+        { id: 'customer-1', first_name: 'Alex', last_name: 'Customer', email: 'alex@example.com', mobile: null, hasRequiredSelfDriveDocuments: true },
+        { id: 'customer-2', first_name: 'Pat', last_name: 'NoDocs', email: 'pat@example.com', mobile: null, hasRequiredSelfDriveDocuments: false },
       ],
       nextOffset: null,
     }],
@@ -44,9 +45,22 @@ vi.mock('@/hooks/use-admin-booking', () => ({
 vi.mock('@/hooks/use-vehicles', () => ({
   useAdminVehicles: () => ({
     data: [
-      { id: 'vehicle-1', name: 'Toyota Commuter', plate_number: 'ABC123', base_price_per_day: 3500, driver_rate_per_day: 1500, is_available: true },
+      { id: 'vehicle-1', name: 'Toyota Commuter', plate_number: 'ABC123', base_price_per_day: 3500, driver_rate_per_day: 1500, passenger_count: 12, transmission: 'Manual', image_paths: [], is_available: true },
     ],
     isLoading: false,
+  }),
+}))
+
+vi.mock('@/hooks/use-payment-methods', () => ({
+  usePaymentMethods: () => ({
+    data: [{ id: 'pm-1', provider: 'BDO', account_number: '1234', channel: 'bank_transfer' }],
+    isLoading: false,
+  }),
+}))
+
+vi.mock('@/contexts/useAuth', () => ({
+  useAuth: () => ({
+    user: { id: 'admin-1', email: 'admin@example.com' },
   }),
 }))
 
@@ -86,7 +100,7 @@ describe('AdminBookingsCreate', () => {
 
   it('shows empty price summary before required fields are chosen', () => {
     renderPage()
-    expect(screen.getByText(/select a vehicle and the pick-up \/ drop-off date & time/i)).toBeInTheDocument()
+    expect(screen.getByText(/select a vehicle to continue/i)).toBeInTheDocument()
   })
 
   it('defaults to existing customer mode', () => {
@@ -104,7 +118,7 @@ describe('AdminBookingsCreate', () => {
 
   it('shows vehicle options in rental details', () => {
     renderPage()
-    expect(screen.getByText('Toyota Commuter (ABC123)')).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Toyota Commuter (ABC123)' })).toBeInTheDocument()
   })
 
   it('opens customer search dialog and shows results', async () => {
@@ -114,6 +128,16 @@ describe('AdminBookingsCreate', () => {
     fireEvent.click(screen.getByRole('button', { name: /select customer/i }))
     const customerBtn = await screen.findByRole('button', { name: /alex customer/i })
     expect(customerBtn).toBeInTheDocument()
+  })
+
+  it('shows a non-blocking document note for a selected customer without required documents', async () => {
+    useAdminCustomerSearchMock.mockReturnValue(customerSearchResult)
+    renderPage()
+
+    fireEvent.click(screen.getByRole('button', { name: /select customer/i }))
+    fireEvent.click(await screen.findByRole('button', { name: /pat nodocs/i }))
+
+    expect(screen.getByText(/this customer has not uploaded the required documents yet/i)).toBeInTheDocument()
   })
 
   it('switches between existing and new customer modes', () => {
@@ -128,10 +152,11 @@ describe('AdminBookingsCreate', () => {
     expect(screen.getByRole('button', { name: /select customer/i })).toBeInTheDocument()
   })
 
-  it('renders form sections for rental details and deposit', () => {
+  it('renders form sections for customer, rental details, and payment', () => {
     renderPage()
-    expect(screen.getByText('Rental Details')).toBeInTheDocument()
-    expect(screen.getByText('Deposit (optional)')).toBeInTheDocument()
-    expect(screen.getByText(/leave blank or 0 to skip/i)).toBeInTheDocument()
+    expect(screen.getByText('1. CUSTOMER SELECTION')).toBeInTheDocument()
+    expect(screen.getByText(/rental details/i)).toBeInTheDocument()
+    expect(screen.getByText('5. PAYMENT')).toBeInTheDocument()
+    expect(screen.getByText(/receipt is optional for admin-created bookings/i)).toBeInTheDocument()
   })
 })
