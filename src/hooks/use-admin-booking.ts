@@ -18,6 +18,7 @@ export function useCreateAdminBooking() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'bookings'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['customer', 'bookings'] })
     },
   })
 }

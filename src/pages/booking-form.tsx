@@ -17,6 +17,7 @@ import { getBookingPriceBreakdown, getMissingSelfDriveDocuments, hasRequiredSelf
 import { loadBookingDateSelection, saveBookingDateSelection } from '@/lib/booking-date-storage'
 import { calculateToll, getNearestTollPlazas, getRouteQuote, suggestLocations } from '@/services/location-service'
 import { supabase } from '@/lib/supabase'
+import { queryClient } from '@/lib/query'
 import { useBookingStore } from '@/store/booking-store'
 
 function generateBookingNumber(): string {
@@ -597,6 +598,7 @@ export default function BookingForm() {
       // ponytail: booking success matters more than mail delivery here
     }
 
+    queryClient.invalidateQueries({ queryKey: ['customer', 'bookings'] })
     useBookingStore.getState().reset()
     navigate('/bookings')
   }
