@@ -103,8 +103,7 @@ export function BookingCreateForm() {
   }, [reset])
 
   useEffect(() => {
-    const needsDistance = mode === 'dropoff' && rentalType !== 'self-drive'
-    if (!vehicleId || (rentalType !== 'all-in' && !needsDistance)) {
+    if (!vehicleId) {
       setRouteLoading(false)
       setRouteError('')
       setRouteQuote(null)
@@ -174,7 +173,7 @@ export function BookingCreateForm() {
   }, [locations.dropoff, locations.destination, locations.pickup, mode, rentalType, routeSelections.dropoff, routeSelections.destination, routeSelections.pickup, setRouteQuote, setRouteSelection, vehicleId])
 
   useEffect(() => {
-    if (rentalType !== 'all-in') {
+    if (rentalType !== 'all-in' || routeQuote?.inServiceArea === false) {
       setTollCandidates([], [])
       setTollError('')
       return
@@ -211,7 +210,7 @@ export function BookingCreateForm() {
   }, [mode, routeQuote?.routeGeometry, routeSelections.destination, routeSelections.dropoff, routeSelections.pickup, rentalType, setTollCandidates])
 
   useEffect(() => {
-    if (rentalType !== 'all-in' || !routeQuote || !tollSelections.entry || !tollSelections.exit) {
+    if (rentalType !== 'all-in' || routeQuote?.inServiceArea === false || !routeQuote || !tollSelections.entry || !tollSelections.exit) {
       setTollLoading(false)
       setTollError('')
       return
@@ -289,15 +288,15 @@ export function BookingCreateForm() {
   })
   const needsRouteQuote = rentalType === 'all-in' || (mode === 'dropoff' && rentalType !== 'self-drive')
   const basePriceLoading = routeLoading && mode === 'dropoff' && rentalType !== 'self-drive'
-  const fuelPriceLoading = routeLoading && rentalType === 'all-in'
-  const tollPriceLoading = rentalType === 'all-in' && (routeLoading || tollLoading)
+  const fuelPriceLoading = routeLoading && rentalType === 'all-in' && routeQuote?.inServiceArea !== false
+  const tollPriceLoading = rentalType === 'all-in' && (routeLoading || tollLoading) && routeQuote?.inServiceArea !== false
   const tollQuoteReady = !!routeQuote
     && !!tollSelections.entry
     && !!tollSelections.exit
     && routeQuote.tollEntryPlaza === tollSelections.entry.name
     && routeQuote.tollExitPlaza === tollSelections.exit.name
     && routeQuote.tollVehicleClass === tollSelections.vehicleClass
-  const needsTollEstimate = rentalType === 'all-in' && !tollQuoteReady
+  const needsTollEstimate = rentalType === 'all-in' && routeQuote?.inServiceArea !== false && !tollQuoteReady
   const selfDriveAddressIncomplete = rentalType === 'self-drive' && !formatSelfDriveAddress(completeAddress)
   const routeIncomplete = needsRouteQuote && (routeSelections.pickup.lat == null || (rentalType === 'all-in' && mode === 'keep' && routeSelections.destination.lat == null) || routeSelections.dropoff.lat == null || !routeQuote)
   const paymentIncomplete = !payment.reference.trim()
@@ -566,6 +565,7 @@ export function BookingCreateForm() {
               error={error}
               submitLabel="Confirm Booking"
               footerNote="Admin bookings are confirmed immediately after creation."
+              flaggedForManualPricing={routeQuote?.inServiceArea === false}
             />
           </div>
         </div>

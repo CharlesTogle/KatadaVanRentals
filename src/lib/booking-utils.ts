@@ -66,6 +66,10 @@ export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, e
       ? 1
       : 0
 
+  if (routeQuote?.inServiceArea === false) {
+    return { days, distanceKm: 0, baseTotal: 0, driverTotal: 0, fuelEstimateAmount: 0, tollEstimateAmount: 0, grandTotal: 0, deposit: 0, remaining: 0 }
+  }
+
   const distanceKm = Number(routeQuote?.distanceKm ?? 0)
   const baseTotal = mode === 'dropoff' && usesDriver(rentalType)
     ? distanceKm * basePricePerDay
@@ -96,6 +100,10 @@ export function canCustomerCancelBooking(status: BookingStatus) {
   return status === 'for_review' || status === 'pending_price_approval' || status === 'confirmed'
 }
 
+export function canDownloadInvoice(status: BookingStatus) {
+  return status === 'confirmed' || status === 'on_trip' || status === 'completed'
+}
+
 export type AdminActionType =
   | 'confirm'
   | 'reject'
@@ -107,6 +115,7 @@ export type AdminActionType =
   | 'make_payment'
   | 'cancel'
   | 'delete'
+  | 'set_price_for_manual'
 
 export interface AdminAction {
   type: AdminActionType
@@ -114,7 +123,15 @@ export interface AdminAction {
   variant: 'primary' | 'danger' | 'secondary'
 }
 
-export function getAdminBookingDetailActions(status: BookingStatus): AdminAction[] {
+export function getAdminBookingDetailActions(status: BookingStatus, flaggedForManualPricing: boolean = false): AdminAction[] {
+  if (flaggedForManualPricing) {
+    return [
+      { type: 'set_price_for_manual', label: 'Set Price', variant: 'primary' },
+      { type: 'reject', label: 'Reject', variant: 'danger' },
+      { type: 'delete', label: 'Delete Booking', variant: 'danger' },
+    ]
+  }
+
   switch (status) {
     case 'for_review':
     case 'awaiting_documents':

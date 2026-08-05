@@ -4,17 +4,19 @@ import { useAdminBooking, useAdminBookingAction } from '@/hooks/use-bookings'
 import { useFileViewer } from '@/hooks/use-file-viewer'
 import { getCustomerDocumentSignedUrl } from '@/services/document-service'
 import { usePaymentMethods } from '@/hooks/use-payment-methods'
-import { formatBookingStatus, getAdminBookingDetailActions, getBookingCadenceLabel, getBookingCadenceValue, type AdminAction, type AdminActionType } from '@/lib/booking-utils'
+import { canDownloadInvoice, formatBookingStatus, getAdminBookingDetailActions, getBookingCadenceLabel, getBookingCadenceValue, type AdminAction, type AdminActionType } from '@/lib/booking-utils'
 import { STATUS_COLORS } from '@/config/constants'
 import { getBookingAdjustmentSummary } from '@/lib/booking-adjustment'
 import { getDisplayBookingNote } from '@/lib/booking-notes'
 import { cn } from '@/lib/utils'
 import { showError } from '@/lib/errors'
 import { toast } from '@/lib/toast'
+import { downloadBookingInvoicePdf } from '@/lib/invoice-pdf'
 import { supabase } from '@/lib/supabase'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { Dialog } from '@/components/ui/dialog'
 import { ImageViewer } from '@/components/ui/image-viewer'
+import { Button } from '@/components/ui/button'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -68,6 +70,7 @@ export default function BookingDetail() {
   })
   const bookingStatus = data?.booking.status
   const defaultPaymentMethodId = paymentMethods[0]?.id || ''
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
   const timelineIdx = useMemo(() => bookingStatus ? TIMELINE_STATUSES.indexOf(bookingStatus) : -1, [bookingStatus])
 
   useEffect(() => {
@@ -159,7 +162,7 @@ export default function BookingDetail() {
   const actions: AdminAction[] = !bookingStatus
     ? []
     : bookingStatus !== 'completed' || displayedRemainingBalance <= 0
-      ? getAdminBookingDetailActions(bookingStatus)
+      ? getAdminBookingDetailActions(bookingStatus, booking.flagged_for_manual_pricing)
       : [{ type: 'make_payment', label: 'Make a Payment', variant: 'primary' }, ...getAdminBookingDetailActions(bookingStatus)]
   const primaryActions = actions.filter((action) => action.variant !== 'danger')
   const destructiveActions = actions.filter((action) => action.variant === 'danger')
@@ -184,6 +187,18 @@ export default function BookingDetail() {
     }
   }
 
+  const handleDownloadInvoice = async () => {
+    setIsDownloadingInvoice(true)
+
+    try {
+      await downloadBookingInvoicePdf(booking.id)
+    } catch (error) {
+      toast.error(showError(error as Error))
+    } finally {
+      setIsDownloadingInvoice(false)
+    }
+  }
+
   const handleConfirmBooking = () => runAction({ type: 'confirm', bookingId: booking.id }, 'Booking confirmed.')
   const handleRejectBooking = () => runAction({ type: 'reject', bookingId: booking.id, reason: modalForm.reason.trim() }, 'Booking rejected.')
   const adjustmentAmount = Number(modalForm.amount || 0)
@@ -191,6 +206,10 @@ export default function BookingDetail() {
   const adjustedTotal = displayedTotal + signedAdjustmentAmount
 
   const handleAdjustBooking = () => runAction({ type: 'adjust_price', bookingId: booking.id, adjustedTotal, reason: modalForm.reason.trim() }, 'Booking price updated.')
+  const handleSetManualPrice = () => runAction(
+    { type: 'set_price_for_manual', bookingId: booking.id, adjustedTotal: Number(modalForm.amount || 0), reason: modalForm.reason.trim() || 'Manual pricing set' },
+    'Price set. Booking moved to pending price approval.',
+  )
   const handleRequestDocuments = (labels: string[]) => runAction({ type: 'request_documents', bookingId: booking.id, requestedDocumentLabels: labels }, 'Document request sent.')
   const handleCompleteBooking = async () => {
     const receiptPath = await uploadReceipt(modalForm.receiptFile)
@@ -430,6 +449,13 @@ export default function BookingDetail() {
               </div>
 
               <div className="px-6 py-6">
+                {booking.flagged_for_manual_pricing ? (
+                  <div className="rounded-[22px] border border-[#f59e0b]/10 bg-[#f59e0b]/4 px-5 py-5 text-center">
+                    <p className="text-sm font-bold text-[#92400e]">Manual Pricing — TBD</p>
+                    <p className="mt-1 text-xs font-medium text-[#92400e]/80">This booking is outside the service area. An admin must price it manually.</p>
+                  </div>
+                ) : (
+                <>
                 <div className="space-y-3">
                   {booking.price_line_items?.map((item, index) => (
                     <div key={index} className="flex items-start justify-between gap-2 border-b border-[#071f52]/6 pb-3 text-sm last:border-0 last:pb-0">
@@ -441,15 +467,17 @@ export default function BookingDetail() {
 
                 <div className="mt-6 space-y-3 rounded-[22px] bg-[#f7f9fc] px-5 py-5">
                   <SummaryRow label="Total" value={formatCurrency(displayedTotal)} strong valueClassName="text-[#4f46e5]" />
-                  {booking.rental_model === 'all_in' && booking.status !== 'completed' ? <SummaryRow label="Fuel Estimate" value={formatCurrency(Number(booking.fuel_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
-                  {booking.rental_model === 'all_in' && booking.status !== 'completed' ? <SummaryRow label="Toll Estimate" value={formatCurrency(Number(booking.toll_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
+                  {booking.rental_model === 'all_in' && booking.status !== 'completed' && booking.in_service_area !== false ? <SummaryRow label="Fuel Estimate" value={formatCurrency(Number(booking.fuel_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
+                  {booking.rental_model === 'all_in' && booking.status !== 'completed' && booking.in_service_area !== false ? <SummaryRow label="Toll Estimate" value={formatCurrency(Number(booking.toll_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
                   {Math.abs(balanceSummary?.adjustmentAmount || 0) > 0.009 ? <SummaryRow label="Price Adjustment" value={`${balanceSummary?.isIncrease ? '+' : '-'}${formatCurrency(Math.abs(balanceSummary?.adjustmentAmount || 0))}`} valueClassName={balanceSummary?.isIncrease ? 'text-[#f97316]' : 'text-[#16a34a]'} /> : null}
                   {balanceSummary && balanceSummary.extensionAmount > 0 ? <SummaryRow label={getExtensionChargeLabel(balanceSummary.extensionDays)} value={`+${formatCurrency(balanceSummary.extensionAmount)}`} valueClassName="text-[#f97316]" /> : null}
                   {booking.status === 'completed' && booking.rental_model === 'all_in' ? <SummaryRow label="Trip Reconciliation" value={`${tripReconciliationAmount >= 0 ? '+' : '-'}${formatCurrency(Math.abs(tripReconciliationAmount))}`} valueClassName={tripReconciliationAmount >= 0 ? 'text-[#f97316]' : 'text-[#16a34a]'} note={`Toll ${formatCurrency(Number(booking.actual_toll_amount || 0))} · Gas ${formatCurrency(Number(booking.actual_fuel_amount || 0))}`} /> : null}
-                  <SummaryRow label="Security Deposit" value={`-${formatCurrency(depositAmount)}`} valueClassName="text-[#16a34a]" note="non-refundable" />
+                  {depositAmount > 0 && <SummaryRow label="Security Deposit" value={`-${formatCurrency(depositAmount)}`} valueClassName="text-[#16a34a]" note="non-refundable" />}
                   {paymentMadeAmount > 0 ? <SummaryRow label="Payment Made" value={`-${formatCurrency(paymentMadeAmount)}`} valueClassName="text-[#16a34a]" /> : null}
                   <SummaryRow label="Remaining Balance" value={formatCurrency(displayedRemainingBalance)} strong valueClassName="text-[#f97316]" />
                 </div>
+                </>
+                )}
               </div>
             </section>
 
@@ -685,22 +713,24 @@ export default function BookingDetail() {
               </section>
             ) : null}
 
-            {invoice ? (
+            {canDownloadInvoice(booking.status) ? (
               <section className="rounded-[26px] border border-[#071f52]/8 bg-white shadow-[0_16px_40px_rgba(7,31,82,0.06)]">
                 <div className="border-b border-[#071f52]/8 px-6 py-5">
                   <h2 className="text-[1.1rem] font-black tracking-[-0.03em] text-[#1f2a44]">Invoice</h2>
                 </div>
 
                 <div className="px-6 py-6">
-                  <SummaryRow label="Invoice #" value={invoice.invoice_number} />
-                  <SummaryRow label="Amount" value={formatCurrency(invoice.total_amount)} />
-                  <SummaryRow label="Status" value={toLabel(invoice.status)} />
-
-                  {invoice.file_path ? (
-                    <a href={invoice.file_path} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-[#4f46e5] transition-colors hover:text-[#3639d4]">
-                      <FileText className="h-4 w-4" /> Download Invoice
-                    </a>
+                  {invoice ? (
+                    <>
+                      <SummaryRow label="Invoice #" value={invoice.invoice_number} />
+                      <SummaryRow label="Amount" value={formatCurrency(invoice.total_amount)} />
+                      <SummaryRow label="Status" value={toLabel(invoice.status)} />
+                    </>
                   ) : null}
+
+                  <Button variant="outline" className="mt-3 w-full gap-1.5 text-xs" onClick={handleDownloadInvoice} disabled={isDownloadingInvoice}>
+                    <FileText size={12} /> {isDownloadingInvoice ? 'Preparing...' : 'Download Invoice'}
+                  </Button>
                 </div>
               </section>
             ) : null}
@@ -718,6 +748,7 @@ export default function BookingDetail() {
       <PaymentModal open={activeModal === 'make_payment'} onClose={() => setActiveModal(null)} title="Make a Payment" description="Record a post-trip payment for this completed booking." submitLabel="Record Payment" amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} paymentMethodId={modalForm.paymentMethodId} setPaymentMethodId={(paymentMethodId) => setModalForm((current) => ({ ...current, paymentMethodId }))} paymentChannel={modalForm.paymentChannel} setPaymentChannel={(paymentChannel) => setModalForm((current) => ({ ...current, paymentChannel }))} referenceNumber={modalForm.referenceNumber} setReferenceNumber={(referenceNumber) => setModalForm((current) => ({ ...current, referenceNumber }))} receiptFile={modalForm.receiptFile} setReceiptFile={(receiptFile) => setModalForm((current) => ({ ...current, receiptFile }))} paymentMethods={paymentMethods} onSubmit={handleMakePayment} isPending={bookingAction.isPending} />
       <CancelModal open={activeModal === 'cancel'} onClose={() => setActiveModal(null)} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} onSubmit={(cancellationType) => runAction({ type: 'cancel', bookingId: booking.id, cancellationType, reason: modalForm.reason.trim() }, 'Booking canceled.')} isPending={bookingAction.isPending} />
       <DeleteModal open={activeModal === 'delete'} onClose={() => setActiveModal(null)} onSubmit={handleDeleteBooking} isPending={bookingAction.isPending} />
+      <SetPriceModal open={activeModal === 'set_price_for_manual'} onClose={() => setActiveModal(null)} amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} onSubmit={handleSetManualPrice} isPending={bookingAction.isPending} />
       <ImageViewer open={!!viewing} onClose={closeViewer} src={viewing?.src || ''} alt={viewing?.alt || ''} />
       </div>
     </main>
@@ -808,6 +839,40 @@ function AdjustBookingModal({ open, onClose, remainingBalance, currentTotal, adj
         <div className="-mx-6 flex gap-3 border-t border-[#071f52]/8 px-6 pt-4">
           <button onClick={onClose} disabled={isPending} className="flex-1 rounded-full border border-[#d9dfeb] px-4 py-2.5 text-sm font-semibold text-[#4d5a72] hover:bg-[#f8fafc] disabled:opacity-50">Cancel</button>
           <button onClick={onSubmit} disabled={isPending || Boolean(reasonError) || Boolean(amountError)} className="flex-1 rounded-full bg-[#4f46e5] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#4338ca] disabled:opacity-50">{isPending ? 'Saving...' : 'Confirm Adjustment'}</button>
+        </div>
+      </div>
+    </Dialog>
+  )
+}
+
+function SetPriceModal({ open, onClose, amount, setAmount, reason, setReason, onSubmit, isPending }: { open: boolean; onClose: () => void; amount: string; setAmount: (v: string) => void; reason: string; setReason: (v: string) => void; onSubmit: () => void; isPending: boolean }) {
+  const priceAmount = Number(amount || 0)
+  const amountError = !amount ? 'Enter a price.' : priceAmount <= 0 ? 'Price must be greater than 0.' : null
+  const reasonError = !reason.trim() ? 'Reason is required.' : null
+
+  return (
+    <Dialog open={open} onClose={onClose} title="Set Manual Price">
+      <div className="space-y-4">
+        <div className="rounded-xl border border-[#f59e0b]/30 bg-[#f59e0b]/8 px-4 py-3">
+          <p className="text-sm font-bold text-[#92400e]">Manual Pricing</p>
+          <p className="mt-1 text-xs font-medium text-[#92400e]/80">This booking was flagged for manual pricing. Set the final price below and the customer will be asked to approve.</p>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-semibold text-[#4d5a72]">Price (₱) <span className="text-[#ef4444]">*</span></label>
+          <input type="number" min="1" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className={cn('h-10 w-full rounded-xl border px-3 text-sm text-[#1f2a44] focus:outline-none', amountError ? 'border-[#ef4444] focus:border-[#ef4444]' : 'border-[#d9dfeb] focus:border-[#4f46e5]')} />
+          {amountError ? <p className="mt-2 text-sm font-medium text-[#dc2626]">{amountError}</p> : null}
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-semibold text-[#4d5a72]">Reason <span className="text-[#ef4444]">*</span></label>
+          <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="e.g. Out-of-area surcharge, distance-based fare..." className={cn('w-full rounded-2xl border px-4 py-3 text-sm text-[#1f2a44] placeholder:text-[#9aa6ba] focus:outline-none', reasonError ? 'border-[#ef4444] focus:border-[#ef4444]' : 'border-[#d9dfeb] focus:border-[#4f46e5]')} />
+          {reasonError ? <p className="mt-2 text-sm font-medium text-[#dc2626]">{reasonError}</p> : null}
+        </div>
+
+        <div className="-mx-6 flex gap-3 border-t border-[#071f52]/8 px-6 pt-4">
+          <button onClick={onClose} disabled={isPending} className="flex-1 rounded-full border border-[#d9dfeb] px-4 py-2.5 text-sm font-semibold text-[#4d5a72] hover:bg-[#f8fafc] disabled:opacity-50">Cancel</button>
+          <button onClick={onSubmit} disabled={isPending || Boolean(reasonError) || Boolean(amountError)} className="flex-1 rounded-full bg-[#e92935] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#dc2626] disabled:opacity-50">{isPending ? 'Saving...' : 'Set Price'}</button>
         </div>
       </div>
     </Dialog>

@@ -80,7 +80,7 @@ export async function getBookingById(id: string): Promise<CustomerBookingDetail>
 export async function getMyBookings(status?: string) {
   let query = supabase
     .from('bookings')
-    .select('id, booking_number, vehicle_id, start_at, end_at, duration_days, distance_km, booking_mode, total_amount, paid_amount, remaining_amount, status, created_at, rental_model, vehicles!vehicle_id(name,slug,image_paths)')
+    .select('id, booking_number, vehicle_id, start_at, end_at, duration_days, distance_km, booking_mode, total_amount, paid_amount, remaining_amount, status, created_at, rental_model, flagged_for_manual_pricing, vehicles!vehicle_id(name,slug,image_paths)')
     .order('created_at', { ascending: false })
 
   if (status) query = query.eq('status', status)
@@ -397,6 +397,7 @@ export type AdminBookingActionType =
   | 'reject'
   | 'request_documents'
   | 'adjust_price'
+  | 'set_price_for_manual'
   | 'start_trip'
   | 'extend'
   | 'complete'
@@ -415,6 +416,7 @@ export type AdminBookingActionInput =
   | { type: 'make_payment'; bookingId: string; collectedAmount: number; paymentMethodId?: string; paymentChannel?: string; referenceNumber?: string; receiptPath?: string }
   | { type: 'cancel'; bookingId: string; cancellationType: string; reason: string }
   | { type: 'delete'; bookingId: string }
+  | { type: 'set_price_for_manual'; bookingId: string; adjustedTotal: number; reason: string }
 
 export interface VerifiedPaymentRow {
   id: string
@@ -475,6 +477,7 @@ export async function runAdminBookingAction(input: AdminBookingActionInput): Pro
     reject: { fn: 'admin_reject_booking', args: { target_booking_id: bookingId, reason: (params as { reason: string }).reason } },
     request_documents: { fn: 'admin_request_booking_documents', args: { target_booking_id: bookingId, requested_document_labels: (params as { requestedDocumentLabels: string[] }).requestedDocumentLabels } },
     adjust_price: { fn: 'admin_adjust_booking_price', args: { target_booking_id: bookingId, adjusted_total: (params as { adjustedTotal: number }).adjustedTotal, reason: (params as { reason: string }).reason } },
+    set_price_for_manual: { fn: 'admin_set_manual_price', args: { target_booking_id: bookingId, price: (params as { adjustedTotal: number }).adjustedTotal, reason: (params as { reason: string }).reason } },
     start_trip: {
       fn: 'admin_start_trip',
       args: {

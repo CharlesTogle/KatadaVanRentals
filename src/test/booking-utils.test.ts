@@ -80,6 +80,7 @@ describe('booking-utils', () => {
         tollExitExpressway: 'NLEX',
         tollVehicleClass: 1,
         tollRfidBreakdown: [{ system: 'easytrip', amount: 105 }],
+        inServiceArea: true,
       },
     })).toEqual(expect.objectContaining({
       baseTotal: 4500,
@@ -112,6 +113,7 @@ describe('booking-utils', () => {
         tollExitExpressway: 'NLEX',
         tollVehicleClass: 1,
         tollRfidBreakdown: [{ system: 'easytrip', amount: 150370.25 }],
+        inServiceArea: true,
       },
     })).toEqual(expect.objectContaining({
       fuelEstimateAmount: 24510.75,

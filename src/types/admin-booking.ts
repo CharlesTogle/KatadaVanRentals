@@ -48,6 +48,8 @@ export interface AdminBookingCreateInput {
   tollExitExpressway: string | null
   tollVehicleClass: 1 | 2 | 3
   tollRfidBreakdown: { system: string; amount: number }[]
+  inServiceArea: boolean
+  flaggedForManualPricing: boolean
   selfDriveAddress: {
     addressLine1: string
     addressLine2: string

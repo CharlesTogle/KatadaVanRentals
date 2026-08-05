@@ -57,6 +57,7 @@ describe('useBookingStore', () => {
       tollExitExpressway: null,
       tollVehicleClass: 1,
       tollRfidBreakdown: [],
+      inServiceArea: true,
     })
 
     useBookingStore.getState().setRouteSelection('pickup', {

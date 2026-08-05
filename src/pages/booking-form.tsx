@@ -183,8 +183,7 @@ export default function BookingForm() {
   const userId = user?.id ?? null
 
   useEffect(() => {
-    const needsDistance = mode === 'dropoff' && rentalType !== 'self-drive'
-    if (!userId || !vehicleId || (rentalType !== 'all-in' && !needsDistance)) {
+    if (!userId || !vehicleId) {
       setRouteLoading(false)
       setRouteError('')
       setRouteQuote(null)
@@ -266,7 +265,7 @@ export default function BookingForm() {
   ])
 
   useEffect(() => {
-    if (rentalType !== 'all-in') {
+    if (rentalType !== 'all-in' || routeQuote?.inServiceArea === false) {
       setTollCandidates([], [])
       setTollError('')
       return
@@ -304,7 +303,7 @@ export default function BookingForm() {
   }, [mode, routeQuote?.routeGeometry, routeSelections.destination, routeSelections.dropoff, routeSelections.pickup, rentalType, setTollCandidates])
 
   useEffect(() => {
-    if (rentalType !== 'all-in' || !routeQuote || !tollSelections.entry || !tollSelections.exit) {
+    if (rentalType !== 'all-in' || routeQuote?.inServiceArea === false || !routeQuote || !tollSelections.entry || !tollSelections.exit) {
       setTollLoading(false)
       setTollError('')
       return
@@ -401,18 +400,18 @@ export default function BookingForm() {
     driverRatePerDay: bookingVehicle.driver_rate_per_day,
     routeQuote,
   })
-  const requiresPayment = true
+  const requiresPayment = routeQuote?.inServiceArea !== false
   const needsRouteQuote = rentalType === 'all-in' || (mode === 'dropoff' && rentalType !== 'self-drive')
   const basePriceLoading = routeLoading && mode === 'dropoff' && rentalType !== 'self-drive'
-  const fuelPriceLoading = routeLoading && rentalType === 'all-in'
-  const tollPriceLoading = rentalType === 'all-in' && (routeLoading || tollLoading)
+  const fuelPriceLoading = routeLoading && rentalType === 'all-in' && routeQuote?.inServiceArea !== false
+  const tollPriceLoading = rentalType === 'all-in' && (routeLoading || tollLoading) && routeQuote?.inServiceArea !== false
   const tollQuoteReady = !!routeQuote
     && !!tollSelections.entry
     && !!tollSelections.exit
     && routeQuote.tollEntryPlaza === tollSelections.entry.name
     && routeQuote.tollExitPlaza === tollSelections.exit.name
     && routeQuote.tollVehicleClass === tollSelections.vehicleClass
-  const needsTollEstimate = rentalType === 'all-in' && !tollQuoteReady
+  const needsTollEstimate = rentalType === 'all-in' && routeQuote?.inServiceArea !== false && !tollQuoteReady
   const selectedPaymentMethod = paymentMethodsQuery.data?.find((method) => method.id === payment.method)
 
   const selfDriveAddressIncomplete = rentalType === 'self-drive' && !formatSelfDriveAddress(completeAddress)
@@ -725,7 +724,16 @@ export default function BookingForm() {
               </BookingSection>
 
               <BookingSection title="3. PAYMENT">
-                <PaymentFields depositAmount={pricing.deposit} />
+                {routeQuote?.inServiceArea === false ? (
+                  <div className="rounded-xl border border-[#f59e0b]/10 bg-[#f59e0b]/4 px-4 py-3">
+                    <p className="text-sm font-semibold text-[#92400e]">Payment Skipped</p>
+                    <p className="mt-1 text-xs font-medium text-[#92400e]/80">
+                      This booking requires manual pricing. No downpayment is needed right now — we'll reach out once pricing is set.
+                    </p>
+                  </div>
+                ) : (
+                  <PaymentFields depositAmount={pricing.deposit} />
+                )}
               </BookingSection>
 
             <div className="card">
@@ -741,14 +749,6 @@ export default function BookingForm() {
           </div>
 
           <div className="lg:sticky lg:top-6 lg:self-start">
-            {routeQuote && routeQuote.inServiceArea === false && (
-              <div className="mb-4 rounded-xl border border-[#f59e0b]/30 bg-[#f59e0b]/8 px-4 py-3">
-                <p className="text-sm font-bold text-[#92400e]">Outside Service Area</p>
-                <p className="mt-1 text-xs font-medium text-[#92400e]/80">
-                  Your pickup location is outside our service area. This booking will be flagged for manual pricing review.
-                </p>
-              </div>
-            )}
             <PriceSummary
               rentalType={rentalType}
               bookingMode={mode}
@@ -769,6 +769,7 @@ export default function BookingForm() {
               remaining={pricing.remaining}
               submitting={submitting}
               disabled={formIncomplete}
+              flaggedForManualPricing={routeQuote?.inServiceArea === false}
               disabledMessage={profileBlocked ? 'Complete your profile to enable booking.' : selfDriveBlocked ? 'Complete your profile documents to enable booking.' : (!startParam || !endParam) ? 'Pick-up and drop-off dates are required.' : selfDriveAddressIncomplete ? 'Enter your complete address for this self-drive booking.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : paymentIncomplete ? 'Complete payment details to enable booking.' : undefined))}
               error={error}
             />

@@ -8,6 +8,7 @@ import { saveBookingRequestedDocument, deleteBookingRequestedDocument, getCustom
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ImageViewer } from '@/components/ui/image-viewer'
+import { usePaymentMethods } from '@/hooks/use-payment-methods'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -23,7 +24,7 @@ import { BOOKING_MESSAGES } from '@/constants/booking'
 import { STATUS_COLORS } from '@/config/constants'
 import { getBookingAdjustmentSummary } from '@/lib/booking-adjustment'
 import { getDisplayBookingNote } from '@/lib/booking-notes'
-import { canCustomerCancelBooking, formatBookingStatus, getBookingCadenceLabel, getBookingCadenceValue } from '@/lib/booking-utils'
+import { canCustomerCancelBooking, canDownloadInvoice, formatBookingStatus, getBookingCadenceLabel, getBookingCadenceValue } from '@/lib/booking-utils'
 import { downloadBookingInvoicePdf } from '@/lib/invoice-pdf'
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
@@ -59,6 +60,12 @@ export default function BookingDetail() {
   const [submitted, setSubmitted] = useState(false)
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
   const [adjustmentAction, setAdjustmentAction] = useState<'accept' | 'cancel' | null>(null)
+  const [showManualPayModal, setShowManualPayModal] = useState(false)
+  const [manualPayMethod, setManualPayMethod] = useState('')
+  const [manualPayReference, setManualPayReference] = useState('')
+  const [manualPayReceipt, setManualPayReceipt] = useState<File | null>(null)
+  const [manualPaySubmitting, setManualPaySubmitting] = useState(false)
+  const { data: paymentMethods = [] } = usePaymentMethods()
   const [uploadingTypeId, setUploadingTypeId] = useState<string | null>(null)
   const [sizeError, setSizeError] = useState<string | null>(null)
   const oldUploadRef = useRef<{ file_path: string; original_filename: string; mime_type: string; size_bytes: number } | null>(null)
@@ -325,6 +332,47 @@ export default function BookingDetail() {
     }
   }
 
+  const depositPercent = 10
+  const manualPayAmount = Math.round(Number(booking.total_amount) * (depositPercent / 100))
+
+  const handleAcceptManualPrice = async () => {
+    setManualPaySubmitting(true)
+    try {
+      let receiptPath: string | null = null
+      if (manualPayReceipt) {
+        const ext = manualPayReceipt.name.split('.').pop()
+        const path = `manual-pay/${booking.id}/${Date.now()}.${ext}`
+        const { error: uploadError } = await supabase.storage
+          .from(PAYMENT_RECEIPT_BUCKET)
+          .upload(path, manualPayReceipt)
+        if (uploadError) throw uploadError
+        receiptPath = path
+      }
+
+      const selectedMethod = paymentMethods.find((m) => m.id === manualPayMethod)
+      if (manualPayAmount > 0) {
+        await supabase.from('payments').insert({
+          booking_id: booking.id,
+          payment_method_id: manualPayMethod,
+          channel: selectedMethod?.channel || 'bank_transfer',
+          status: 'submitted',
+          amount: manualPayAmount,
+          reference_number: manualPayReference.trim() || null,
+          receipt_path: receiptPath,
+          submitted_by: user?.id,
+        })
+      }
+
+      await acceptPriceAdjustment.mutateAsync({ id: booking.id })
+      setShowManualPayModal(false)
+      toast.success('Price accepted. Payment recorded.')
+    } catch (error) {
+      toast.error(showError(error as Error))
+    } finally {
+      setManualPaySubmitting(false)
+    }
+  }
+
   return (
     <div className="w-full px-4 py-4 sm:px-5 sm:py-6">
         <button onClick={() => navigate('/bookings')} className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#071f52]/60 transition-colors hover:text-[#071f52] sm:text-sm">
@@ -474,6 +522,13 @@ export default function BookingDetail() {
             </div>
 
             <div className="px-4 py-4">
+              {booking.flagged_for_manual_pricing ? (
+                <div className="rounded-xl border border-[#f59e0b]/10 bg-[#f59e0b]/4 px-4 py-4 text-center">
+                  <p className="text-sm font-bold text-[#92400e]">Manual Pricing — TBD</p>
+                  <p className="mt-1 text-xs font-medium text-[#92400e]/80">This booking is outside our service area. An admin will price it manually.</p>
+                </div>
+              ) : (
+              <>
               <div className="min-w-0 overflow-x-auto">
                 <div className="space-y-2 min-w-[280px] sm:min-w-[320px]">
                   {(booking.price_line_items || []).map((item, index) => (
@@ -487,15 +542,17 @@ export default function BookingDetail() {
 
               <div className="mt-4 space-y-2 rounded-lg bg-[#f7f9fc] px-4 py-4">
                 <SummaryRow label="Total" value={formatCurrency(displayedTotal)} strong valueClassName="text-[#4f46e5]" />
-                {booking.rental_model === 'all_in' && booking.status !== 'completed' ? <SummaryRow label="Fuel Estimate" value={formatCurrency(Number(booking.fuel_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
-                {booking.rental_model === 'all_in' && booking.status !== 'completed' ? <SummaryRow label="Toll Estimate" value={formatCurrency(Number(booking.toll_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
+                {booking.rental_model === 'all_in' && booking.status !== 'completed' && booking.in_service_area !== false ? <SummaryRow label="Fuel Estimate" value={formatCurrency(Number(booking.fuel_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
+                {booking.rental_model === 'all_in' && booking.status !== 'completed' && booking.in_service_area !== false ? <SummaryRow label="Toll Estimate" value={formatCurrency(Number(booking.toll_estimate_amount || 0))} note="estimate only - settled after trip" /> : null}
                 {booking.status === 'completed' && booking.rental_model === 'all_in' ? <SummaryRow label="Trip Reconciliation" value={`${tripReconciliationAmount >= 0 ? '+' : '-'}${formatCurrency(Math.abs(tripReconciliationAmount))}`} valueClassName={tripReconciliationAmount >= 0 ? 'text-[#f97316]' : 'text-[#16a34a]'} note={`Toll ${formatCurrency(Number(booking.actual_toll_amount || 0))} · Gas ${formatCurrency(Number(booking.actual_fuel_amount || 0))}`} /> : null}
                 {Math.abs(balanceSummary?.adjustmentAmount || 0) > 0.009 ? <SummaryRow label="Price Adjustment" value={`${balanceSummary?.isIncrease ? '+' : '-'}${formatCurrency(Math.abs(balanceSummary?.adjustmentAmount || 0))}`} valueClassName={balanceSummary?.isIncrease ? 'text-[#f97316]' : 'text-[#16a34a]'} /> : null}
                 {balanceSummary && balanceSummary.extensionAmount > 0 ? <SummaryRow label={getExtensionChargeLabel(balanceSummary.extensionDays)} value={`+${formatCurrency(balanceSummary.extensionAmount)}`} valueClassName="text-[#f97316]" /> : null}
-                <SummaryRow label="Security Deposit" value={`-${formatCurrency(depositAmount)}`} valueClassName="text-[#16a34a]" note="non-refundable" />
+                {depositAmount > 0 && <SummaryRow label="Security Deposit" value={`-${formatCurrency(depositAmount)}`} valueClassName="text-[#16a34a]" note="non-refundable" />}
                 {paymentMadeAmount > 0 ? <SummaryRow label="Payment Made" value={`-${formatCurrency(paymentMadeAmount)}`} valueClassName="text-[#16a34a]" /> : null}
                 <SummaryRow label="Remaining Balance" value={formatCurrency(displayedRemainingBalance)} strong valueClassName="text-[#f97316]" />
               </div>
+              </>
+              )}
             </div>
           </section>
 
@@ -573,6 +630,28 @@ export default function BookingDetail() {
                   <button type="button" onClick={handleCancelBooking} disabled={adjustmentAction !== null || acceptPriceAdjustment.isPending || cancelBooking.isPending} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#f0a1a8] bg-white px-3 py-2.5 text-xs font-bold text-[#e11d48] transition hover:bg-[#fff1f2] disabled:opacity-50">
                     {adjustmentAction === 'cancel' ? <span aria-hidden="true" className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current/20 border-t-current" /> : null}
                     {adjustmentAction === 'cancel' ? 'Canceling...' : 'Decline & Cancel'}
+                  </button>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          {booking.status === 'pending_price_approval' && booking.in_service_area === false ? (
+            <section className="rounded-lg border border-[#f59e0b] bg-[#fefce8] shadow-[0_6px_20px_rgba(245,158,11,0.08)]">
+              <div className="px-4 py-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#92400e] sm:text-xs">Manual Pricing</p>
+                <p className="mt-2 text-xs font-medium text-[#78350f]">Your booking is outside our service area and has been manually priced. Please review and accept.</p>
+                <div className="mt-3 space-y-1.5 border-b border-[#f59e0b]/30 pb-3">
+                  <SummaryRow label="Price" value={formatCurrency(Number(booking.total_amount))} strong />
+                  <SummaryRow label="Downpayment (10%)" value={formatCurrency(manualPayAmount)} valueClassName="text-[#f97316]" />
+                </div>
+                <p className="mt-2 text-xs font-medium leading-5 text-[#78350f]">By accepting, you agree to pay 10% now. The remainder is due after the trip.</p>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <button type="button" onClick={() => setShowManualPayModal(true)} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#16a34a] px-3 py-2.5 text-xs font-bold text-white shadow-[0_6px_16px_rgba(22,163,74,0.14)] transition hover:bg-[#15803d]">
+                    Accept Price
+                  </button>
+                  <button type="button" onClick={handleCancelBooking} disabled={cancelBooking.isPending} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#f0a1a8] bg-white px-3 py-2.5 text-xs font-bold text-[#e11d48] transition hover:bg-[#fff1f2] disabled:opacity-50">
+                    Decline & Cancel
                   </button>
                 </div>
               </div>
@@ -744,16 +823,20 @@ export default function BookingDetail() {
             </section>
           ) : null}
 
-          {invoice ? (
+          {canDownloadInvoice(booking.status) ? (
             <section className="rounded-lg border border-[#071f52]/8 bg-white shadow-[0_6px_20px_rgba(7,31,82,0.04)]">
               <div className="border-b border-[#071f52]/8 px-4 py-3.5">
                 <h2 className="text-sm font-black tracking-[-0.02em] text-[#1f2a44] sm:text-[1.1rem]">Invoice</h2>
               </div>
 
               <div className="px-4 py-4">
-                <SummaryRow label="Invoice #" value={invoice.invoice_number} />
-                <SummaryRow label="Amount" value={formatCurrency(invoice.total_amount)} />
-                <SummaryRow label="Status" value={toLabel(invoice.status)} />
+                {invoice ? (
+                  <>
+                    <SummaryRow label="Invoice #" value={invoice.invoice_number} />
+                    <SummaryRow label="Amount" value={formatCurrency(invoice.total_amount)} />
+                    <SummaryRow label="Status" value={toLabel(invoice.status)} />
+                  </>
+                ) : null}
 
                 <Button variant="outline" className="mt-3 w-full gap-1.5 text-xs" onClick={handleDownloadInvoice} disabled={isDownloadingInvoice}>
                   <FileText size={12} /> {isDownloadingInvoice ? 'Preparing...' : 'Download Invoice'}
@@ -776,6 +859,52 @@ export default function BookingDetail() {
       </div>
 
       <ImageViewer open={!!viewing} onClose={closeViewer} src={viewing?.src || ''} alt={viewing?.alt || ''} />
+
+      {showManualPayModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowManualPayModal(false)}>
+          <div className="mx-4 w-full max-w-md rounded-2xl border border-[#071f52]/10 bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-sm font-bold text-[#071f52]">Accept Price & Pay Downpayment</h3>
+            <p className="mt-1 text-xs font-medium text-[#071f52]/58">10% of the total price is required to confirm.</p>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="text-xs font-bold text-[#071f52]">Payment Method</label>
+                <select value={manualPayMethod} onChange={(e) => setManualPayMethod(e.target.value)} className="mt-1 block w-full rounded-xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] focus:border-[#071f52] focus:bg-white focus:outline-none">
+                  <option value="">Select a method...</option>
+                  {paymentMethods.map((m) => (
+                    <option key={m.id} value={m.id}>{m.provider} ({m.account_number})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-[#071f52]">Amount</label>
+                <input readOnly value={`₱${manualPayAmount.toLocaleString()}.00`} className="mt-1 block w-full rounded-xl border border-[#071f52]/14 bg-gray-100 px-4 py-2.5 text-sm font-bold text-[#071f52]" />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-[#071f52]">Reference Number</label>
+                <input value={manualPayReference} onChange={(e) => setManualPayReference(e.target.value)} placeholder="Transaction reference" className="mt-1 block w-full rounded-xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] focus:border-[#071f52] focus:bg-white focus:outline-none" />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-[#071f52]">Receipt</label>
+                <input type="file" accept="image/*,.pdf" onChange={(e) => setManualPayReceipt(e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-[#071f52]/58 file:mr-3 file:rounded-lg file:border-0 file:bg-[#071f52]/8 file:px-3 file:py-1 file:text-xs file:font-bold file:text-[#071f52]" />
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button onClick={() => setShowManualPayModal(false)} type="button" className="flex-1 rounded-full border border-[#d9dfeb] px-4 py-2.5 text-sm font-semibold text-[#4d5a72] hover:bg-[#f8fafc]">Cancel</button>
+              <button onClick={handleAcceptManualPrice} disabled={manualPaySubmitting || !manualPayMethod || !manualPayReference.trim() || !manualPayReceipt} type="button" className="flex-1 rounded-full bg-[#16a34a] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#15803d] disabled:opacity-50">
+                {manualPaySubmitting ? 'Processing...' : 'Confirm & Pay'}
+              </button>
+            </div>
+            {(!manualPayReference.trim() || !manualPayReceipt) && manualPayMethod ? (
+              <p className="mt-2 text-xs font-medium text-[#e92935]">Reference number and receipt are required.</p>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

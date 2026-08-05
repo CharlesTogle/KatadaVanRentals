@@ -46,6 +46,8 @@ export interface Booking {
   remaining_amount: number
   price_line_items: PriceLineItem[]
   booking_mode?: 'dropoff' | 'keep'
+  flagged_for_manual_pricing?: boolean
+  in_service_area?: boolean
   idempotency_key: string | null
   created_by: string | null
   created_at: string

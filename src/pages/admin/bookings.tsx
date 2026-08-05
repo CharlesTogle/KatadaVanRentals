@@ -129,7 +129,7 @@ export default function AdminBookings() {
                     <p className="text-xs text-[#071f52]/48">{b.vehicles?.plate_number}</p>
                   </td>
                   <td className="px-5 py-3">
-                    <span className="text-sm font-bold text-[#071f52]">₱{b.total_amount?.toLocaleString()}.00</span>
+                    <span className="text-sm font-bold text-[#071f52]">{b.flagged_for_manual_pricing ? 'TBD' : `₱${b.total_amount?.toLocaleString()}.00`}</span>
                   </td>
                   <td className="px-5 py-3">
                     <span className={cn('rounded-full px-3 py-1 text-[11px] font-bold', STATUS_COLORS[b.status])}>

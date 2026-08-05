@@ -25,9 +25,10 @@ interface PriceSummaryProps {
   error?: string
   submitLabel?: string
   footerNote?: React.ReactNode
+  flaggedForManualPricing?: boolean
 }
 
-export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, driverRatePerDay, baseTotal, driverTotal, fuelEstimateAmount = 0, tollEstimateAmount = 0, tollMessage, distanceKm = 0, baseLoading = false, fuelLoading = false, tollLoading = false, grandTotal, deposit, remaining, submitting, disabled = false, disabledMessage, error, submitLabel = 'Submit Booking', footerNote = 'Your booking will be reviewed by our team before confirmation.' }: PriceSummaryProps) {
+export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, driverRatePerDay, baseTotal, driverTotal, fuelEstimateAmount = 0, tollEstimateAmount = 0, tollMessage, distanceKm = 0, baseLoading = false, fuelLoading = false, tollLoading = false, grandTotal, deposit, remaining, submitting, disabled = false, disabledMessage, error, submitLabel = 'Submit Booking', footerNote = 'Your booking will be reviewed by our team before confirmation.', flaggedForManualPricing = false }: PriceSummaryProps) {
   const isDistanceMode = bookingMode === 'dropoff' && rentalType !== 'self-drive'
   const amount = (value: number, loading?: boolean) => loading
     ? <span className="font-bold text-[#071f52]/48">Computing...</span>
@@ -37,7 +38,27 @@ export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, d
     <div className="card space-y-5 lg:rounded-[28px] lg:p-6">
       <h3 className="text-sm font-black uppercase tracking-[0.12em] text-[#071f52]">Price Summary</h3>
 
-      <div className="space-y-3 text-sm">
+      {flaggedForManualPricing && (
+        <div className="rounded-xl border border-[#f59e0b]/30 bg-[#f59e0b]/8 px-4 py-3">
+          <p className="text-sm font-bold text-[#92400e]">Manual Pricing Required</p>
+          <p className="mt-1 text-xs font-medium text-[#92400e]/80">
+            Your pickup is outside our service area. Pricing will be reviewed manually by our team. No downpayment is required.
+          </p>
+        </div>
+      )}
+
+      {flaggedForManualPricing ? (
+        <div className="space-y-3 text-sm">
+          <div className="flex justify-between">
+            <span className="text-[#071f52]/66">Total</span>
+            <span className="font-bold text-[#071f52]/48">TBD</span>
+          </div>
+          <p className="text-xs font-semibold leading-5 text-[#071f52]/48">
+            An admin will price this booking manually based on your selected route and rental details. You'll be notified when pricing is ready.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3 text-sm">
         <div className="flex justify-between">
           <span className="text-[#071f52]/66">{isDistanceMode ? `Fare (${distanceKm}km × ₱${basePricePerDay.toLocaleString()})` : `Base (${days}d × ₱${basePricePerDay.toLocaleString()})`}</span>
           {amount(baseTotal, baseLoading)}
@@ -91,6 +112,7 @@ export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, d
           </p>
         ) : null}
       </div>
+      )}
 
       <Button type="submit" disabled={submitting || disabled}
         className="w-full bg-[#071f52] text-white shadow-[0_12px_28px_rgba(7,31,82,0.18)] hover:bg-[#112458]"

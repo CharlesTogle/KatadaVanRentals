@@ -1,8 +1,14 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useBookingStore } from '@/store/booking-store'
 import { usePaymentMethods } from '@/hooks/use-payment-methods'
 import { cn } from '@/lib/utils'
 import { Upload } from 'lucide-react'
+
+const channelLabels: Record<string, string> = {
+  bank_transfer: 'Bank Transfer',
+  ewallet: 'E-Wallet',
+  online_gateway: 'Online Gateway',
+}
 
 interface PaymentFieldsProps {
   depositAmount: number
@@ -17,6 +23,11 @@ export function PaymentFields({ depositAmount, methodRequired = true, receiptReq
   const receiptFile = useBookingStore((s) => s.receiptFile)
   const setReceiptFile = useBookingStore((s) => s.setReceiptFile)
   const { data: paymentMethods = [] } = usePaymentMethods()
+
+  const selectedMethod = useMemo(
+    () => paymentMethods.find((m) => m.id === payment.method) ?? null,
+    [payment.method, paymentMethods],
+  )
 
   useEffect(() => {
     if (autoSelectMethod && paymentMethods.length && !payment.method) {
@@ -33,7 +44,8 @@ export function PaymentFields({ depositAmount, methodRequired = true, receiptReq
   const methodLabel = (pmId: string) => {
     const pm = paymentMethods.find(m => m.id === pmId)
     if (!pm) return ''
-    return `${pm.provider}${pm.account_number ? ` (${pm.account_number})` : ''} · ${pm.channel === 'bank_transfer' ? 'Bank Transfer' : 'E-Wallet'}`
+    const channel = channelLabels[pm.channel] || pm.channel
+    return `${pm.provider}${pm.account_number ? ` (${pm.account_number})` : ''} · ${channel}`
   }
 
   return (
@@ -49,6 +61,63 @@ export function PaymentFields({ depositAmount, methodRequired = true, receiptReq
           ))}
         </select>
       </div>
+
+      {selectedMethod && (
+        <div className="rounded-2xl border border-[#071f52]/10 bg-[#f7f9ff] p-4 space-y-3">
+          <p className="text-xs font-bold text-[#071f52]">PAYMENT DETAILS</p>
+          <div className="grid gap-2 sm:grid-cols-2 text-sm">
+            <div>
+              <span className="font-medium text-[#071f52]/58">Provider:</span>{' '}
+              <span className="font-bold text-[#071f52]">{selectedMethod.provider}</span>
+            </div>
+            {selectedMethod.account_name && (
+              <div>
+                <span className="font-medium text-[#071f52]/58">Account Name:</span>{' '}
+                <span className="font-bold text-[#071f52]">{selectedMethod.account_name}</span>
+              </div>
+            )}
+            {selectedMethod.account_number && (
+              <div>
+                <span className="font-medium text-[#071f52]/58">Account #:</span>{' '}
+                <span className="font-bold font-mono text-[#071f52]">{selectedMethod.account_number}</span>
+              </div>
+            )}
+            {selectedMethod.account_type && (
+              <div>
+                <span className="font-medium text-[#071f52]/58">Type:</span>{' '}
+                <span className="font-bold text-[#071f52]">{selectedMethod.account_type}</span>
+              </div>
+            )}
+            {selectedMethod.branch && (
+              <div>
+                <span className="font-medium text-[#071f52]/58">Branch:</span>{' '}
+                <span className="font-bold text-[#071f52]">{selectedMethod.branch}</span>
+              </div>
+            )}
+            <div>
+              <span className="font-medium text-[#071f52]/58">Currency:</span>{' '}
+              <span className="font-bold text-[#071f52]">{selectedMethod.currency}</span>
+            </div>
+            <div>
+              <span className="font-medium text-[#071f52]/58">Channel:</span>{' '}
+              <span className="font-bold text-[#071f52]">{channelLabels[selectedMethod.channel] || selectedMethod.channel}</span>
+            </div>
+          </div>
+
+          {selectedMethod.instructions && (
+            <div className="rounded-xl border border-[#071f52]/10 bg-white p-3">
+              <p className="text-xs font-semibold text-[#071f52] whitespace-pre-wrap">{selectedMethod.instructions}</p>
+            </div>
+          )}
+
+          {selectedMethod.qr_image_path && (
+            <div className="flex justify-center">
+              <img src={selectedMethod.qr_image_path} alt="QR Code" className="h-36 w-36 rounded-xl border border-[#071f52]/10 object-contain" />
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-1.5">
           <label className="text-sm font-bold text-[#071f52]">Security Deposit (downpayment) 10% <span className="text-[#e92935]">*</span></label>
