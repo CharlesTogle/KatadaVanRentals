@@ -1,13 +1,15 @@
 import { publicHeaderLinks } from '@/config/navigation'
+import { useAppSettings } from '@/hooks/use-app-settings'
 
 export function LandingFooter() {
+  const { data: settings } = useAppSettings()
   return (
     <footer className="border-t border-[#071f52]/10 bg-[#f7f9ff] text-[#071f52]">
       <div className="mx-auto flex max-w-[1180px] flex-col gap-6 px-4 py-8 text-sm font-semibold sm:px-6 md:flex-row md:items-end md:justify-between">
         <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <img src="/logo.jpg" alt="Katada Transportation Services" className="h-10 w-10 rounded-2xl object-cover ring-1 ring-[#071f52]/10" />
-            <span>Katada Transportation Services</span>
+            <img src={settings?.logo_url || '/logo.jpg'} alt={settings?.business_name || 'Katada Transportation Services'} className="h-10 w-10 rounded-2xl object-cover ring-1 ring-[#071f52]/10" />
+            <span>{settings?.business_name || 'Katada Transportation Services'}</span>
           </div>
           <p className="max-w-[28rem] text-sm font-medium leading-6 text-[#071f52]/58">
             Clean vans, careful drivers, and a simpler booking flow for airport transfers, family trips, and group travel.

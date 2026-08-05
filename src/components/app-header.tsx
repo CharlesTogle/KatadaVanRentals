@@ -4,6 +4,7 @@ import { LogOut, Menu, X } from 'lucide-react'
 import { customerAccountLinks, publicHeaderLinks, adminHeaderLinks, type HeaderNavItem } from '@/config/navigation'
 import { useAuth } from '@/contexts/useAuth'
 import { useProfile } from '@/hooks/use-profile'
+import { useAppSettings } from '@/hooks/use-app-settings'
 import { isAdminRole } from '@/lib/rbac'
 import { cn } from '@/lib/utils'
 
@@ -50,6 +51,7 @@ function HeaderLink({ item, onClick, active }: { item: HeaderNavItem; onClick?: 
 export function AppHeader({ onMenuClick, mobileMenuOpen = false }: AppHeaderProps) {
   const { user, signOut } = useAuth()
   const { data: profile } = useProfile(user?.id)
+  const { data: settings } = useAppSettings()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
@@ -77,9 +79,9 @@ export function AppHeader({ onMenuClick, mobileMenuOpen = false }: AppHeaderProp
     <header className="sticky top-0 z-50 border-b border-[#071f52]/10 bg-white/92 backdrop-blur-md">
       <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6">
         <Link to="/" className="flex min-w-0 items-center gap-3">
-          <img src="/logo.jpg" alt="Katada Transportation Services" className="h-10 w-10 rounded-2xl object-cover ring-1 ring-[#071f52]/10" />
+          <img src={settings?.logo_url || '/logo.jpg'} alt={settings?.business_name || 'Katada Transportation Services'} className="h-10 w-10 rounded-2xl object-cover ring-1 ring-[#071f52]/10" />
           <span className="max-w-[170px] text-sm font-extrabold leading-tight tracking-[-0.02em] text-[#071f52] sm:max-w-none sm:text-base">
-            Katada Transportation
+            {settings?.business_name || 'Katada Van Rentals'}
           </span>
         </Link>
 

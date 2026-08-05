@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase'
 
 export interface AppSettings {
   business_name: string
+  logo_url: string | null
   support_email: string
   support_phone: string
   business_address: string
@@ -14,7 +15,7 @@ export interface AppSettings {
 }
 
 export async function getAppSettings(): Promise<AppSettings | null> {
-  const { data } = await supabase.from('app_settings').select('*').limit(1).single()
+  const { data } = await supabase.from('app_settings').select('*').limit(1).maybeSingle()
   return data as AppSettings | null
 }
 

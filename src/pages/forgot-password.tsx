@@ -7,9 +7,11 @@ import { showError } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { useAppSettings } from '@/hooks/use-app-settings'
 import { isValidEmail } from '@/lib/validation'
 
 export default function ForgotPassword() {
+  const { data: settings } = useAppSettings()
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -79,8 +81,8 @@ export default function ForgotPassword() {
         <Card className="w-full max-w-[460px] rounded-[30px] border-[#071f52]/10 bg-white shadow-[0_24px_70px_rgba(7,31,82,0.16)]">
           <CardHeader className="space-y-2 px-7 pb-4 pt-7 sm:px-8 sm:pt-8">
             <a href="/" className="mb-5 flex w-fit items-center gap-3">
-              <img src="/logo.jpg" alt="Katada Transportation Services" className="h-12 w-12 rounded-2xl object-cover ring-1 ring-[#071f52]/10" />
-              <span className="text-sm font-black leading-tight text-[#071f52]">Katada Transportation</span>
+              <img src={settings?.logo_url || '/logo.jpg'} alt={settings?.business_name || 'Katada Transportation Services'} className="h-12 w-12 rounded-2xl object-cover ring-1 ring-[#071f52]/10" />
+              <span className="text-sm font-black leading-tight text-[#071f52]">{settings?.business_name || 'Katada Van Rentals'}</span>
             </a>
             <div className="inline-flex w-fit items-center gap-2 rounded-full bg-[#ffd923]/70 px-4 py-2 text-xs font-black text-[#071f52]">
               <ShieldCheck size={15} aria-hidden="true" />

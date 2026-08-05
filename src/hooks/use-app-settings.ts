@@ -5,6 +5,7 @@ export function useAppSettings() {
   return useQuery({
     queryKey: ['app-settings'],
     queryFn: getAppSettings,
+    staleTime: 0,
   })
 }
 

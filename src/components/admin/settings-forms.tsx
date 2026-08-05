@@ -292,7 +292,11 @@ export function SettingsBusinessForm({ saving, setSaving, showMessage }: Omit<Se
       showMessage(showError(error), 'error')
     } else {
       const { data: { publicUrl } } = supabase.storage.from('business-assets').getPublicUrl(path)
-      setBusiness({ ...business, logo_url: publicUrl })
+      const url = `${publicUrl}?t=${Date.now()}`
+      setBusiness({ ...business, logo_url: url })
+      const { error: saveError } = await supabase.from('app_settings').upsert({ id: true, logo_url: url })
+      if (saveError) showMessage(showError(saveError), 'error')
+      else await queryClient.invalidateQueries({ queryKey: ['app-settings'] })
     }
     setLogoUploading(false)
   }
@@ -319,6 +323,7 @@ export function SettingsBusinessForm({ saving, setSaving, showMessage }: Omit<Se
       else {
         showMessage('Business settings saved.', 'success')
         await queryClient.invalidateQueries({ queryKey: ['app-settings'] })
+        await queryClient.invalidateQueries({ queryKey: ['app-settings', 'business-info'] })
       }
       setSaving(false)
     }} className="space-y-4">
@@ -478,6 +483,7 @@ export function SettingsPaymentsForm({ saving, setSaving, showMessage }: Omit<Se
   const [editing, setEditing] = useState<Partial<PaymentMethod> | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [qrFile, setQrFile] = useState<File | null>(null)
 
   const loadMethods = async () => {
     try {
@@ -496,16 +502,36 @@ export function SettingsPaymentsForm({ saving, setSaving, showMessage }: Omit<Se
     if (!editing) return
     setSaving(true)
     try {
+      let qrPath = editing.qr_image_path ?? null
+
+      if (qrFile) {
+        const ext = qrFile.name.split('.').pop()
+        const storageKey = editing.id ?? crypto.randomUUID()
+        const path = `payment-qr/${storageKey}.${ext}`
+        const { error: uploadError } = await supabase.storage
+          .from('business-assets')
+          .upload(path, qrFile, { upsert: true })
+        if (uploadError) throw uploadError
+        const { data: { publicUrl } } = supabase.storage.from('business-assets').getPublicUrl(path)
+        qrPath = `${publicUrl}?t=${Date.now()}`
+      }
+
+      const payload = {
+        ...editing,
+        qr_image_path: qrPath,
+      }
+
       if (editing.id) {
-        const { id, created_at, updated_at, ...rest } = editing
-        await updatePaymentMethod(id, rest)
+        const { id, created_at, updated_at, ...rest } = payload
+        await updatePaymentMethod(id!, rest)
       } else {
-        const { id, created_at, updated_at, ...rest } = editing as PaymentMethod
+        const { id, created_at, updated_at, ...rest } = payload as PaymentMethod
         await createPaymentMethod(rest)
       }
       showMessage('Payment method saved.', 'success')
       setEditing(null)
       setShowForm(false)
+      setQrFile(null)
       loadMethods()
     } catch (err) {
       showMessage(showError(err instanceof Error ? err : new Error('Save failed')), 'error')
@@ -531,7 +557,7 @@ export function SettingsPaymentsForm({ saving, setSaving, showMessage }: Omit<Se
           <h2 className="text-lg font-black text-[#071f52]">Payments</h2>
           <p className="text-xs font-medium text-[#071f52]/58">Bank details shown to users when they upgrade their plans.</p>
         </div>
-        <Button type="button" onClick={() => { setEditing({ ...emptyPaymentMethod }); setShowForm(true) }} className="bg-[#071f52] text-white hover:bg-[#112458]">
+        <Button type="button" onClick={() => { setEditing({ ...emptyPaymentMethod }); setQrFile(null); setShowForm(true) }} className="bg-[#071f52] text-white hover:bg-[#112458]">
           + Add Method
         </Button>
       </div>
@@ -578,7 +604,7 @@ export function SettingsPaymentsForm({ saving, setSaving, showMessage }: Omit<Se
                     <div className="flex gap-1">
                       <button
                         type="button"
-                        onClick={() => { setEditing(m); setShowForm(true) }}
+                        onClick={() => { setEditing(m); setQrFile(null); setShowForm(true) }}
                         className="rounded-lg px-2 py-1 text-xs font-bold text-[#071f52]/58 hover:bg-[#071f52]/8 hover:text-[#071f52]"
                       >
                         Edit
@@ -603,7 +629,7 @@ export function SettingsPaymentsForm({ saving, setSaving, showMessage }: Omit<Se
       )}
 
       {showForm && editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { setEditing(null); setShowForm(false) }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { setEditing(null); setQrFile(null); setShowForm(false) }}>
           <form onSubmit={handleSave} className="rounded-xl border border-[#071f52]/10 bg-white p-6 space-y-3 shadow-2xl w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-sm font-bold text-[#071f52]">{editing.id ? 'Edit Payment Method' : 'Add Payment Method'}</h3>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -641,6 +667,29 @@ export function SettingsPaymentsForm({ saving, setSaving, showMessage }: Omit<Se
                 <label className={labelClass}>Account Type</label>
                 <input value={editing.account_type || 'Savings'} onChange={(e) => setEditing({ ...editing, account_type: e.target.value })} className={inputClass} />
               </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <label className={labelClass}>Payment Instructions</label>
+                <textarea value={editing.instructions || ''} onChange={(e) => setEditing({ ...editing, instructions: e.target.value || null })} rows={3} placeholder="e.g. Send payment to the account above and upload your receipt." className={inputClass} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <label className={labelClass}>QR Code Image</label>
+                <div className="flex items-center gap-3">
+                  <label className="cursor-pointer rounded-xl bg-[#071f52] px-4 py-2 text-sm font-bold text-white hover:bg-[#112458]">
+                    {qrFile ? 'Change File' : editing.qr_image_path ? 'Replace QR' : 'Upload QR'}
+                    <input type="file" accept="image/*" onChange={(e) => setQrFile(e.target.files?.[0] || null)} className="hidden" />
+                  </label>
+                  {qrFile ? (
+                    <span className="text-xs font-semibold text-[#071f52]">{qrFile.name}</span>
+                  ) : editing.qr_image_path ? (
+                    <img src={editing.qr_image_path} alt="QR Code" className="h-16 w-16 rounded-lg border border-[#071f52]/10 object-contain" />
+                  ) : null}
+                  {(qrFile || editing.qr_image_path) && (
+                    <button type="button" onClick={() => { setQrFile(null); setEditing({ ...editing, qr_image_path: null }) }} className="text-xs font-bold text-[#e92935] hover:underline">
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
             <label className="flex items-center gap-2 text-xs font-bold text-[#071f52]">
               <input
@@ -653,7 +702,7 @@ export function SettingsPaymentsForm({ saving, setSaving, showMessage }: Omit<Se
             </label>
             <div className="flex gap-2">
               <Button type="submit" disabled={saving} className="bg-[#071f52] text-white hover:bg-[#112458]">{saving ? 'Saving...' : 'Save'}</Button>
-              <Button type="button" variant="ghost" onClick={() => { setEditing(null); setShowForm(false) }} className="text-[#071f52]/58">Cancel</Button>
+              <Button type="button" variant="ghost" onClick={() => { setEditing(null); setQrFile(null); setShowForm(false) }} className="text-[#071f52]/58">Cancel</Button>
             </div>
           </form>
         </div>
@@ -811,8 +860,8 @@ export function SettingsServiceAreaForm({ saving, setSaving, showMessage }: Omit
               <p className="mt-1 text-xs font-medium text-[#071f52]/38">Add your first location above or leave empty to accept pickups from everywhere.</p>
             </div>
           ) : (
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-              <div className="divide-y divide-[#071f52]/6 rounded-xl border border-[#071f52]/10 self-start">
+            <div className="space-y-4">
+              <div className="divide-y divide-[#071f52]/6 rounded-xl border border-[#071f52]/10">
                 {areas.map((area) => (
                   <button
                     key={area.id}
@@ -860,16 +909,12 @@ export function SettingsServiceAreaForm({ saving, setSaving, showMessage }: Omit
                 ))}
               </div>
 
-              {mapArea.lat != null && mapArea.lng != null ? (
-                <div className="lg:sticky lg:top-6 lg:self-start">
+              {mapArea.lat != null && mapArea.lng != null && (
+                <div>
                   <ServiceAreaMap lat={mapArea.lat} lng={mapArea.lng} radiusKm={mapArea.radius_km} />
                   <p className="mt-2 text-center text-xs font-semibold text-[#071f52]/48">
                     {selectedArea ? selectedArea.label : 'First location'} — {mapArea.radius_km}km coverage
                   </p>
-                </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-[#071f52]/14 bg-[#f7f9ff] flex items-center justify-center h-64">
-                  <p className="text-xs font-medium text-[#071f52]/38">No coordinates — edit to set a location.</p>
                 </div>
               )}
             </div>

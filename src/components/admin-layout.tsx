@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
+import { useAppSettings } from '@/hooks/use-app-settings'
 import { LogOut, LayoutDashboard, CalendarCheck, Users, Truck, BarChart3, Settings, Home, MessageSquareMore, Menu, X } from 'lucide-react'
 
 const navGroups = [
@@ -15,6 +16,7 @@ const navGroups = [
 
 export default function AdminLayout() {
   const { user, signOut } = useAuth()
+  const { data: settings } = useAppSettings()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -31,8 +33,8 @@ export default function AdminLayout() {
       {/* Mobile sticky bar - matches customer shell */}
       <div className="sticky top-0 z-20 flex items-center justify-between border-b border-[#071f52]/10 bg-white px-6 py-3 md:hidden">
           <a href="/" className="flex items-center gap-3">
-            <img src="/logo.jpg" alt="Katada" className="h-8 w-8 rounded-lg object-cover ring-1 ring-[#071f52]/10" />
-            <span className="text-sm font-extrabold text-[#071f52]">Katada Van Rentals</span>
+            <img src={settings?.logo_url || '/logo.jpg'} alt={settings?.business_name || 'Katada'} className="h-8 w-8 rounded-lg object-cover ring-1 ring-[#071f52]/10" />
+            <span className="text-sm font-extrabold text-[#071f52]">{settings?.business_name || 'Katada Van Rentals'}</span>
           </a>
           <button
             type="button"
@@ -125,8 +127,8 @@ export default function AdminLayout() {
         <aside className="fixed bottom-0 left-0 top-0 z-40 hidden w-64 shrink-0 border-r border-[#071f52]/10 bg-white md:flex md:flex-col">
           <div className="px-5 pb-4 pt-6">
             <a href="/" className="flex items-center gap-3">
-              <img src="/logo.jpg" alt="Katada" className="h-9 w-9 rounded-xl object-cover ring-1 ring-[#071f52]/10" />
-              <span className="text-sm font-extrabold text-[#071f52]">Katada Van Rentals</span>
+              <img src={settings?.logo_url || '/logo.jpg'} alt={settings?.business_name || 'Katada'} className="h-9 w-9 rounded-xl object-cover ring-1 ring-[#071f52]/10" />
+              <span className="text-sm font-extrabold text-[#071f52]">{settings?.business_name || 'Katada Van Rentals'}</span>
             </a>
           </div>
 

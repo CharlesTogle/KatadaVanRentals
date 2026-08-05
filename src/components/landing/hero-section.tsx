@@ -1,13 +1,15 @@
 import { Button } from '@/components/ui/button'
+import { useBusinessInfo } from '@/hooks/use-business-info'
 
 export function HeroSection() {
+  const { city } = useBusinessInfo()
   return (
     <section className="relative overflow-hidden">
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_80%_10%,rgba(255,217,35,0.38),transparent_32%),radial-gradient(circle_at_10%_30%,rgba(233,41,53,0.16),transparent_28%)]" />
       <div className="mx-auto grid min-h-[calc(100dvh-72px)] max-w-[1180px] items-center gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:py-14">
         <div className="mx-auto max-w-[620px] text-center lg:mx-0 lg:text-left">
           <div className="mb-5 inline-flex rounded-full border border-[#071f52]/10 bg-white px-4 py-2 text-sm font-bold text-[#071f52] shadow-[0_12px_34px_rgba(7,31,82,0.08)]">
-            Pasay City transportation service
+            {city} transportation service
           </div>
           <h1 className="text-[2.9rem] font-black leading-[0.98] tracking-[-0.055em] text-[#071f52] sm:text-[4rem] lg:text-[5.35rem]">
             Vans that keep the whole trip calm.
@@ -35,7 +37,7 @@ export function HeroSection() {
             {[
               { value: '24/7', label: 'trip support' },
               { value: '10-14', label: 'seat options' },
-              { value: 'Pasay', label: 'home base' },
+              { value: city.split(',')[0] || city, label: 'home base' },
             ].map((item) => (
               <div key={item.label} className="rounded-2xl bg-[#f7f9ff] px-3 py-3 text-center">
                 <p className="text-xl font-black tracking-[-0.03em] text-[#071f52]">{item.value}</p>

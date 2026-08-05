@@ -4,6 +4,7 @@ import { Home, BookCopy, FileText, UserRound, LogOut, Menu, X } from 'lucide-rea
 import { customerAccountLinks } from '@/config/navigation'
 import { useAuth } from '@/contexts/useAuth'
 import { useProfile } from '@/hooks/use-profile'
+import { useAppSettings } from '@/hooks/use-app-settings'
 import { cn } from '@/lib/utils'
 
 function sidebarLinkClasses(isActive: boolean) {
@@ -25,6 +26,7 @@ const navIcons = {
 export function CustomerShellFrame({ children }: { children: ReactNode }) {
   const { user, signOut } = useAuth()
   const { data: profile } = useProfile(user?.id)
+  const { data: settings } = useAppSettings()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -41,8 +43,8 @@ export function CustomerShellFrame({ children }: { children: ReactNode }) {
     <div className="customer-shell min-h-screen bg-[#f7f9ff]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <div className="mx-auto max-w-[1440px] px-3 py-4 sm:px-5 sm:py-6 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-6 lg:px-6">
         <div className="sticky top-4 z-20 mb-3 flex items-center justify-between rounded-xl border border-[#071f52]/10 bg-white/92 px-3 py-2.5 shadow-[0_8px_24px_rgba(7,31,82,0.06)] backdrop-blur-md lg:hidden">
-          <img src="/logo.jpg" alt="Katada Transportation Services" className="h-8 w-8 rounded-xl object-cover ring-1 ring-[#071f52]/10" />
-          <p className="text-xs font-black text-[#071f52]">Katada Van Rentals</p>
+          <img src={settings?.logo_url || '/logo.jpg'} alt={settings?.business_name || 'Katada Transportation Services'} className="h-8 w-8 rounded-xl object-cover ring-1 ring-[#071f52]/10" />
+          <p className="text-xs font-black text-[#071f52]">{settings?.business_name || 'Katada Van Rentals'}</p>
 
           <button
             type="button"
@@ -65,8 +67,8 @@ export function CustomerShellFrame({ children }: { children: ReactNode }) {
         <aside className={`fixed bottom-0 right-0 top-0 z-40 w-[min(300px,100vw)] transition-transform duration-300 lg:static lg:w-auto lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
           <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[#071f52]/10 bg-white shadow-[0_12px_36px_rgba(7,31,82,0.06)] lg:sticky lg:top-8 lg:h-auto">
             <div className="flex items-center justify-between border-b border-[#071f52]/10 px-4 py-3 lg:hidden">
-              <img src="/logo.jpg" alt="Katada Transportation Services" className="h-8 w-8 rounded-xl object-cover ring-1 ring-[#071f52]/10" />
-              <p className="text-xs font-black text-[#071f52]">Katada Van Rentals</p>
+              <img src={settings?.logo_url || '/logo.jpg'} alt={settings?.business_name || 'Katada Transportation Services'} className="h-8 w-8 rounded-xl object-cover ring-1 ring-[#071f52]/10" />
+              <p className="text-xs font-black text-[#071f52]">{settings?.business_name || 'Katada Van Rentals'}</p>
               <button
                 type="button"
                 aria-label="Close account menu"
