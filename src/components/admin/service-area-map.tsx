@@ -21,7 +21,7 @@ export function ServiceAreaMap({ lat, lng, radiusKm }: ServiceAreaMapProps) {
     <div className="h-64 w-full overflow-hidden rounded-xl border border-[#071f52]/10">
       <MapContainer
         center={[lat, lng]}
-        zoom={13}
+        zoom={4}
         className="h-full w-full"
         zoomControl={false}
         attributionControl={false}

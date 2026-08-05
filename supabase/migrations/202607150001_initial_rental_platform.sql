@@ -553,10 +553,6 @@ create policy "contact inquiries admin update" on public.contact_inquiries for u
 insert into public.app_settings (id) values (true);
 insert into public.brands (name) values ('Toyota') on conflict do nothing;
 insert into public.vehicle_types (name) values ('Van') on conflict do nothing;
-insert into public.payment_methods (channel, provider, account_number, account_name, account_type)
-values
-  ('bank_transfer', 'BDO', '010960093346', 'Winson Katada', 'Savings'),
-  ('ewallet', 'G-Cash', '09064961248', 'Winson Katada', 'Savings');
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values
