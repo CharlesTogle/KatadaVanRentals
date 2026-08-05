@@ -84,6 +84,7 @@ begin
 end;
 $$;
 
+drop function if exists public.create_booking(text, uuid, public.rental_model, timestamptz, timestamptz, numeric, text, text, text, text, text, uuid, numeric, numeric, numeric, numeric, numeric, integer, numeric, numeric, numeric, jsonb, text, text, text, text, integer, jsonb, text, jsonb);
 drop function if exists public.create_booking(text, uuid, public.rental_model, timestamptz, timestamptz, numeric, text, text, text, text, text, uuid, numeric, numeric, numeric, numeric, numeric, integer, numeric, numeric, numeric, jsonb, text, text, text, text, integer, jsonb, text, jsonb, boolean, boolean);
 
 create or replace function public.create_booking(
