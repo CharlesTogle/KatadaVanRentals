@@ -96,7 +96,7 @@ export default function MyBookings() {
               <div className={cn('mt-3 grid gap-2 text-xs sm:mt-4 sm:gap-3 sm:text-sm', booking.status === 'for_review' ? 'sm:grid-cols-1' : 'sm:grid-cols-3')}>
                 <div>
                   <p className="text-[10px] font-bold text-[#071f52]/48 sm:text-xs">Total</p>
-                  <p className="font-bold text-[#071f52]">₱{Number(booking.total_amount || 0).toLocaleString()}.00</p>
+                  <p className="font-bold text-[#071f52]">{booking.flagged_for_manual_pricing ? 'TBD' : `₱${Number(booking.total_amount || 0).toLocaleString()}.00`}</p>
                 </div>
                 {booking.status !== 'for_review' && (
                   <>
