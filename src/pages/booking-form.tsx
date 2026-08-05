@@ -287,6 +287,7 @@ export default function BookingForm() {
       destination: mode === 'keep' ? routeSelections.destination : undefined,
       dropoff: routeSelections.dropoff,
       routeGeometry: routeQuote?.routeGeometry,
+      inServiceArea: routeQuote?.inServiceArea,
     }).then((result) => {
       if (cancelled) return
       setTollCandidates(result.entryCandidates, result.exitCandidates)
@@ -334,6 +335,7 @@ export default function BookingForm() {
       returnEntryPlaza: exitPlaza.id,
       returnExitPlaza: entryPlaza.id,
       vehicleClass: tollSelections.vehicleClass,
+      inServiceArea: routeQuote?.inServiceArea,
     }).then((result) => {
       if (cancelled) return
       setRouteQuote({ ...routeQuote, ...result })
@@ -525,6 +527,8 @@ export default function BookingForm() {
         p_toll_vehicle_class: routeQuote?.tollVehicleClass ?? tollSelections.vehicleClass,
         p_toll_rfid_breakdown: routeQuote?.tollRfidBreakdown ?? [],
         p_self_drive_address: selfDriveAddress,
+        p_in_service_area: routeQuote?.inServiceArea ?? true,
+        p_flagged_for_manual_pricing: routeQuote?.inServiceArea === false,
       },
     )
 
@@ -737,6 +741,14 @@ export default function BookingForm() {
           </div>
 
           <div className="lg:sticky lg:top-6 lg:self-start">
+            {routeQuote && routeQuote.inServiceArea === false && (
+              <div className="mb-4 rounded-xl border border-[#f59e0b]/30 bg-[#f59e0b]/8 px-4 py-3">
+                <p className="text-sm font-bold text-[#92400e]">Outside Service Area</p>
+                <p className="mt-1 text-xs font-medium text-[#92400e]/80">
+                  Your pickup location is outside our service area. This booking will be flagged for manual pricing review.
+                </p>
+              </div>
+            )}
             <PriceSummary
               rentalType={rentalType}
               bookingMode={mode}

@@ -45,6 +45,19 @@ export interface RouteQuoteResponse {
   tollExitExpressway: string | null
   tollVehicleClass: 1 | 2 | 3
   tollRfidBreakdown: TollRfidBreakdownItem[]
+  inServiceArea: boolean
+}
+
+export interface ServiceArea {
+  id: string
+  label: string
+  address: string
+  lat: number | null
+  lng: number | null
+  radius_km: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
 }
 
 export interface RouteQuoteRequest {
@@ -66,6 +79,7 @@ export interface TollEstimateRequest {
   returnExitPlaza?: string
   returnTrip?: boolean
   vehicleClass?: 1 | 2 | 3
+  inServiceArea?: boolean
 }
 
 export interface TollEstimateCandidatesResponse {

@@ -146,10 +146,24 @@ serve(async (req) => {
     returnTrip?: boolean
     vehicleClass?: 1 | 2 | 3
     routeGeometry?: Array<{ lat?: number; lng?: number }>
+    inServiceArea?: boolean
   } | null
 
   if (body?.pickup?.lat == null || body.pickup.lng == null || body.dropoff?.lat == null || body.dropoff.lng == null) {
     return json(req, { error: 'Pickup and drop-off coordinates are required' }, 400)
+  }
+
+  if (body.inServiceArea === false) {
+    return json(req, {
+      tollEstimateAmount: 0,
+      tollSegments: [],
+      tollEntryPlaza: null,
+      tollEntryExpressway: null,
+      tollExitPlaza: null,
+      tollExitExpressway: null,
+      tollVehicleClass: body.vehicleClass ?? 1,
+      tollRfidBreakdown: [],
+    })
   }
 
   if (!body.entryPlaza || !body.exitPlaza) {

@@ -418,6 +418,8 @@ export function BookingCreateForm() {
       tollVehicleClass: routeQuote?.tollVehicleClass ?? tollSelections.vehicleClass,
       tollRfidBreakdown: routeQuote?.tollRfidBreakdown ?? [],
       selfDriveAddress: rentalType === 'self-drive' ? completeAddress : null,
+      inServiceArea: routeQuote?.inServiceArea ?? true,
+      flaggedForManualPricing: routeQuote?.inServiceArea === false,
     }
 
     try {

@@ -66,6 +66,32 @@ function decodePolyline(value: string) {
   return coordinates
 }
 
+function haversineDistanceKm(from: { lat: number; lng: number }, to: { lat: number; lng: number }) {
+  const R = 6371
+  const dLat = (to.lat - from.lat) * Math.PI / 180
+  const dLng = (to.lng - from.lng) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(from.lat * Math.PI / 180) * Math.cos(to.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+async function checkServiceArea(
+  supabase: ReturnType<typeof createClient>,
+  pickup: { lat: number; lng: number },
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('service_points')
+    .select('lat,lng,radius_km')
+    .eq('is_active', true)
+
+  if (!data || data.length === 0) return true
+
+  return data.some((sp) => {
+    if (sp.lat == null || sp.lng == null) return false
+    return haversineDistanceKm(pickup, { lat: Number(sp.lat), lng: Number(sp.lng) }) <= Number(sp.radius_km)
+  })
+}
+
 serve(async (req) => {
   if (!ALLOWED_URLS) {
     console.error('[route-quote] ALLOWED_URLS is not configured')
@@ -196,6 +222,11 @@ serve(async (req) => {
     : 0
   const fuelEstimateAmount = Math.round(fuelEstimateLiters * fuelPricePerLiter * 100) / 100
 
+  const inServiceArea = await checkServiceArea(supabase, {
+    lat: body.pickup.lat,
+    lng: body.pickup.lng,
+  })
+
   return json(req, {
     distanceKm,
     durationMinutes,
@@ -210,5 +241,6 @@ serve(async (req) => {
     tollExitExpressway: null,
     tollVehicleClass: 1,
     tollRfidBreakdown: [],
+    inServiceArea,
   })
 })

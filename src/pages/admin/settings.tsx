@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/useAuth'
+import { useProfile } from '@/hooks/use-profile'
 import { cn } from '@/lib/utils'
 import { useSearchParams } from 'react-router-dom'
 import {
@@ -8,12 +8,14 @@ import {
   SettingsPasswordForm,
   SettingsBusinessForm,
   SettingsContactForm,
+  SettingsPaymentsForm,
+  SettingsServiceAreaForm,
 } from '@/components/admin/settings-forms'
 
 const tabs = [
   'Profile', 'Password', 'Business',
-  'Team', 'Payments', 'Documents', 'Integrations',
-  'Pickup', 'Email Log', 'Content', 'Domain', 'Email', 'Help',
+  'Payments',
+  'Pickup',
   'Contact Developer',
 ]
 
@@ -39,11 +41,7 @@ export default function AdminSettings({ tab: initialTab }: { tab?: string }) {
     setMessageType(type)
   }
 
-  const { isLoading } = useQuery({
-    queryKey: ['admin', 'settings', user?.id],
-    queryFn: async () => undefined,
-    enabled: !!user,
-  })
+  const { data: profile, isLoading } = useProfile(user?.id)
 
   return (
     <div className="py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
@@ -96,7 +94,7 @@ export default function AdminSettings({ tab: initialTab }: { tab?: string }) {
           ) : (
             <>
               {activeTab === 'Profile' && user && (
-                <SettingsProfileForm user={user} saving={saving} setSaving={setSaving} showMessage={showMessage} />
+                <SettingsProfileForm user={user} profile={profile ?? undefined} saving={saving} setSaving={setSaving} showMessage={showMessage} />
               )}
               {activeTab === 'Password' && (
                 <SettingsPasswordForm saving={saving} setSaving={setSaving} showMessage={showMessage} />
@@ -107,7 +105,13 @@ export default function AdminSettings({ tab: initialTab }: { tab?: string }) {
               {activeTab === 'Contact Developer' && user && (
                 <SettingsContactForm user={user} saving={saving} setSaving={setSaving} showMessage={showMessage} />
               )}
-              {!['Profile', 'Password', 'Business', 'Contact Developer'].includes(activeTab) && (
+              {activeTab === 'Payments' && (
+                <SettingsPaymentsForm saving={saving} setSaving={setSaving} showMessage={showMessage} />
+              )}
+              {activeTab === 'Pickup' && (
+                <SettingsServiceAreaForm saving={saving} setSaving={setSaving} showMessage={showMessage} />
+              )}
+              {!['Profile', 'Password', 'Business', 'Payments', 'Contact Developer', 'Pickup'].includes(activeTab) && (
                 <div className="text-center py-12">
                   <p className="text-sm font-semibold text-[#071f52]/48">{activeTab} settings coming soon.</p>
                 </div>

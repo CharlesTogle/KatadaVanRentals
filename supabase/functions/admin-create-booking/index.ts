@@ -100,7 +100,7 @@ serve(async (req) => {
     return json(req, { error: 'Invalid request body' }, 400)
   }
 
-  const { customerMode, existingCustomerId, newCustomer, vehicleId, rentalModel, bookingMode, startAt, endAt, pickupLocation, dropoffLocation, destination, purposeOfTravel, notes, pickupLat, pickupLng, dropoffLat, dropoffLng, distanceKm, durationMinutes, fuelEstimateLiters, fuelEstimateAmount, tollEstimateAmount, tollSegments, tollEntryPlaza, tollEntryExpressway, tollExitPlaza, tollExitExpressway, tollVehicleClass, tollRfidBreakdown, selfDriveAddress } = body as {
+  const { customerMode, existingCustomerId, newCustomer, vehicleId, rentalModel, bookingMode, startAt, endAt, pickupLocation, dropoffLocation, destination, purposeOfTravel, notes, pickupLat, pickupLng, dropoffLat, dropoffLng, distanceKm, durationMinutes, fuelEstimateLiters, fuelEstimateAmount, tollEstimateAmount, tollSegments, tollEntryPlaza, tollEntryExpressway, tollExitPlaza, tollExitExpressway, tollVehicleClass, tollRfidBreakdown, selfDriveAddress, inServiceArea, flaggedForManualPricing } = body as {
     customerMode: string
     existingCustomerId?: string
     newCustomer?: { firstName: string; lastName: string; email: string; mobile?: string; sendInvite: boolean }
@@ -131,6 +131,8 @@ serve(async (req) => {
     tollVehicleClass?: 1 | 2 | 3
     tollRfidBreakdown?: Record<string, unknown>[]
     selfDriveAddress?: Record<string, unknown>
+    inServiceArea?: boolean
+    flaggedForManualPricing?: boolean
   }
 
   // Validate
@@ -275,6 +277,8 @@ serve(async (req) => {
       toll_vehicle_class: tollVehicleClass ?? 1,
       toll_rfid_breakdown: tollRfidBreakdown ?? [],
       self_drive_address: selfDriveAddress ?? null,
+      in_service_area: inServiceArea ?? true,
+      flagged_for_manual_pricing: flaggedForManualPricing ?? false,
       created_by: user.id,
     })
     .select('id, booking_number, customer_id, total_amount, deposit_amount, remaining_amount, price_line_items')
