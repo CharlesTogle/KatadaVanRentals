@@ -84,6 +84,8 @@ async function checkServiceArea(
     .select('lat,lng,radius_km')
     .eq('is_active', true)
 
+  console.error('[route-quote] service_points query result', JSON.stringify(data))
+
   if (!data || data.length === 0) return true
 
   return data.some((sp) => {
@@ -226,6 +228,8 @@ serve(async (req) => {
     lat: body.pickup.lat,
     lng: body.pickup.lng,
   })
+
+  console.error('[route-quote] inServiceArea', inServiceArea, 'pickup', body.pickup, 'dropoff', body.dropoff)
 
   return json(req, {
     distanceKm,

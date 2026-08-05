@@ -34,6 +34,11 @@ function json(req: Request, body: unknown, status = 200) {
   })
 }
 
+function buildLabel(name?: string, region?: string, country?: string): string | null {
+  if (!name || !region || !country) return null
+  return `${name}, ${region}, ${country}`
+}
+
 serve(async (req) => {
   if (!ALLOWED_URLS) {
     console.error('[location-suggest] ALLOWED_URLS not configured')
@@ -81,20 +86,34 @@ serve(async (req) => {
   url.searchParams.set('boundary.country', 'PH')
   url.searchParams.set('size', '6')
 
-  const response = await fetch(url)
+  let response: Response
+  try {
+    response = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+  } catch (err) {
+    const reason = err instanceof DOMException && err.name === 'TimeoutError'
+      ? 'timeout'
+      : 'network error'
+    console.error('[location-suggest] Cannot reach OpenRouteService:', reason, 'query:', query)
+    return json(req, { error: `Location lookup failed: ${reason}` }, 504)
+  }
   if (!response.ok) {
     console.error('[location-suggest] OpenRouteService returned', response.status, 'for query:', query)
     return json(req, { error: 'Location lookup failed' }, 502)
   }
 
   const payload = await response.json()
-  const suggestions = (payload.features ?? []).map((feature: Record<string, any>) => ({
-    id: feature.properties?.id ?? feature.properties?.gid ?? feature.properties?.label,
-    label: feature.properties?.label ?? feature.properties?.name ?? '',
-    address: feature.properties?.label ?? '',
-    lat: feature.geometry?.coordinates?.[1],
-    lng: feature.geometry?.coordinates?.[0],
-  })).filter((item: Record<string, any>) => item.address && Number.isFinite(item.lat) && Number.isFinite(item.lng))
+  const suggestions = (payload.features ?? []).map((feature: Record<string, any>) => {
+    const props = feature.properties ?? {}
+    const rawLabel = props.label ?? props.name ?? ''
+    const label = buildLabel(props.name, props.region, props.country) ?? rawLabel
+    return {
+      id: props.id ?? props.gid ?? rawLabel,
+      label,
+      address: label,
+      lat: feature.geometry?.coordinates?.[1],
+      lng: feature.geometry?.coordinates?.[0],
+    }
+  }).filter((item: Record<string, any>) => item.address && Number.isFinite(item.lat) && Number.isFinite(item.lng))
 
   return json(req, { suggestions })
 })
