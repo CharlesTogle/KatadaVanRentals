@@ -38,7 +38,6 @@ begin
     new.subtotal_amount := new.subtotal_amount + (v_driver_rate * new.duration_days);
   end if;
 
-  -- ponytail: per-km delivery/recovery fees when peso_per_km is configured
   if new.in_service_area = true and v_peso_per_km > 0 and coalesce(new.distance_km, 0) > 0 then
     new.delivery_fee := coalesce(new.delivery_fee, round(coalesce(new.distance_km, 0) * v_peso_per_km, 2));
     new.recovery_fee := coalesce(new.recovery_fee, round(coalesce(new.distance_km, 0) * v_peso_per_km, 2));
