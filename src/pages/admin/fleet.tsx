@@ -136,7 +136,7 @@ export default function Fleet() {
         </div>
       ) : (
         <div className="mt-6 card-overflow overflow-x-auto">
-          <table className="min-w-[800px] w-full text-left">
+          <table className="min-w-[900px] w-full text-left">
             <thead>
               <tr className="border-b border-[#071f52]/10 bg-[#f7f9ff]">
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48 w-16">IMAGE</th>
@@ -144,6 +144,7 @@ export default function Fleet() {
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">TYPE</th>
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">RENTAL</th>
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">BASE PRICE</th>
+                <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">DISTANCE RATE</th>
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">DRIVER RATE</th>
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">STATUS</th>
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">ACTIONS</th>
@@ -179,6 +180,9 @@ export default function Fleet() {
                   </td>
                   <td className="px-5 py-3">
                     <span className="text-sm font-bold text-[#071f52]">₱{Number(v.base_price_per_day).toLocaleString()}</span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <span className="text-sm font-semibold text-[#071f52]">₱{Number(v.peso_per_km ?? 0).toLocaleString()}/km</span>
                   </td>
                   <td className="px-5 py-3">
                     <span className="text-sm font-semibold text-[#071f52]">₱{Number(v.driver_rate_per_day).toLocaleString()}</span>

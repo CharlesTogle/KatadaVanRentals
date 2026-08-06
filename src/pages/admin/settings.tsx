@@ -10,12 +10,14 @@ import {
   SettingsContactForm,
   SettingsPaymentsForm,
   SettingsServiceAreaForm,
+  SettingsAdditionalForm,
 } from '@/components/admin/settings-forms'
 
 const tabs = [
   'Profile', 'Password', 'Business',
   'Payments',
   'Pickup',
+  'Additional',
   'Contact Developer',
 ]
 
@@ -111,7 +113,10 @@ export default function AdminSettings({ tab: initialTab }: { tab?: string }) {
               {activeTab === 'Pickup' && (
                 <SettingsServiceAreaForm saving={saving} setSaving={setSaving} showMessage={showMessage} />
               )}
-              {!['Profile', 'Password', 'Business', 'Payments', 'Contact Developer', 'Pickup'].includes(activeTab) && (
+              {activeTab === 'Additional' && (
+                <SettingsAdditionalForm saving={saving} setSaving={setSaving} showMessage={showMessage} />
+              )}
+              {!['Profile', 'Password', 'Business', 'Payments', 'Contact Developer', 'Pickup', 'Additional'].includes(activeTab) && (
                 <div className="text-center py-12">
                   <p className="text-sm font-semibold text-[#071f52]/48">{activeTab} settings coming soon.</p>
                 </div>

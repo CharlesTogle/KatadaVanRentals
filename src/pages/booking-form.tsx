@@ -19,6 +19,7 @@ import { calculateToll, getNearestTollPlazas, getRouteQuote, suggestLocations } 
 import { supabase } from '@/lib/supabase'
 import { queryClient } from '@/lib/query'
 import { useBookingStore } from '@/store/booking-store'
+import { useVatPercent } from '@/hooks/use-vat-percent'
 
 function generateBookingNumber(): string {
   const now = new Date()
@@ -112,6 +113,7 @@ export default function BookingForm() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const vatPercent = useVatPercent()
 
   const rentalType = normalizeCustomerRentalType(searchParams.get('type'))
   const startParam = searchParams.get('start') || ''
@@ -397,6 +399,7 @@ export default function BookingForm() {
     startAt: startParam,
     endAt: endParam,
     basePricePerDay: bookingVehicle.base_price_per_day,
+    distanceRatePerKm: bookingVehicle.peso_per_km,
     driverRatePerDay: bookingVehicle.driver_rate_per_day,
     carWashFee: bookingVehicle.car_wash_fee,
     deliveryFee: bookingVehicle.delivery_fee,
@@ -761,14 +764,18 @@ export default function BookingForm() {
               bookingMode={mode}
               days={pricing.days}
               basePricePerDay={bookingVehicle.base_price_per_day}
+              distanceRatePerKm={bookingVehicle.peso_per_km}
               driverRatePerDay={bookingVehicle.driver_rate_per_day}
               carWashFee={pricing.carWash}
               deliveryFee={pricing.delivery}
               securityDeposit={pricing.securityDeposit}
+              securityDepositType={bookingVehicle.security_deposit_type}
+              securityDepositValue={bookingVehicle.security_deposit}
               baseTotal={pricing.baseTotal}
               driverTotal={pricing.driverTotal}
               fuelEstimateAmount={pricing.fuelEstimateAmount}
               tollEstimateAmount={pricing.tollEstimateAmount}
+              vatPercent={vatPercent}
               tollMessage={tollError}
               distanceKm={pricing.distanceKm}
               baseLoading={basePriceLoading}

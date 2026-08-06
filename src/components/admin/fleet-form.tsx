@@ -32,6 +32,7 @@ export interface FleetFormData {
   security_deposit: string
   security_deposit_type: 'fixed' | 'percent'
   km_per_liter: string
+  peso_per_km: string
   supports_all_in: boolean
   supports_all_out: boolean
   supports_self_drive: boolean
@@ -64,6 +65,7 @@ export function toVehicleInput(data: FleetFormData): CreateVehicleInput {
     security_deposit: Number(data.security_deposit || '0'),
     security_deposit_type: data.security_deposit_type,
     km_per_liter: optionalNumber(data.km_per_liter),
+    peso_per_km: Number(data.peso_per_km || '0'),
     supports_all_in: data.supports_all_in,
     supports_all_out: data.supports_all_out,
     supports_self_drive: data.supports_self_drive,
@@ -94,6 +96,7 @@ const DEFAULT_FORM: FleetFormData = {
   security_deposit: '0',
   security_deposit_type: 'fixed',
   km_per_liter: '',
+  peso_per_km: '0',
   supports_all_in: true,
   supports_all_out: true,
   supports_self_drive: true,
@@ -140,6 +143,7 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
         security_deposit: String(vehicle.security_deposit),
         security_deposit_type: vehicle.security_deposit_type,
         km_per_liter: vehicle.km_per_liter ? String(vehicle.km_per_liter) : '',
+        peso_per_km: String(vehicle.peso_per_km ?? 0),
         supports_all_in: vehicle.supports_all_in,
         supports_all_out: vehicle.supports_all_out,
         supports_self_drive: vehicle.supports_self_drive,
@@ -340,6 +344,10 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
           <div>
             <label className={labelClass}>Excess Rate / Hour ₱</label>
             <input className={inputClass} type="number" min="0" step="0.01" value={form.excess_rate_per_hour} onChange={(e) => set('excess_rate_per_hour', e.target.value)} />
+          </div>
+          <div>
+            <label className={labelClass}>Distance Rate / km ₱</label>
+            <input className={inputClass} type="number" min="0" step="0.01" value={form.peso_per_km} onChange={(e) => set('peso_per_km', e.target.value)} />
           </div>
           <div>
             <label className={labelClass}>Auto Full-Day After hrs</label>

@@ -18,6 +18,7 @@ import { calculateToll, getNearestTollPlazas, getRouteQuote, suggestLocations } 
 import { supabase } from '@/lib/supabase'
 import { useBookingStore } from '@/store/booking-store'
 import type { AdminBookingCreateInput } from '@/types/admin-booking'
+import { useVatPercent } from '@/hooks/use-vat-percent'
 
 type SelfDriveAddress = {
   addressLine1: string
@@ -58,6 +59,7 @@ export function BookingCreateForm() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
+  const vatPercent = useVatPercent()
   const createBooking = useCreateAdminBooking()
   const { data: vehicles = [], isLoading: vehiclesLoading } = useAdminVehicles()
   const paymentMethodsQuery = usePaymentMethods()
@@ -283,6 +285,7 @@ export function BookingCreateForm() {
     startAt: startParam,
     endAt: endParam,
     basePricePerDay: selectedVehicle?.base_price_per_day ?? 0,
+    distanceRatePerKm: selectedVehicle?.peso_per_km ?? 0,
     driverRatePerDay: selectedVehicle?.driver_rate_per_day ?? 0,
     carWashFee: selectedVehicle?.car_wash_fee ?? 0,
     deliveryFee: selectedVehicle?.delivery_fee ?? 0,
@@ -553,14 +556,18 @@ export function BookingCreateForm() {
               bookingMode={mode}
               days={pricing.days}
               basePricePerDay={selectedVehicle?.base_price_per_day ?? 0}
+              distanceRatePerKm={selectedVehicle?.peso_per_km ?? 0}
               driverRatePerDay={selectedVehicle?.driver_rate_per_day ?? 0}
               carWashFee={pricing.carWash}
               deliveryFee={pricing.delivery}
               securityDeposit={pricing.securityDeposit}
+              securityDepositType={selectedVehicle?.security_deposit_type ?? 'fixed'}
+              securityDepositValue={selectedVehicle?.security_deposit ?? 0}
               baseTotal={pricing.baseTotal}
               driverTotal={pricing.driverTotal}
               fuelEstimateAmount={pricing.fuelEstimateAmount}
               tollEstimateAmount={pricing.tollEstimateAmount}
+              vatPercent={vatPercent}
               tollMessage={tollError}
               distanceKm={pricing.distanceKm}
               baseLoading={basePriceLoading}

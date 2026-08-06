@@ -248,6 +248,72 @@ export function SettingsPasswordForm({ saving, setSaving, showMessage }: Omit<Se
   )
 }
 
+export function SettingsAdditionalForm({ saving, setSaving, showMessage }: Omit<SettingsFormProps, 'user'>) {
+  const [fuelPrice, setFuelPrice] = useState('0')
+  const [fuelPriceLastUpdated, setFuelPriceLastUpdated] = useState('')
+  const [vatPercent, setVatPercent] = useState('0')
+
+  useEffect(() => {
+    supabase.from('app_settings').select('fuel_price_per_liter,fuel_price_last_updated,vat_percent').single().then(({ data }) => {
+      if (data) {
+        setFuelPrice(String(data.fuel_price_per_liter ?? 0))
+        setFuelPriceLastUpdated(data.fuel_price_last_updated || '')
+        setVatPercent(String(data.vat_percent ?? 0))
+      }
+    })
+  }, [])
+
+  return (
+    <form onSubmit={async (e) => {
+      e.preventDefault()
+      setSaving(true)
+      const value = Number(fuelPrice)
+      if (!Number.isFinite(value) || value < 0) {
+        showMessage('Enter a valid fuel price.', 'error')
+        setSaving(false)
+        return
+      }
+      const vat = Number(vatPercent)
+      if (!Number.isFinite(vat) || vat < 0 || vat > 100) {
+        showMessage('Enter a VAT percentage from 0 to 100.', 'error')
+        setSaving(false)
+        return
+      }
+      const updatedAt = new Date().toISOString().slice(0, 10)
+      const { error } = await supabase.from('app_settings').upsert({
+        id: true,
+        fuel_price_per_liter: value,
+        fuel_price_last_updated: updatedAt,
+        vat_percent: vat,
+      })
+      if (error) showMessage(showError(error), 'error')
+      else {
+        setFuelPriceLastUpdated(updatedAt)
+        showMessage('Additional settings saved.', 'success')
+      }
+      setSaving(false)
+    }} className="space-y-4">
+      <div>
+        <h2 className={sectionTitleClass}>Additional Settings</h2>
+        <p className={sectionDescClass}>Manage values used by route-based quotes.</p>
+      </div>
+      <div className="max-w-sm space-y-1.5">
+        <label className={labelClass}>Fuel Price / Liter ₱</label>
+        <input className={inputClass} type="number" min="0" step="0.01" value={fuelPrice} onChange={(e) => setFuelPrice(e.target.value)} />
+        <p className={sectionDescClass}>Last updated: {fuelPriceLastUpdated || 'Not set'}</p>
+      </div>
+      <div className="max-w-sm space-y-1.5">
+        <label className={labelClass}>VAT (%)</label>
+        <input className={inputClass} type="number" min="0" max="100" step="0.01" value={vatPercent} onChange={(e) => setVatPercent(e.target.value)} />
+        <p className={sectionDescClass}>Applied to new booking prices when greater than 0.</p>
+      </div>
+      <Button type="submit" disabled={saving} className="bg-[#071f52] text-white hover:bg-[#112458]">
+        {saving ? 'Saving...' : 'Save Additional Settings'}
+      </Button>
+    </form>
+  )
+}
+
 const countries = ['Philippines', 'United States', 'Canada', 'Australia', 'United Kingdom', 'Singapore', 'Japan', 'South Korea', 'Hong Kong', 'Other']
 
 export function SettingsBusinessForm({ saving, setSaving, showMessage }: Omit<SettingsFormProps, 'user'>) {

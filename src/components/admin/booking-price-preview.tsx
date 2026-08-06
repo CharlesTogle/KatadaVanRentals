@@ -9,9 +9,10 @@ interface BookingPricePreviewProps {
   endAt: string
   routeQuote: RouteQuoteResponse | null
   tollMessage?: string
+  vatPercent?: number
 }
 
-export function BookingPricePreview({ vehicle, rentalModel, startAt, endAt, routeQuote, tollMessage }: BookingPricePreviewProps) {
+export function BookingPricePreview({ vehicle, rentalModel, startAt, endAt, routeQuote, tollMessage, vatPercent = 0 }: BookingPricePreviewProps) {
   const startDate = startAt ? new Date(startAt) : null
   const endDate = endAt ? new Date(endAt) : null
   const hasRequired = !!vehicle && !!rentalModel && !!startDate && !!endDate && endDate > startDate
@@ -34,6 +35,7 @@ export function BookingPricePreview({ vehicle, rentalModel, startAt, endAt, rout
     days: durationDays,
     distanceKm: Number(routeQuote?.distanceKm ?? 0),
     basePricePerDay: vehicle!.base_price_per_day,
+    distanceRatePerKm: vehicle!.peso_per_km,
     driverRatePerDay: vehicle!.driver_rate_per_day,
     carWashFee: vehicle!.car_wash_fee,
     deliveryFee: vehicle!.delivery_fee,
@@ -89,6 +91,7 @@ export function BookingPricePreview({ vehicle, rentalModel, startAt, endAt, rout
           <span className="font-black">Total</span>
           <span className="font-black">₱{total.toLocaleString()}.00</span>
         </div>
+        {vatPercent > 0 ? <p className="text-xs font-medium leading-5 text-[#071f52]/48">VAT ({vatPercent}%) is calculated at trip completion{rentalModel === 'all_in' ? ' after actual fuel and toll reconciliation' : ''}.</p> : null}
       </div>
 
       <div className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
