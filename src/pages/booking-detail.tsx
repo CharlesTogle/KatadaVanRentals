@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ImageViewer } from '@/components/ui/image-viewer'
 import { usePaymentMethods } from '@/hooks/use-payment-methods'
+import { useAppSettings } from '@/hooks/use-app-settings'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -23,6 +24,7 @@ import {
 import { BOOKING_MESSAGES } from '@/constants/booking'
 import { STATUS_COLORS } from '@/config/constants'
 import { getBookingAdjustmentSummary } from '@/lib/booking-adjustment'
+import { getBookingExpiryDeadline, getBookingExpiryMessage } from '@/lib/booking-expiry'
 import { getDisplayBookingNote } from '@/lib/booking-notes'
 import { canCustomerCancelBooking, canDownloadInvoice, formatBookingStatus, getBookingCadenceLabel, getBookingCadenceValue } from '@/lib/booking-utils'
 import { downloadBookingInvoicePdf } from '@/lib/invoice-pdf'
@@ -66,6 +68,7 @@ export default function BookingDetail() {
   const [manualPayReceipt, setManualPayReceipt] = useState<File | null>(null)
   const [manualPaySubmitting, setManualPaySubmitting] = useState(false)
   const { data: paymentMethods = [] } = usePaymentMethods()
+  const { data: appSettings } = useAppSettings()
   const [uploadingTypeId, setUploadingTypeId] = useState<string | null>(null)
   const [sizeError, setSizeError] = useState<string | null>(null)
   const oldUploadRef = useRef<{ file_path: string; original_filename: string; mime_type: string; size_bytes: number } | null>(null)
@@ -196,6 +199,10 @@ export default function BookingDetail() {
     : null
   const statusTone = getStatusTone(booking.status)
   const statusMessage = getStatusMessage(booking.status, rejectionReason, cancellationReason)
+  const expiryMessage = getBookingExpiryMessage(
+    booking.status,
+    getBookingExpiryDeadline(booking.start_at, appSettings?.booking_expiry_hours ?? 2),
+  )
   const tripReconciliationAmount = Number(booking.actual_toll_amount || 0) + Number(booking.actual_fuel_amount || 0)
   const totalIncludesTripReconciliation = booking.status === 'completed' && booking.rental_model === 'all_in' && tripReconciliationAmount > 0 && status_events.some((event) => event.note?.startsWith('Trip reconciled.'))
   const pricingBooking = totalIncludesTripReconciliation ? { ...booking, total_amount: booking.total_amount - tripReconciliationAmount } : booking
@@ -206,7 +213,7 @@ export default function BookingDetail() {
   const paymentMadeAmount = Math.max(paymentTotal - depositAmount, 0)
   const displayedRemainingBalance = Math.max(displayedTotal + tripReconciliationAmount - depositAmount - paymentMadeAmount, 0)
   const customerNote = getDisplayBookingNote(booking.notes)
-  const priceApprovalDeadline = new Date(new Date(booking.start_at).getTime() - 2 * 60 * 60 * 1000)
+  const priceApprovalDeadline = getBookingExpiryDeadline(booking.start_at, appSettings?.booking_expiry_hours ?? 2)
   const bookingSummary = [vehicle?.name || 'Vehicle pending', formatDateRange(booking.start_at, booking.end_at)]
     .filter(Boolean)
     .join('  ·  ')
@@ -478,6 +485,7 @@ export default function BookingDetail() {
                   <div>
                       <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#071f52]/46 sm:text-xs">{statusMessage.title}</p>
                       <p className={`mt-0.5 text-xs font-medium leading-5 sm:text-sm ${statusTone.text}`}>{statusMessage.body}</p>
+                      {expiryMessage ? <p className="mt-2 text-xs font-semibold leading-5 text-[#6f5a32] sm:text-sm">{expiryMessage}</p> : null}
                   </div>
                 </div>
               </div>

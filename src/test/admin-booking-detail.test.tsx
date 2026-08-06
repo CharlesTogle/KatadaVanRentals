@@ -8,10 +8,15 @@ const useAdminBooking = vi.fn()
 const mutateAsync = vi.fn()
 const upload = vi.fn()
 const createSignedUrl = vi.fn().mockResolvedValue({ data: { signedUrl: 'https://example.com/receipt.pdf' }, error: null })
+const useAppSettingsMock = vi.fn(() => ({ data: { booking_expiry_hours: 2 } }))
 
 vi.mock('@/hooks/use-bookings', () => ({
   useAdminBooking: (...args: unknown[]) => useAdminBooking(...args),
   useAdminBookingAction: () => ({ mutateAsync, isPending: false }),
+}))
+
+vi.mock('@/hooks/use-app-settings', () => ({
+  useAppSettings: () => useAppSettingsMock(),
 }))
 
 vi.mock('@/hooks/use-payment-methods', () => ({

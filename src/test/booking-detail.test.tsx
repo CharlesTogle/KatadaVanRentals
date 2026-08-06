@@ -7,6 +7,7 @@ const useBooking = vi.fn()
 const useCancelOwnBooking = vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false }))
 const useAcceptOwnPriceAdjustment = vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false }))
 const useAuthMock = vi.fn(() => ({ user: { id: 'user-1' } }))
+const useAppSettingsMock = vi.fn(() => ({ data: { booking_expiry_hours: 2 } }))
 
 vi.mock('@/hooks/use-bookings', () => ({
   useBooking: (...args: unknown[]) => useBooking(...args),
@@ -16,6 +17,14 @@ vi.mock('@/hooks/use-bookings', () => ({
 
 vi.mock('@/contexts/useAuth', () => ({
   useAuth: () => useAuthMock(),
+}))
+
+vi.mock('@/hooks/use-app-settings', () => ({
+  useAppSettings: () => useAppSettingsMock(),
+}))
+
+vi.mock('@/hooks/use-payment-methods', () => ({
+  usePaymentMethods: () => ({ data: [] }),
 }))
 
 vi.mock('@/lib/invoice-pdf', () => ({

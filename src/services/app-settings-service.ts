@@ -12,6 +12,7 @@ export interface AppSettings {
   country: string
   tin_number: string
   vat_percent: number
+  booking_expiry_hours: number
 }
 
 export async function getAppSettings(): Promise<AppSettings | null> {

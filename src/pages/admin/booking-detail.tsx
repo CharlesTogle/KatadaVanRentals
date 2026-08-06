@@ -4,9 +4,11 @@ import { useAdminBooking, useAdminBookingAction } from '@/hooks/use-bookings'
 import { useFileViewer } from '@/hooks/use-file-viewer'
 import { getCustomerDocumentSignedUrl } from '@/services/document-service'
 import { usePaymentMethods } from '@/hooks/use-payment-methods'
+import { useAppSettings } from '@/hooks/use-app-settings'
 import { canDownloadInvoice, formatBookingStatus, getAdminBookingDetailActions, getBookingCadenceLabel, getBookingCadenceValue, type AdminAction, type AdminActionType } from '@/lib/booking-utils'
 import { STATUS_COLORS } from '@/config/constants'
 import { getBookingAdjustmentSummary } from '@/lib/booking-adjustment'
+import { getBookingExpiryDeadline, getBookingExpiryMessage } from '@/lib/booking-expiry'
 import { getDisplayBookingNote } from '@/lib/booking-notes'
 import { cn } from '@/lib/utils'
 import { showError } from '@/lib/errors'
@@ -50,6 +52,7 @@ export default function BookingDetail() {
   const navigate = useNavigate()
   const { data, isLoading, error } = useAdminBooking(bookingNumber)
   const { data: paymentMethods = [] } = usePaymentMethods()
+  const { data: appSettings } = useAppSettings()
   const bookingAction = useAdminBookingAction()
   const { viewing, openingId, openFile, closeViewer } = useFileViewer((viewError) => {
     toast.error(showError(viewError))
@@ -147,6 +150,10 @@ export default function BookingDetail() {
     : null
   const statusTone = getStatusTone(booking.status)
   const statusMessage = getStatusMessage(booking.status, rejectionReason, cancellationReason)
+  const expiryMessage = getBookingExpiryMessage(
+    booking.status,
+    getBookingExpiryDeadline(booking.start_at, appSettings?.booking_expiry_hours ?? 2),
+  )
   const tripReconciliationAmount = Number(booking.actual_toll_amount || 0) + Number(booking.actual_fuel_amount || 0)
   const totalIncludesTripReconciliation = booking.status === 'completed' && booking.rental_model === 'all_in' && tripReconciliationAmount > 0 && status_events.some((event) => event.note?.startsWith('Trip reconciled.'))
   const pricingBooking = totalIncludesTripReconciliation ? { ...booking, total_amount: booking.total_amount - tripReconciliationAmount } : booking
@@ -405,6 +412,7 @@ export default function BookingDetail() {
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#071f52]/46">{statusMessage.title}</p>
                       <p className={cn('mt-1 text-sm font-medium leading-6', statusTone.text)}>{statusMessage.body}</p>
+                      {expiryMessage ? <p className="mt-2 text-sm font-semibold leading-6 text-[#6f5a32]">{expiryMessage}</p> : null}
                     </div>
                   </div>
                 </div>
