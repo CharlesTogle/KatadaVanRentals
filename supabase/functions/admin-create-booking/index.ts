@@ -148,14 +148,37 @@ serve(async (req) => {
   if (!vehicleId || !rentalModel || !startAt) {
     return json(req, { error: 'Vehicle, rental model, and start are required' }, 400)
   }
+  if (!['self_drive', 'all_out', 'all_in'].includes(rentalModel)) {
+    return json(req, { error: 'Invalid rental model' }, 400)
+  }
   if (!bookingMode || !['dropoff', 'keep'].includes(bookingMode)) {
     return json(req, { error: 'Invalid booking mode' }, 400)
   }
-  const requiresEndAt = rentalModel === 'self_drive' || bookingMode === 'keep'
-  if (requiresEndAt && !endAt) {
+
+  const isSelfDrive = rentalModel === 'self_drive'
+  const isAllIn = rentalModel === 'all_in'
+  const usesRoutePricing = isAllIn || (rentalModel === 'all_out' && bookingMode === 'dropoff')
+  const normalizedEndAt = isSelfDrive || bookingMode === 'keep' ? endAt ?? null : null
+  const normalizedDestination = isSelfDrive || bookingMode === 'keep' ? destination ?? null : null
+  const normalizedPurposeOfTravel = isSelfDrive || bookingMode === 'keep' ? purposeOfTravel ?? null : null
+  const normalizedDistanceKm = usesRoutePricing ? distanceKm ?? null : null
+  const normalizedDurationMinutes = usesRoutePricing ? durationMinutes ?? null : null
+  const normalizedFuelEstimateLiters = isAllIn ? fuelEstimateLiters ?? 0 : 0
+  const normalizedFuelEstimateAmount = isAllIn ? fuelEstimateAmount ?? 0 : 0
+  const normalizedTollEstimateAmount = isAllIn ? tollEstimateAmount ?? 0 : 0
+  const normalizedTollSegments = isAllIn ? tollSegments ?? [] : []
+  const normalizedTollEntryPlaza = isAllIn ? tollEntryPlaza ?? null : null
+  const normalizedTollEntryExpressway = isAllIn ? tollEntryExpressway ?? null : null
+  const normalizedTollExitPlaza = isAllIn ? tollExitPlaza ?? null : null
+  const normalizedTollExitExpressway = isAllIn ? tollExitExpressway ?? null : null
+  const normalizedTollVehicleClass = isAllIn ? tollVehicleClass ?? 1 : 1
+  const normalizedTollRfidBreakdown = isAllIn ? tollRfidBreakdown ?? [] : []
+  const normalizedSelfDriveAddress = isSelfDrive ? selfDriveAddress ?? null : null
+
+  if ((isSelfDrive || bookingMode === 'keep') && !normalizedEndAt) {
     return json(req, { error: 'End date is required for this booking' }, 400)
   }
-  if (endAt && new Date(endAt) <= new Date(startAt)) {
+  if (normalizedEndAt && new Date(normalizedEndAt) <= new Date(startAt)) {
     return json(req, { error: 'End date must be after start date' }, 400)
   }
 
@@ -225,7 +248,7 @@ serve(async (req) => {
   }
 
   // Check vehicle availability — no overlapping live bookings
-  const overlapEndAt = endAt ?? new Date(new Date(startAt).getTime() + 24 * 60 * 60 * 1000).toISOString()
+  const overlapEndAt = normalizedEndAt ?? new Date(new Date(startAt).getTime() + 24 * 60 * 60 * 1000).toISOString()
   const { data: overlapping } = await supabase
     .from('bookings')
     .select('id, booking_number')
@@ -242,7 +265,7 @@ serve(async (req) => {
   }
 
   // Insert booking — trigger computes prices
-  const durationDays = computeDurationDays(startAt, endAt)
+  const durationDays = computeDurationDays(startAt, normalizedEndAt)
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
     .insert({
@@ -253,7 +276,7 @@ serve(async (req) => {
       booking_mode: bookingMode,
       status: 'confirmed',
       start_at: startAt,
-      end_at: endAt ?? null,
+      end_at: normalizedEndAt,
       duration_days: durationDays,
       pickup_location: pickupLocation || null,
       pickup_lat: pickupLat ?? null,
@@ -261,22 +284,22 @@ serve(async (req) => {
       dropoff_location: dropoffLocation || null,
       dropoff_lat: dropoffLat ?? null,
       dropoff_lng: dropoffLng ?? null,
-      destination: destination || null,
-      purpose_of_travel: purposeOfTravel || null,
+      destination: normalizedDestination,
+      purpose_of_travel: normalizedPurposeOfTravel,
       notes: notes || null,
-      distance_km: distanceKm ?? null,
-      duration_minutes: durationMinutes ?? null,
-      fuel_estimate_liters: fuelEstimateLiters ?? 0,
-      fuel_estimate_amount: fuelEstimateAmount ?? 0,
-      toll_estimate_amount: tollEstimateAmount ?? 0,
-      toll_segments: tollSegments ?? [],
-      toll_entry_plaza: tollEntryPlaza ?? null,
-      toll_entry_expressway: tollEntryExpressway ?? null,
-      toll_exit_plaza: tollExitPlaza ?? null,
-      toll_exit_expressway: tollExitExpressway ?? null,
-      toll_vehicle_class: tollVehicleClass ?? 1,
-      toll_rfid_breakdown: tollRfidBreakdown ?? [],
-      self_drive_address: selfDriveAddress ?? null,
+      distance_km: normalizedDistanceKm,
+      duration_minutes: normalizedDurationMinutes,
+      fuel_estimate_liters: normalizedFuelEstimateLiters,
+      fuel_estimate_amount: normalizedFuelEstimateAmount,
+      toll_estimate_amount: normalizedTollEstimateAmount,
+      toll_segments: normalizedTollSegments,
+      toll_entry_plaza: normalizedTollEntryPlaza,
+      toll_entry_expressway: normalizedTollEntryExpressway,
+      toll_exit_plaza: normalizedTollExitPlaza,
+      toll_exit_expressway: normalizedTollExitExpressway,
+      toll_vehicle_class: normalizedTollVehicleClass,
+      toll_rfid_breakdown: normalizedTollRfidBreakdown,
+      self_drive_address: normalizedSelfDriveAddress,
       in_service_area: inServiceArea ?? true,
       flagged_for_manual_pricing: flaggedForManualPricing ?? false,
       created_by: user.id,
@@ -303,7 +326,7 @@ serve(async (req) => {
         <p style="font-size: 14px; color: #071f52; opacity: 0.6; margin: 0 0 24px;">Hi ${customerProfile.first_name ?? 'there'}, your booking has been confirmed.</p>
         <div style="background: #f7f9ff; border-radius: 12px; padding: 20px; margin: 0 0 20px;">
           <p style="font-size: 13px; color: #071f52; margin: 0 0 4px;"><strong>Booking #:</strong> ${booking.booking_number}</p>
-          <p style="font-size: 13px; color: #071f52; margin: 0 0 4px;"><strong>Dates:</strong> ${new Date(startAt).toLocaleDateString()}${endAt ? ` — ${new Date(endAt).toLocaleDateString()}` : ''}</p>
+          <p style="font-size: 13px; color: #071f52; margin: 0 0 4px;"><strong>Dates:</strong> ${new Date(startAt).toLocaleDateString()}${normalizedEndAt ? ` — ${new Date(normalizedEndAt).toLocaleDateString()}` : ''}</p>
           <p style="font-size: 13px; color: #071f52; margin: 0 0 4px;"><strong>Duration:</strong> ${durationDays} day${durationDays > 1 ? 's' : ''}</p>
           <p style="font-size: 13px; color: #071f52; margin: 0;"><strong>Total:</strong> ₱${booking.total_amount?.toLocaleString()}.00</p>
         </div>
