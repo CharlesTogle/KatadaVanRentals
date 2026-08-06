@@ -31,6 +31,7 @@ function vehiclePayload(input: CreateVehicleInput) {
     security_deposit: input.security_deposit ?? 0,
     security_deposit_type: input.security_deposit_type ?? 'fixed',
     km_per_liter: input.km_per_liter || null,
+    peso_per_km: input.peso_per_km ?? 0,
     supports_all_in: input.supports_all_in ?? true,
     supports_all_out: input.supports_all_out ?? true,
     supports_self_drive: input.supports_self_drive ?? true,

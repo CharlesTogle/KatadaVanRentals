@@ -21,6 +21,7 @@ export interface Vehicle {
   security_deposit: number
   security_deposit_type: 'fixed' | 'percent'
   km_per_liter: number | null
+  peso_per_km: number
   supports_all_in: boolean
   supports_all_out: boolean
   supports_self_drive: boolean
@@ -67,6 +68,7 @@ export interface CreateVehicleInput {
   security_deposit?: number
   security_deposit_type?: 'fixed' | 'percent'
   km_per_liter?: number | null
+  peso_per_km?: number
   supports_all_in?: boolean
   supports_all_out?: boolean
   supports_self_drive?: boolean

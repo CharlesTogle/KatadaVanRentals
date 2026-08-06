@@ -31,9 +31,10 @@ vi.mock('@/hooks/use-vehicles', () => ({
   useVehicleById: () => ({
     data: {
       id: 'vehicle-1',
-      name: 'Toyota Commuter',
-      base_price_per_day: 4500,
-      driver_rate_per_day: 800,
+       name: 'Toyota Commuter',
+       base_price_per_day: 4500,
+       peso_per_km: 4500,
+       driver_rate_per_day: 800,
     },
     isLoading: false,
   }),

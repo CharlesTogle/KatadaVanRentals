@@ -8,6 +8,7 @@ export interface VehiclePricingInput {
   days: number
   distanceKm: number
   basePricePerDay: number
+  distanceRatePerKm: number
   driverRatePerDay: number
   carWashFee: number
   deliveryFee: number
@@ -44,7 +45,7 @@ export function calculateOverdueCharge(input: Pick<VehiclePricingInput, 'basePri
 
 export function calculateVehicleBookingPrice(input: VehiclePricingInput) {
   const baseTotal = input.mode === 'dropoff' && input.rentalType !== 'self-drive'
-    ? input.distanceKm * input.basePricePerDay
+    ? input.distanceKm * input.distanceRatePerKm
     : input.days * input.basePricePerDay
   const driverTotal = input.rentalType !== 'self-drive' && input.mode === 'keep'
     ? input.days * input.driverRatePerDay
@@ -59,7 +60,9 @@ export function calculateVehicleBookingPrice(input: VehiclePricingInput) {
   const total = rentalTotal + securityDeposit + overdue.amount
 
   const priceLineItems: PriceLineItem[] = [
-    { label: 'Base', detail: `${input.days}d × ₱${input.basePricePerDay}`, amount: baseTotal },
+    { label: 'Base', detail: input.mode === 'dropoff' && input.rentalType !== 'self-drive'
+      ? `${input.distanceKm}km × ₱${input.distanceRatePerKm}`
+      : `${input.days}d × ₱${input.basePricePerDay}`, amount: baseTotal },
   ]
   if (driverTotal > 0) priceLineItems.push({ label: 'Driver', detail: `${input.days}d × ₱${input.driverRatePerDay}`, amount: driverTotal })
   if (carWash > 0) priceLineItems.push({ label: 'Car Wash', detail: 'Vehicle fee', amount: carWash })
