@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { renderBookingCanceledEmail } from '../_shared/booking-canceled-email.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const DEVELOPER_EMAIL = Deno.env.get('DEVELOPER_EMAIL')!
@@ -82,13 +83,43 @@ serve(async (req) => {
     return json(req, { error: 'Invalid request body' }, 400)
   }
 
-  const res = await fetch('https://api.resend.com/emails', {
+  const batch = Array.isArray(body.batch) ? body.batch as Record<string, unknown>[] : null
+  const batchEmails = batch?.map((item) => {
+    const email = item.template === 'booking_canceled'
+      ? renderBookingCanceledEmail({
+          firstName: String(item.firstName || 'there'),
+          bookingNumber: String(item.bookingNumber || ''),
+          reason: String(item.reason || 'Booking deadline passed.'),
+        })
+      : { subject: String(item.subject || ''), text: String(item.text || ''), html: item.html as string | undefined }
+
+    return {
+      from: (item.from as string) || `${SENDER_NAME} <${SENDER_EMAIL}>`,
+      to: Array.isArray(item.to) ? item.to : [item.to as string],
+      subject: email.subject,
+      ...(email.html ? { html: email.html } : { text: email.text }),
+    }
+  })
+
+  if (body.template === 'booking_canceled') {
+    const email = renderBookingCanceledEmail({
+      firstName: String(body.firstName || 'there'),
+      bookingNumber: String(body.bookingNumber || ''),
+      reason: String(body.reason || 'Booking deadline passed.'),
+    })
+    body.subject = email.subject
+    body.text = email.text
+    body.html = email.html
+  }
+
+  const isBatch = Boolean(batchEmails)
+  const res = await fetch(isBatch ? 'https://api.resend.com/emails/batch' : 'https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${RESEND_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
+    body: JSON.stringify(batchEmails || {
       from: (body.from as string) || `${SENDER_NAME} <${SENDER_EMAIL}>`,
       to: (body.to as string) || DEVELOPER_EMAIL,
       subject: body.subject,
