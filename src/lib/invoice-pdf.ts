@@ -235,10 +235,6 @@ function normalizeCharges(data: BookingInvoiceData) {
     amount: Number(item.amount || 0),
   }))
 
-  if (!items.some((item) => /vat/i.test(item.label))) {
-    items.push({ label: `VAT (${data.business.vat_percent}%)`, amount: 0 })
-  }
-
   return items.slice(0, 8)
 }
 

@@ -38,6 +38,7 @@ interface BookingPriceBreakdownInput {
   startAt: string
   endAt: string
   basePricePerDay: number
+  distanceRatePerKm: number
   driverRatePerDay: number
   carWashFee?: number
   deliveryFee?: number
@@ -46,6 +47,7 @@ interface BookingPriceBreakdownInput {
   excessRatePerHour?: number
   autoFullDayAfterHours?: number
   twelveHourRate?: number | null
+  vatPercent?: number
   routeQuote?: RouteQuoteResponse | null
 }
 
@@ -65,7 +67,7 @@ export function usesDriver(rentalType: CustomerRentalType) {
   return rentalType === 'all-in' || rentalType === 'all-out'
 }
 
-export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, endAt, basePricePerDay, driverRatePerDay, carWashFee = 0, deliveryFee = 0, securityDeposit = 0, securityDepositType = 'fixed', excessRatePerHour = 0, autoFullDayAfterHours = 12, twelveHourRate = null, routeQuote }: BookingPriceBreakdownInput) {
+export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, endAt, basePricePerDay, distanceRatePerKm, driverRatePerDay, carWashFee = 0, deliveryFee = 0, securityDeposit = 0, securityDepositType = 'fixed', excessRatePerHour = 0, autoFullDayAfterHours = 12, twelveHourRate = null, routeQuote }: BookingPriceBreakdownInput) {
   const startDate = startAt ? new Date(startAt) : null
   const endDate = endAt ? new Date(endAt) : null
   const days = startDate && endDate
@@ -75,7 +77,7 @@ export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, e
       : 0
 
   if (routeQuote?.inServiceArea === false) {
-    return { days, distanceKm: 0, baseTotal: 0, driverTotal: 0, fuelEstimateAmount: 0, tollEstimateAmount: 0, grandTotal: 0, deposit: 0, remaining: 0 }
+    return { days, distanceKm: 0, baseTotal: 0, driverTotal: 0, fuelEstimateAmount: 0, tollEstimateAmount: 0, vatAmount: 0, grandTotal: 0, deposit: 0, remaining: 0 }
   }
 
   const distanceKm = Number(routeQuote?.distanceKm ?? 0)
@@ -85,6 +87,7 @@ export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, e
     days,
     distanceKm,
     basePricePerDay,
+    distanceRatePerKm,
     driverRatePerDay,
     carWashFee,
     deliveryFee,
@@ -98,9 +101,14 @@ export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, e
   const driverTotal = vehiclePricing.driverTotal
   const fuelEstimateAmount = rentalType === 'all-in' ? Number(routeQuote?.fuelEstimateAmount ?? 0) : 0
   const tollEstimateAmount = rentalType === 'all-in' ? Number(routeQuote?.tollEstimateAmount ?? 0) : 0
-  const grandTotal = vehiclePricing.total
-  const deposit = vehiclePricing.securityDeposit
+  const rentalTotal = Math.max(0, vehiclePricing.total - vehiclePricing.securityDeposit - vehiclePricing.overdue.amount)
+  const taxableTotal = Math.max(0, vehiclePricing.total - vehiclePricing.securityDeposit)
+  const deposit = securityDepositType === 'percent'
+    ? Math.round(rentalTotal * securityDeposit) / 100
+    : vehiclePricing.securityDeposit
+  const grandTotal = taxableTotal
   const remaining = Math.max(0, grandTotal - deposit)
+  const priceLineItems = vehiclePricing.priceLineItems.filter((item) => item.label !== 'Security Deposit')
 
   return {
     days,
@@ -109,6 +117,7 @@ export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, e
     driverTotal,
     fuelEstimateAmount,
     tollEstimateAmount,
+    vatAmount: 0,
     grandTotal,
     deposit,
     remaining,
@@ -116,7 +125,7 @@ export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, e
     delivery: vehiclePricing.delivery,
     securityDeposit: vehiclePricing.securityDeposit,
     overdue: vehiclePricing.overdue,
-    priceLineItems: vehiclePricing.priceLineItems,
+    priceLineItems,
   }
 }
 

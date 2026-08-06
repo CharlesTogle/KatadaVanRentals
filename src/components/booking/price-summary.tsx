@@ -6,14 +6,19 @@ interface PriceSummaryProps {
   bookingMode?: 'dropoff' | 'keep'
   days: number
   basePricePerDay: number
+  distanceRatePerKm: number
   driverRatePerDay: number
   carWashFee?: number
   deliveryFee?: number
   securityDeposit?: number
+  securityDepositType?: 'fixed' | 'percent'
+  securityDepositValue?: number
   baseTotal: number
   driverTotal: number
   fuelEstimateAmount?: number
   tollEstimateAmount?: number
+  vatAmount?: number
+  vatPercent?: number
   tollMessage?: string
   distanceKm?: number
   baseLoading?: boolean
@@ -31,7 +36,7 @@ interface PriceSummaryProps {
   flaggedForManualPricing?: boolean
 }
 
-export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, driverRatePerDay, carWashFee = 0, deliveryFee = 0, securityDeposit: securityDepositFee = 0, baseTotal, driverTotal, fuelEstimateAmount = 0, tollEstimateAmount = 0, tollMessage, distanceKm = 0, baseLoading = false, fuelLoading = false, tollLoading = false, grandTotal, deposit, remaining, submitting, disabled = false, disabledMessage, error, submitLabel = 'Submit Booking', footerNote = 'Your booking will be reviewed by our team before confirmation.', flaggedForManualPricing = false }: PriceSummaryProps) {
+export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, distanceRatePerKm, driverRatePerDay, carWashFee = 0, deliveryFee = 0, securityDeposit: securityDepositFee = 0, securityDepositType = 'fixed', securityDepositValue = securityDepositFee, baseTotal, driverTotal, fuelEstimateAmount = 0, tollEstimateAmount = 0, vatPercent = 0, tollMessage, distanceKm = 0, baseLoading = false, fuelLoading = false, tollLoading = false, grandTotal, deposit, remaining, submitting, disabled = false, disabledMessage, error, submitLabel = 'Submit Booking', footerNote = 'Your booking will be reviewed by our team before confirmation.', flaggedForManualPricing = false }: PriceSummaryProps) {
   const isDistanceMode = bookingMode === 'dropoff' && rentalType !== 'self-drive'
   const amount = (value: number, loading?: boolean) => loading
     ? <span className="font-bold text-[#071f52]/48">Computing...</span>
@@ -63,7 +68,7 @@ export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, d
       ) : (
         <div className="space-y-3 text-sm">
         <div className="flex justify-between">
-          <span className="text-[#071f52]/66">{isDistanceMode ? `Fare (${distanceKm}km × ₱${basePricePerDay.toLocaleString()})` : `Base (${days}d × ₱${basePricePerDay.toLocaleString()})`}</span>
+          <span className="text-[#071f52]/66">{isDistanceMode ? `Fare (${distanceKm}km × ₱${distanceRatePerKm.toLocaleString()})` : `Base (${days}d × ₱${basePricePerDay.toLocaleString()})`}</span>
           {amount(baseTotal, baseLoading)}
         </div>
         {driverTotal > 0 && (
@@ -87,18 +92,19 @@ export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, d
               {amount(tollEstimateAmount, tollLoading)}
             </div>
             {tollMessage ? <p className="text-xs font-semibold leading-5 text-[#e92935]">{tollMessage}</p> : null}
-            <p className="text-xs font-medium leading-5 text-[#071f52]/48">Fuel and toll are estimates only. They are not included in the total or remaining balance until trip reconciliation.</p>
+            <p className="text-xs font-medium leading-5 text-[#071f52]/48">Fuel and toll are estimates only. They are not included in the total, VAT, or remaining balance until trip reconciliation.</p>
           </>
         )}
         <div className="flex justify-between border-t border-[#071f52]/10 pt-3 text-base">
           <span className="font-black">Total</span>
           <span className="font-black">₱{grandTotal.toLocaleString()}.00</span>
         </div>
+        <p className="text-xs font-medium leading-5 text-[#071f52]/48">VAT{vatPercent > 0 ? ` (${vatPercent}%)` : ''} is calculated on the final total when the trip is completed.</p>
         {securityDepositFee > 0 && deposit > 0 && (
           <>
             <div className="flex justify-between text-base text-[#e92935]">
               <div className="max-w-[55%]">
-                <p>Security Deposit</p>
+                <p>Security Deposit ({securityDepositType === 'percent' ? `${securityDepositValue}%` : `₱${securityDepositValue.toLocaleString()} fixed`})</p>
                 <p className="text-xs font-medium text-[#e92935]/72">Vehicle-configured deposit</p>
               </div>
               <span className="font-bold text-[#e92935]">− ₱{deposit.toLocaleString()}.00</span>

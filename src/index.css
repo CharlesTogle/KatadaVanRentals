@@ -26,6 +26,9 @@ html {
   background: white;
   box-shadow: 0 8px 24px rgba(7, 31, 82, 0.06);
   overflow-x: auto;
+  @media (min-width: 1280px) {
+    overflow: visible;
+  }
   @media (max-width: 767.98px) {
     & table {
       min-width: 650px;
@@ -47,6 +50,9 @@ html {
     border: 1px solid color-mix(in oklab, var(--color-brand-navy) 10%, transparent);
     background: white;
     box-shadow: 0 8px 24px rgba(7, 31, 82, 0.06);
+    @media (min-width: 1280px) {
+      overflow: visible;
+    }
   }
   & table {
     width: 100%;

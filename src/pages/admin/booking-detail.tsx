@@ -863,13 +863,14 @@ function SetPriceModal({ open, onClose, amount, setAmount, reason, setReason, on
       <div className="space-y-4">
         <div className="rounded-xl border border-[#f59e0b]/30 bg-[#f59e0b]/8 px-4 py-3">
           <p className="text-sm font-bold text-[#92400e]">Manual Pricing</p>
-          <p className="mt-1 text-xs font-medium text-[#92400e]/80">This booking was flagged for manual pricing. Set the final price below and the customer will be asked to approve.</p>
+          <p className="mt-1 text-xs font-medium text-[#92400e]/80">Enter the pre-VAT price. VAT will be calculated on the final total when the trip is completed.</p>
         </div>
 
         <div>
           <label className="mb-2 block text-sm font-semibold text-[#4d5a72]">Price (₱) <span className="text-[#ef4444]">*</span></label>
           <input type="number" min="1" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className={cn('h-10 w-full rounded-xl border px-3 text-sm text-[#1f2a44] focus:outline-none', amountError ? 'border-[#ef4444] focus:border-[#ef4444]' : 'border-[#d9dfeb] focus:border-[#4f46e5]')} />
           {amountError ? <p className="mt-2 text-sm font-medium text-[#dc2626]">{amountError}</p> : null}
+          {priceAmount > 0 ? <p className="mt-2 text-xs font-semibold text-[#4d5a72]">Pre-VAT total: ₱{priceAmount.toLocaleString()}.00</p> : null}
         </div>
 
         <div>
