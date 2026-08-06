@@ -21,6 +21,7 @@ type BookingCancellation = {
 }
 
 export async function getBookingById(id: string): Promise<CustomerBookingDetail> {
+  await supabase.rpc('recalculate_booking_overdue_fee', { target_booking_id: id, as_of: new Date().toISOString() })
   const { data: booking, error: bookingError } = await supabase
     .from('bookings')
     .select('*, vehicles!vehicle_id(id,name,plate_number,image_paths)')
@@ -312,24 +313,27 @@ export async function getAdminBookingByNumber(bookingNumber: string): Promise<Ad
     .single()
   if (bErr) throw bErr
 
-  const customer = booking.profiles && !Array.isArray(booking.profiles)
-    ? booking.profiles as AdminBookingDetail['customer']
+  const { data: refreshedBooking } = await supabase.rpc('recalculate_booking_overdue_fee', { target_booking_id: booking.id, as_of: new Date().toISOString() })
+  const currentBooking = refreshedBooking ? { ...booking, ...refreshedBooking } : booking
+
+  const customer = currentBooking.profiles && !Array.isArray(currentBooking.profiles)
+    ? currentBooking.profiles as AdminBookingDetail['customer']
     : null
-  const vehicle = booking.vehicles && !Array.isArray(booking.vehicles)
-    ? booking.vehicles as AdminBookingDetail['vehicle']
+  const vehicle = currentBooking.vehicles && !Array.isArray(currentBooking.vehicles)
+    ? currentBooking.vehicles as AdminBookingDetail['vehicle']
     : null
 
   const [payRes, docRes, eventRes, extRes, invRes, cancellationRes, typesRes, uploadsRes] = await Promise.all([
-    supabase.from('payments').select('id,channel,status,amount,reference_number,receipt_path,paid_at,created_at').eq('booking_id', booking.id).order('created_at', { ascending: false }),
-    booking.customer_id
-      ? supabase.from('customer_documents').select('id,document_type,status,file_path,original_filename,mime_type,created_at').eq('customer_id', booking.customer_id).order('created_at', { ascending: false })
+    supabase.from('payments').select('id,channel,status,amount,reference_number,receipt_path,paid_at,created_at').eq('booking_id', currentBooking.id).order('created_at', { ascending: false }),
+    currentBooking.customer_id
+      ? supabase.from('customer_documents').select('id,document_type,status,file_path,original_filename,mime_type,created_at').eq('customer_id', currentBooking.customer_id).order('created_at', { ascending: false })
       : Promise.resolve({ data: [] }),
-    supabase.from('booking_status_events').select('id,from_status,to_status,note,created_at').eq('booking_id', booking.id).order('created_at', { ascending: false }),
-    supabase.from('booking_extensions').select('id,previous_end_at,new_end_at,extension_amount,reason,payment_id,created_at').eq('booking_id', booking.id).order('created_at', { ascending: false }),
-    supabase.from('invoices').select('id,invoice_number,status,total_amount,file_path,issued_at').eq('booking_id', booking.id).order('created_at', { ascending: false }).maybeSingle(),
-    supabase.from('booking_cancellations').select('cancellation_type,reason,created_at').eq('booking_id', booking.id).order('created_at', { ascending: false }).maybeSingle(),
-    supabase.from('booking_requested_document_types').select('id,label,created_at').eq('booking_id', booking.id).order('created_at', { ascending: true }),
-    supabase.from('booking_requested_documents').select('id,requested_type_id,file_path,original_filename,mime_type,size_bytes,status,created_at').eq('booking_id', booking.id).order('created_at', { ascending: true }),
+    supabase.from('booking_status_events').select('id,from_status,to_status,note,created_at').eq('booking_id', currentBooking.id).order('created_at', { ascending: false }),
+    supabase.from('booking_extensions').select('id,previous_end_at,new_end_at,extension_amount,reason,payment_id,created_at').eq('booking_id', currentBooking.id).order('created_at', { ascending: false }),
+    supabase.from('invoices').select('id,invoice_number,status,total_amount,file_path,issued_at').eq('booking_id', currentBooking.id).order('created_at', { ascending: false }).maybeSingle(),
+    supabase.from('booking_cancellations').select('cancellation_type,reason,created_at').eq('booking_id', currentBooking.id).order('created_at', { ascending: false }).maybeSingle(),
+    supabase.from('booking_requested_document_types').select('id,label,created_at').eq('booking_id', currentBooking.id).order('created_at', { ascending: true }),
+    supabase.from('booking_requested_documents').select('id,requested_type_id,file_path,original_filename,mime_type,size_bytes,status,created_at').eq('booking_id', currentBooking.id).order('created_at', { ascending: true }),
   ])
 
   if (typesRes.error) throw typesRes.error
@@ -353,7 +357,7 @@ export async function getAdminBookingByNumber(bookingNumber: string): Promise<Ad
   }))
 
   return {
-    booking: booking as Booking,
+    booking: currentBooking as Booking,
     customer,
     vehicle,
     payments: payRes.data || [],
@@ -471,6 +475,14 @@ export async function getVerifiedPayments(from?: string, to?: string): Promise<V
 
 export async function runAdminBookingAction(input: AdminBookingActionInput): Promise<void> {
   const { type, bookingId, ...params } = input
+
+  if (type === 'complete') {
+    const { error: overdueError } = await supabase.rpc('recalculate_booking_overdue_fee', {
+      target_booking_id: bookingId,
+      as_of: new Date().toISOString(),
+    })
+    if (overdueError) throw overdueError
+  }
 
   const rpcMap: Record<AdminBookingActionType, { fn: string; args: Record<string, unknown> }> = {
     confirm: { fn: 'admin_confirm_booking', args: { target_booking_id: bookingId, note: (params as { note?: string }).note ?? null } },

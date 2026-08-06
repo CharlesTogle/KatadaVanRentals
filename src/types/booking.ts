@@ -39,6 +39,8 @@ export interface Booking {
   delivery_fee: number
   recovery_fee: number
   discount_amount: number
+  overdue_fee_amount?: number
+  overdue_calculated_at?: string | null
   deposit_amount: number
   subtotal_amount: number
   total_amount: number

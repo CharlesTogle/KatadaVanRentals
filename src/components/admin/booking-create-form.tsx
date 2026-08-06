@@ -284,6 +284,13 @@ export function BookingCreateForm() {
     endAt: endParam,
     basePricePerDay: selectedVehicle?.base_price_per_day ?? 0,
     driverRatePerDay: selectedVehicle?.driver_rate_per_day ?? 0,
+    carWashFee: selectedVehicle?.car_wash_fee ?? 0,
+    deliveryFee: selectedVehicle?.delivery_fee ?? 0,
+    securityDeposit: selectedVehicle?.security_deposit ?? 0,
+    securityDepositType: selectedVehicle?.security_deposit_type ?? 'fixed',
+    excessRatePerHour: selectedVehicle?.excess_rate_per_hour ?? 0,
+    autoFullDayAfterHours: selectedVehicle?.auto_full_day_after_hours ?? 12,
+    twelveHourRate: selectedVehicle?.twelve_hour_rate ?? null,
     routeQuote,
   })
   const needsRouteQuote = rentalType === 'all-in' || (mode === 'dropoff' && rentalType !== 'self-drive')
@@ -547,6 +554,9 @@ export function BookingCreateForm() {
               days={pricing.days}
               basePricePerDay={selectedVehicle?.base_price_per_day ?? 0}
               driverRatePerDay={selectedVehicle?.driver_rate_per_day ?? 0}
+              carWashFee={pricing.carWash}
+              deliveryFee={pricing.delivery}
+              securityDeposit={pricing.securityDeposit}
               baseTotal={pricing.baseTotal}
               driverTotal={pricing.driverTotal}
               fuelEstimateAmount={pricing.fuelEstimateAmount}

@@ -67,6 +67,8 @@ describe('booking-utils', () => {
       endAt: '2026-08-02T08:00:00.000Z',
       basePricePerDay: 4500,
       driverRatePerDay: 800,
+      securityDeposit: 10,
+      securityDepositType: 'percent',
       routeQuote: {
         distanceKm: 42,
         durationMinutes: 95,
@@ -87,9 +89,9 @@ describe('booking-utils', () => {
       driverTotal: 800,
       fuelEstimateAmount: 315,
       tollEstimateAmount: 105,
-      grandTotal: 5300,
-      deposit: 450,
-      remaining: 4850,
+      grandTotal: 5830,
+      deposit: 530,
+      remaining: 5300,
     }))
   })
 

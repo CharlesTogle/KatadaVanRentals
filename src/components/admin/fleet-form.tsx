@@ -30,7 +30,7 @@ export interface FleetFormData {
   car_wash_fee: string
   delivery_fee: string
   security_deposit: string
-  discount: string
+  security_deposit_type: 'fixed' | 'percent'
   km_per_liter: string
   supports_all_in: boolean
   supports_all_out: boolean
@@ -62,7 +62,7 @@ export function toVehicleInput(data: FleetFormData): CreateVehicleInput {
     car_wash_fee: Number(data.car_wash_fee || '0'),
     delivery_fee: Number(data.delivery_fee || '0'),
     security_deposit: Number(data.security_deposit || '0'),
-    discount: Number(data.discount || '0'),
+    security_deposit_type: data.security_deposit_type,
     km_per_liter: optionalNumber(data.km_per_liter),
     supports_all_in: data.supports_all_in,
     supports_all_out: data.supports_all_out,
@@ -92,7 +92,7 @@ const DEFAULT_FORM: FleetFormData = {
   car_wash_fee: '0',
   delivery_fee: '0',
   security_deposit: '0',
-  discount: '0',
+  security_deposit_type: 'fixed',
   km_per_liter: '',
   supports_all_in: true,
   supports_all_out: true,
@@ -138,7 +138,7 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
         car_wash_fee: String(vehicle.car_wash_fee),
         delivery_fee: String(vehicle.delivery_fee),
         security_deposit: String(vehicle.security_deposit),
-        discount: String(vehicle.discount),
+        security_deposit_type: vehicle.security_deposit_type,
         km_per_liter: vehicle.km_per_liter ? String(vehicle.km_per_liter) : '',
         supports_all_in: vehicle.supports_all_in,
         supports_all_out: vehicle.supports_all_out,
@@ -381,21 +381,13 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
           </div>
           <div>
             <label className={labelClass}>Security Deposit</label>
-            <input className={inputClass} type="number" min="0" step="0.01" value={form.security_deposit} onChange={(e) => set('security_deposit', e.target.value)} />
-          </div>
-        </div>
-
-      </fieldset>
-      </section>
-
-      {/* Discount */}
-      <section className="rounded-2xl border border-[#071f52]/10 bg-white p-6">
-      <fieldset>
-        <legend className="mb-3 text-sm font-black tracking-[-0.02em] text-[#071f52]">Discount</legend>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className={labelClass}>Discount (₱)</label>
-            <input className={inputClass} type="number" min="0" step="0.01" value={form.discount} onChange={(e) => set('discount', e.target.value)} />
+            <div className="flex gap-2">
+              <input className={inputClass} type="number" min="0" step="0.01" value={form.security_deposit} onChange={(e) => set('security_deposit', e.target.value)} />
+              <select className={inputClass} value={form.security_deposit_type} onChange={(e) => set('security_deposit_type', e.target.value as 'fixed' | 'percent')}>
+                <option value="fixed">Fixed ₱</option>
+                <option value="percent">Percent %</option>
+              </select>
+            </div>
           </div>
         </div>
 

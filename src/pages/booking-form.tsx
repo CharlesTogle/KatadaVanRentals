@@ -398,6 +398,13 @@ export default function BookingForm() {
     endAt: endParam,
     basePricePerDay: bookingVehicle.base_price_per_day,
     driverRatePerDay: bookingVehicle.driver_rate_per_day,
+    carWashFee: bookingVehicle.car_wash_fee,
+    deliveryFee: bookingVehicle.delivery_fee,
+    securityDeposit: bookingVehicle.security_deposit,
+    securityDepositType: bookingVehicle.security_deposit_type,
+    excessRatePerHour: bookingVehicle.excess_rate_per_hour,
+    autoFullDayAfterHours: bookingVehicle.auto_full_day_after_hours,
+    twelveHourRate: bookingVehicle.twelve_hour_rate,
     routeQuote,
   })
   const requiresPayment = routeQuote?.inServiceArea !== false
@@ -755,6 +762,9 @@ export default function BookingForm() {
               days={pricing.days}
               basePricePerDay={bookingVehicle.base_price_per_day}
               driverRatePerDay={bookingVehicle.driver_rate_per_day}
+              carWashFee={pricing.carWash}
+              deliveryFee={pricing.delivery}
+              securityDeposit={pricing.securityDeposit}
               baseTotal={pricing.baseTotal}
               driverTotal={pricing.driverTotal}
               fuelEstimateAmount={pricing.fuelEstimateAmount}

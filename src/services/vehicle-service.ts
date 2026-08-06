@@ -29,7 +29,7 @@ function vehiclePayload(input: CreateVehicleInput) {
     car_wash_fee: input.car_wash_fee ?? 0,
     delivery_fee: input.delivery_fee ?? 0,
     security_deposit: input.security_deposit ?? 0,
-    discount: input.discount ?? 0,
+    security_deposit_type: input.security_deposit_type ?? 'fixed',
     km_per_liter: input.km_per_liter || null,
     supports_all_in: input.supports_all_in ?? true,
     supports_all_out: input.supports_all_out ?? true,

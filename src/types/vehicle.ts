@@ -19,7 +19,7 @@ export interface Vehicle {
   car_wash_fee: number
   delivery_fee: number
   security_deposit: number
-  discount: number
+  security_deposit_type: 'fixed' | 'percent'
   km_per_liter: number | null
   supports_all_in: boolean
   supports_all_out: boolean
@@ -65,7 +65,7 @@ export interface CreateVehicleInput {
   car_wash_fee?: number
   delivery_fee?: number
   security_deposit?: number
-  discount?: number
+  security_deposit_type?: 'fixed' | 'percent'
   km_per_liter?: number | null
   supports_all_in?: boolean
   supports_all_out?: boolean

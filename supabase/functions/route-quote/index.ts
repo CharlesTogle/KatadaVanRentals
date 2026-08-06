@@ -160,7 +160,7 @@ serve(async (req) => {
 
   const [vehicleRes, settingsRes] = await Promise.all([
     supabase.from('vehicles').select('km_per_liter').eq('id', body.vehicleId).single(),
-    supabase.from('app_settings').select('fuel_price_per_liter,km_per_liter_default').eq('id', true).maybeSingle(),
+    supabase.from('app_settings').select('fuel_price_per_liter').eq('id', true).maybeSingle(),
   ])
 
   if (vehicleRes.error) {
@@ -217,7 +217,10 @@ serve(async (req) => {
   const distanceKm = Math.round((Number(summary?.distance ?? 0) / 1000) * 100) / 100
   const durationMinutes = Math.round(Number(summary?.duration ?? 0) / 60)
 
-  const kmPerLiter = Number(vehicleRes.data?.km_per_liter || settingsRes.data?.km_per_liter_default || 8)
+  const kmPerLiter = Number(vehicleRes.data?.km_per_liter)
+  if (!Number.isFinite(kmPerLiter) || kmPerLiter <= 0) {
+    return json(req, { error: 'This vehicle has no valid fuel-efficiency setting.' }, 422)
+  }
   const fuelPricePerLiter = Number(settingsRes.data?.fuel_price_per_liter || DEFAULT_FUEL_PRICE_PER_LITER)
   const fuelEstimateLiters = body.rentalModel === 'all_in'
     ? Math.round((distanceKm / kmPerLiter) * 100) / 100

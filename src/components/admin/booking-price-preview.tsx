@@ -1,5 +1,6 @@
 import type { Vehicle } from '@/types/vehicle'
 import type { RouteQuoteResponse } from '@/types/location'
+import { calculateVehicleBookingPrice } from '@/lib/vehicle-pricing'
 
 interface BookingPricePreviewProps {
   vehicle: Vehicle | null
@@ -27,13 +28,26 @@ export function BookingPricePreview({ vehicle, rentalModel, startAt, endAt, rout
 
   const durationMs = endDate!.getTime() - startDate!.getTime()
   const durationDays = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60 * 24)))
-  const baseTotal = durationDays * vehicle!.base_price_per_day
-  const driverTotal = (rentalModel === 'all_in' || rentalModel === 'all_out')
-    ? durationDays * vehicle!.driver_rate_per_day
-    : 0
+  const vehiclePricing = calculateVehicleBookingPrice({
+    rentalType: rentalModel === 'all_in' ? 'all-in' : rentalModel === 'all_out' ? 'all-out' : 'self-drive',
+    mode: 'keep',
+    days: durationDays,
+    distanceKm: Number(routeQuote?.distanceKm ?? 0),
+    basePricePerDay: vehicle!.base_price_per_day,
+    driverRatePerDay: vehicle!.driver_rate_per_day,
+    carWashFee: vehicle!.car_wash_fee,
+    deliveryFee: vehicle!.delivery_fee,
+    securityDeposit: vehicle!.security_deposit,
+    securityDepositType: vehicle!.security_deposit_type,
+    excessRatePerHour: vehicle!.excess_rate_per_hour,
+    autoFullDayAfterHours: vehicle!.auto_full_day_after_hours,
+    twelveHourRate: vehicle!.twelve_hour_rate,
+  })
+  const baseTotal = vehiclePricing.baseTotal
+  const driverTotal = vehiclePricing.driverTotal
   const fuelTotal = rentalModel === 'all_in' ? Number(routeQuote?.fuelEstimateAmount ?? 0) : 0
   const tollTotal = rentalModel === 'all_in' ? Number(routeQuote?.tollEstimateAmount ?? 0) : 0
-  const total = baseTotal + driverTotal + fuelTotal + tollTotal
+  const total = vehiclePricing.total
 
   return (
     <div className="rounded-2xl border border-[#071f52]/10 bg-white p-5">
@@ -53,6 +67,9 @@ export function BookingPricePreview({ vehicle, rentalModel, startAt, endAt, rout
             <span className="font-bold">₱{driverTotal.toLocaleString()}.00</span>
           </div>
         )}
+        {vehiclePricing.carWash > 0 && <div className="flex justify-between"><span className="text-[#071f52]/66">Car Wash</span><span className="font-bold">₱{vehiclePricing.carWash.toLocaleString()}.00</span></div>}
+        {vehiclePricing.delivery > 0 && <div className="flex justify-between"><span className="text-[#071f52]/66">Self-Drive Delivery</span><span className="font-bold">₱{vehiclePricing.delivery.toLocaleString()}.00</span></div>}
+        {vehiclePricing.securityDeposit > 0 && <div className="flex justify-between"><span className="text-[#071f52]/66">Security Deposit</span><span className="font-bold">₱{vehiclePricing.securityDeposit.toLocaleString()}.00</span></div>}
         {fuelTotal > 0 && (
           <div className="flex justify-between">
             <span className="text-[#071f52]/66">Fuel Estimate</span>

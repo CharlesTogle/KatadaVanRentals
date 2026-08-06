@@ -7,6 +7,9 @@ interface PriceSummaryProps {
   days: number
   basePricePerDay: number
   driverRatePerDay: number
+  carWashFee?: number
+  deliveryFee?: number
+  securityDeposit?: number
   baseTotal: number
   driverTotal: number
   fuelEstimateAmount?: number
@@ -28,7 +31,7 @@ interface PriceSummaryProps {
   flaggedForManualPricing?: boolean
 }
 
-export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, driverRatePerDay, baseTotal, driverTotal, fuelEstimateAmount = 0, tollEstimateAmount = 0, tollMessage, distanceKm = 0, baseLoading = false, fuelLoading = false, tollLoading = false, grandTotal, deposit, remaining, submitting, disabled = false, disabledMessage, error, submitLabel = 'Submit Booking', footerNote = 'Your booking will be reviewed by our team before confirmation.', flaggedForManualPricing = false }: PriceSummaryProps) {
+export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, driverRatePerDay, carWashFee = 0, deliveryFee = 0, securityDeposit: securityDepositFee = 0, baseTotal, driverTotal, fuelEstimateAmount = 0, tollEstimateAmount = 0, tollMessage, distanceKm = 0, baseLoading = false, fuelLoading = false, tollLoading = false, grandTotal, deposit, remaining, submitting, disabled = false, disabledMessage, error, submitLabel = 'Submit Booking', footerNote = 'Your booking will be reviewed by our team before confirmation.', flaggedForManualPricing = false }: PriceSummaryProps) {
   const isDistanceMode = bookingMode === 'dropoff' && rentalType !== 'self-drive'
   const amount = (value: number, loading?: boolean) => loading
     ? <span className="font-bold text-[#071f52]/48">Computing...</span>
@@ -69,6 +72,8 @@ export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, d
             <span className="font-bold">₱{driverTotal.toLocaleString()}.00</span>
           </div>
         )}
+        {carWashFee > 0 && <div className="flex justify-between"><span className="text-[#071f52]/66">Car Wash</span><span className="font-bold">₱{carWashFee.toLocaleString()}.00</span></div>}
+        {deliveryFee > 0 && <div className="flex justify-between"><span className="text-[#071f52]/66">Self-Drive Delivery</span><span className="font-bold">₱{deliveryFee.toLocaleString()}.00</span></div>}
         {rentalType === 'all-in' && (
           <div className="flex justify-between">
             <span className="text-[#071f52]/66">Fuel Estimate</span>
@@ -89,12 +94,12 @@ export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, d
           <span className="font-black">Total</span>
           <span className="font-black">₱{grandTotal.toLocaleString()}.00</span>
         </div>
-        {deposit > 0 && (
+        {securityDepositFee > 0 && deposit > 0 && (
           <>
             <div className="flex justify-between text-base text-[#e92935]">
               <div className="max-w-[55%]">
-                <p>Security Deposit (10%)</p>
-                <p className="text-xs font-medium text-[#e92935]/72">10% of base fare, excluding fuel &amp; toll estimates — non-refundable</p>
+                <p>Security Deposit</p>
+                <p className="text-xs font-medium text-[#e92935]/72">Vehicle-configured deposit</p>
               </div>
               <span className="font-bold text-[#e92935]">− ₱{deposit.toLocaleString()}.00</span>
             </div>
