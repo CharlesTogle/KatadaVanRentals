@@ -463,7 +463,7 @@ export default function BookingDetail() {
         </div>
       ) : null}
 
-      {submitted ? (
+      {hasSubmittedFeedback ? (
         <div className="mt-4 rounded-lg border border-[#16a34a]/20 bg-[#16a34a]/8 p-4 text-center">
           <p className="text-xs font-bold text-[#16a34a] sm:text-sm">{BOOKING_MESSAGES.success.review_submitted}</p>
         </div>

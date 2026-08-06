@@ -252,7 +252,7 @@ describe('BookingForm', () => {
       error: null,
     })
 
-    renderBookingForm('/dashboard/book/vehicle-1?type=self-drive&start=2026-08-05T08:00:00.000Z&end=2026-08-06T08:00:00.000Z')
+    renderBookingForm('/dashboard/book/vehicle-1?type=self-drive&start=2030-08-05T08:00:00.000Z&end=2030-08-06T08:00:00.000Z')
 
     await waitFor(() => {
       expect(screen.getByLabelText(/Address Line 1/i)).toHaveValue('Unit 3A')
@@ -323,7 +323,7 @@ describe('BookingForm', () => {
       error: null,
     })
 
-    renderBookingForm('/dashboard/book/vehicle-1?type=all-in&start=2026-08-05T08:00:00.000Z&end=2026-08-06T08:00:00.000Z')
+    renderBookingForm('/dashboard/book/vehicle-1?type=all-in&start=2030-08-05T08:00:00.000Z&end=2030-08-06T08:00:00.000Z')
 
     await waitFor(() => {
       expect(functionsInvoke).toHaveBeenCalledWith('route-quote', expect.any(Object))

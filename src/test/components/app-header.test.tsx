@@ -14,6 +14,10 @@ vi.mock('@/hooks/use-profile', () => ({
   useProfile: () => useProfileMock(),
 }))
 
+vi.mock('@/hooks/use-app-settings', () => ({
+  useAppSettings: () => ({ data: undefined }),
+}))
+
 describe('AppHeader', () => {
   beforeEach(() => {
     useAuthMock.mockReset()
