@@ -17,7 +17,6 @@ interface PriceSummaryProps {
   driverTotal: number
   fuelEstimateAmount?: number
   tollEstimateAmount?: number
-  vatAmount?: number
   vatPercent?: number
   tollMessage?: string
   distanceKm?: number
@@ -99,7 +98,7 @@ export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, d
           <span className="font-black">Total</span>
           <span className="font-black">₱{grandTotal.toLocaleString()}.00</span>
         </div>
-        <p className="text-xs font-medium leading-5 text-[#071f52]/48">VAT{vatPercent > 0 ? ` (${vatPercent}%)` : ''} is calculated on the final total when the trip is completed.</p>
+        {vatPercent > 0 ? <p className="text-xs font-medium leading-5 text-[#071f52]/48">VAT ({vatPercent}%) will be calculated at trip completion{rentalType === 'all-in' ? ' after actual fuel and toll reconciliation' : ''}.</p> : null}
         {securityDepositFee > 0 && deposit > 0 && (
           <>
             <div className="flex justify-between text-base text-[#e92935]">

@@ -47,7 +47,6 @@ interface BookingPriceBreakdownInput {
   excessRatePerHour?: number
   autoFullDayAfterHours?: number
   twelveHourRate?: number | null
-  vatPercent?: number
   routeQuote?: RouteQuoteResponse | null
 }
 
@@ -77,7 +76,7 @@ export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, e
       : 0
 
   if (routeQuote?.inServiceArea === false) {
-    return { days, distanceKm: 0, baseTotal: 0, driverTotal: 0, fuelEstimateAmount: 0, tollEstimateAmount: 0, vatAmount: 0, grandTotal: 0, deposit: 0, remaining: 0 }
+    return { days, distanceKm: 0, baseTotal: 0, driverTotal: 0, fuelEstimateAmount: 0, tollEstimateAmount: 0, grandTotal: 0, deposit: 0, remaining: 0 }
   }
 
   const distanceKm = Number(routeQuote?.distanceKm ?? 0)
@@ -101,8 +100,8 @@ export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, e
   const driverTotal = vehiclePricing.driverTotal
   const fuelEstimateAmount = rentalType === 'all-in' ? Number(routeQuote?.fuelEstimateAmount ?? 0) : 0
   const tollEstimateAmount = rentalType === 'all-in' ? Number(routeQuote?.tollEstimateAmount ?? 0) : 0
-  const rentalTotal = Math.max(0, vehiclePricing.total - vehiclePricing.securityDeposit - vehiclePricing.overdue.amount)
   const taxableTotal = Math.max(0, vehiclePricing.total - vehiclePricing.securityDeposit)
+  const rentalTotal = Math.max(0, vehiclePricing.total - vehiclePricing.securityDeposit - vehiclePricing.overdue.amount)
   const deposit = securityDepositType === 'percent'
     ? Math.round(rentalTotal * securityDeposit) / 100
     : vehiclePricing.securityDeposit
@@ -117,7 +116,6 @@ export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, e
     driverTotal,
     fuelEstimateAmount,
     tollEstimateAmount,
-    vatAmount: 0,
     grandTotal,
     deposit,
     remaining,
