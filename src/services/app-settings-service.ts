@@ -11,7 +11,7 @@ export interface AppSettings {
   zip_code: string
   country: string
   tin_number: string
-  vat_percent: number
+  tax_mode: 'unregistered' | 'percentage_tax' | 'vat'
   booking_expiry_hours: number
   fuel_price_per_liter: number
 }

@@ -301,7 +301,7 @@ export async function getBookingInvoiceData(id: string): Promise<BookingInvoiceD
       .order('created_at', { ascending: true }),
     supabase
       .from('app_settings')
-      .select('business_name,support_email,support_phone,business_address,city,province,vat_percent')
+      .select('business_name,support_email,support_phone,business_address,city,province,tax_mode')
       .limit(1)
       .maybeSingle(),
   ])
@@ -334,7 +334,7 @@ export async function getBookingInvoiceData(id: string): Promise<BookingInvoiceD
       business_address: settingsRes.data?.business_address || DEFAULT_BUSINESS_SETTINGS.business_address,
       city: settingsRes.data?.city || DEFAULT_BUSINESS_SETTINGS.city,
       province: settingsRes.data?.province || DEFAULT_BUSINESS_SETTINGS.province,
-      vat_percent: settingsRes.data?.vat_percent ?? DEFAULT_BUSINESS_SETTINGS.vat_percent,
+      vat_percent: settingsRes.data?.tax_mode === 'vat' ? 12 : settingsRes.data?.tax_mode === 'percentage_tax' ? 3 : DEFAULT_BUSINESS_SETTINGS.vat_percent,
     },
   }
 }
@@ -531,7 +531,7 @@ export async function runAdminBookingAction(input: AdminBookingActionInput): Pro
         collected_amount: (params as { collectedAmount: number }).collectedAmount,
         payment_method_id: (params as { paymentMethodId?: string }).paymentMethodId ?? null,
         payment_channel: (params as { paymentChannel?: string }).paymentChannel ?? 'cash',
-        reference_number: (params as { referenceNumber?: string }).referenceNumber ?? null,
+        p_reference_number: (params as { referenceNumber?: string }).referenceNumber ?? null,
         receipt_path: (params as { receiptPath?: string }).receiptPath ?? null,
       },
     },
@@ -570,7 +570,7 @@ export async function runAdminBookingAction(input: AdminBookingActionInput): Pro
         collected_amount: (params as { collectedAmount: number }).collectedAmount,
         payment_method_id: (params as { paymentMethodId?: string }).paymentMethodId ?? null,
         payment_channel: (params as { paymentChannel?: string }).paymentChannel ?? 'cash',
-        reference_number: (params as { referenceNumber?: string }).referenceNumber ?? null,
+         p_reference_number: (params as { referenceNumber?: string }).referenceNumber ?? null,
         receipt_path: (params as { receiptPath?: string }).receiptPath ?? null,
         p_idempotency_key: (params as { idempotencyKey?: string }).idempotencyKey ?? null,
       },

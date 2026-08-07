@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from 'react'
+import { useState, useMemo, Fragment, useEffect } from 'react'
 import { subDays, format, parseISO, startOfDay } from 'date-fns'
 import {
   Chart as ChartJS,
@@ -17,6 +17,7 @@ import { Line } from 'react-chartjs-2'
 import { useRevenueReport } from '@/hooks/use-bookings'
 import type { SubmittedPaymentRow } from '@/services/booking-service'
 import { cn } from '@/lib/utils'
+import { supabase } from '@/lib/supabase'
 import { Download, Table, BarChart3, X, Check } from 'lucide-react'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Filler, Title, Tooltip, Legend)
@@ -204,6 +205,20 @@ export default function RevenueReport() {
   const [selectedFields, setSelectedFields] = useState<CsvField[]>([
     'date', 'booking_number', 'customer_name', 'vehicle', 'method', 'amount',
   ])
+  const [grossSales, setGrossSales] = useState(0)
+  const [taxMode, setTaxMode] = useState('unregistered')
+
+  useEffect(() => {
+    Promise.all([
+      supabase.from('annual_gross_sales').select('tax_year,gross_sales'),
+      supabase.from('app_settings').select('tax_mode').single(),
+    ]).then(([salesRes, settingsRes]) => {
+      const currentYear = String(new Date().getFullYear())
+      const current = salesRes.data?.find((row) => String(row.tax_year).startsWith(currentYear))
+      setGrossSales(Number(current?.gross_sales ?? 0))
+      setTaxMode(settingsRes.data?.tax_mode || 'unregistered')
+    })
+  }, [])
 
   const dateRange = useMemo(() => getPeriodRange(period, customFrom, customTo), [period, customFrom, customTo])
 
@@ -373,6 +388,13 @@ export default function RevenueReport() {
               className="rounded-lg border border-[#071f52]/12 bg-white px-2.5 py-1.5 text-xs font-medium text-[#071f52] outline-none focus:border-[#071f52]/32"
             />
           </div>
+        )}
+      </div>
+
+      <div className="mt-5 rounded-lg border border-[#071f52]/10 bg-white px-4 py-3 text-sm text-[#071f52]/72">
+        Gross sales this year: <strong className="text-[#071f52]">₱{grossSales.toLocaleString('en-PH', { maximumFractionDigits: 2 })}</strong> — Percentage Tax threshold ₱3,000,000.
+        {grossSales >= 3_000_000 && taxMode !== 'vat' && (
+          <p className="mt-1 font-semibold text-red-700">Threshold exceeded. Register for VAT with the BIR using Form 1905 within 10 days of the month exceeded under RR No. 11-2018.</p>
         )}
       </div>
 

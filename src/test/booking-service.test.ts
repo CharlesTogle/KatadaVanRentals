@@ -357,6 +357,27 @@ describe('booking-service', () => {
     })
   })
 
+  it('uses the deployed start-trip RPC parameter names', async () => {
+    await runAdminBookingAction({
+      type: 'start_trip',
+      bookingId: 'booking-1',
+      collectedAmount: 7000,
+      paymentMethodId: 'pm-1',
+      paymentChannel: 'bank_transfer',
+      referenceNumber: 'TRIP-123',
+      receiptPath: 'booking-1/receipt.pdf',
+    })
+
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_start_trip', {
+      target_booking_id: 'booking-1',
+      collected_amount: 7000,
+      payment_method_id: 'pm-1',
+      payment_channel: 'bank_transfer',
+      p_reference_number: 'TRIP-123',
+      receipt_path: 'booking-1/receipt.pdf',
+    })
+  })
+
   it('passes payment fields when recording a payment after completion', async () => {
     await runAdminBookingAction({
       type: 'make_payment',
@@ -373,7 +394,7 @@ describe('booking-service', () => {
       collected_amount: 1500,
       payment_method_id: 'pm-1',
       payment_channel: 'bank_transfer',
-      reference_number: 'BAL-123',
+      p_reference_number: 'BAL-123',
       receipt_path: 'booking-1/balance.pdf',
       p_idempotency_key: null,
     })

@@ -251,15 +251,21 @@ export function SettingsPasswordForm({ saving, setSaving, showMessage }: Omit<Se
 export function SettingsAdditionalForm({ saving, setSaving, showMessage }: Omit<SettingsFormProps, 'user'>) {
   const [fuelPrice, setFuelPrice] = useState('0')
   const [fuelPriceLastUpdated, setFuelPriceLastUpdated] = useState('')
-  const [vatPercent, setVatPercent] = useState('0')
+  const [taxMode, setTaxMode] = useState('percentage_tax')
+  const [grossSales, setGrossSales] = useState(0)
 
   useEffect(() => {
-    supabase.from('app_settings').select('fuel_price_per_liter,fuel_price_last_updated,vat_percent').single().then(({ data }) => {
+    supabase.from('app_settings').select('fuel_price_per_liter,fuel_price_last_updated,tax_mode').single().then(({ data }) => {
       if (data) {
         setFuelPrice(String(data.fuel_price_per_liter ?? 0))
         setFuelPriceLastUpdated(data.fuel_price_last_updated || '')
-        setVatPercent(String(data.vat_percent ?? 0))
+        setTaxMode(data.tax_mode || 'unregistered')
       }
+    })
+    const currentYear = String(new Date().getFullYear())
+    supabase.from('annual_gross_sales').select('tax_year,gross_sales').then(({ data }) => {
+      const current = data?.find((row) => String(row.tax_year).startsWith(currentYear))
+      setGrossSales(Number(current?.gross_sales ?? 0))
     })
   }, [])
 
@@ -273,9 +279,8 @@ export function SettingsAdditionalForm({ saving, setSaving, showMessage }: Omit<
         setSaving(false)
         return
       }
-      const vat = Number(vatPercent)
-      if (!Number.isFinite(vat) || vat < 0 || vat > 100) {
-        showMessage('Enter a VAT percentage from 0 to 100.', 'error')
+      if (!['unregistered', 'percentage_tax', 'vat'].includes(taxMode)) {
+        showMessage('Select a valid tax mode.', 'error')
         setSaving(false)
         return
       }
@@ -284,7 +289,7 @@ export function SettingsAdditionalForm({ saving, setSaving, showMessage }: Omit<
         id: true,
         fuel_price_per_liter: value,
         fuel_price_last_updated: updatedAt,
-        vat_percent: vat,
+        tax_mode: taxMode,
       })
       if (error) showMessage(showError(error), 'error')
       else {
@@ -303,9 +308,25 @@ export function SettingsAdditionalForm({ saving, setSaving, showMessage }: Omit<
         <p className={sectionDescClass}>Last updated: {fuelPriceLastUpdated || 'Not set'}</p>
       </div>
       <div className="max-w-sm space-y-1.5">
-        <label className={labelClass}>VAT (%)</label>
-        <input className={inputClass} type="number" min="0" max="100" step="0.01" value={vatPercent} onChange={(e) => setVatPercent(e.target.value)} />
-        <p className={sectionDescClass}>Applied to new booking prices when greater than 0.</p>
+        <label htmlFor="tax-mode" className={labelClass}>Tax Registration</label>
+        <select id="tax-mode" className={inputClass} value={taxMode} onChange={(e) => setTaxMode(e.target.value)}>
+          <option value="vat">VAT — 12%</option>
+          <option value="percentage_tax">Percentage Tax — 3%</option>
+          <option value="unregistered">Not yet registered</option>
+        </select>
+        <p className={sectionDescClass}>
+          {taxMode === 'vat'
+            ? 'Requires BIR VAT registration and issuing VAT invoices.'
+            : taxMode === 'percentage_tax'
+              ? 'For gross sales of ₱3M or less per year.'
+              : 'No tax is added until registration.'}
+        </p>
+        <p className={sectionDescClass}>
+          Gross sales this year: ₱{grossSales.toLocaleString('en-PH', { maximumFractionDigits: 2 })} — Percentage Tax threshold ₱3,000,000.
+        </p>
+        {grossSales >= 3_000_000 && taxMode !== 'vat' && (
+          <p className="text-sm font-semibold text-red-700">Threshold exceeded. Register for VAT with the BIR using Form 1905 within 10 days of the month exceeded under RR No. 11-2018.</p>
+        )}
       </div>
       <Button type="submit" disabled={saving} className="bg-[#071f52] text-white hover:bg-[#112458]">
         {saving ? 'Saving...' : 'Save Additional Settings'}

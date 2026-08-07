@@ -8,10 +8,10 @@ export function useVatPercent() {
     try {
       supabase
         .from('app_settings')
-        .select('vat_percent')
+        .select('tax_mode')
         .single()
         .then(
-          ({ data }) => setVatPercent(Math.max(0, Number(data?.vat_percent ?? 0))),
+          ({ data }) => setVatPercent(data?.tax_mode === 'vat' ? 12 : data?.tax_mode === 'percentage_tax' ? 3 : 0),
           () => undefined,
         )
     } catch {
