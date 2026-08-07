@@ -10,7 +10,7 @@ import { Upload, FileText, ShieldCheck, CheckCircle2, ArrowLeft } from 'lucide-r
 
 const requiredDocs = [
   { key: 'driver_license', label: "Driver's License", accept: 'Passport, SSS ID, PhilHealth, Postal ID, Voter\'s ID' },
-  { key: 'valid_id', label: 'Other Valid ID', accept: 'Passport, SSS ID, PhilHealth, Postal ID, Voter\'s ID, etc.' },
+  { key: 'valid_id', label: 'Valid ID', accept: 'Passport, SSS ID, PhilHealth, Postal ID, Voter\'s ID, etc.' },
   { key: 'proof_of_billing', label: 'Proof of Billing', accept: 'Electricity, water, internet, or phone bill (within 3 months)' },
 ]
 

@@ -66,7 +66,7 @@ describe('Documents', () => {
     renderDocuments()
 
     expect(screen.getByText("Driver's License")).toBeInTheDocument()
-    expect(screen.getByText('Other Valid ID')).toBeInTheDocument()
+    expect(screen.getByText('Valid ID')).toBeInTheDocument()
     expect(screen.getByText('Proof of Billing')).toBeInTheDocument()
   })
 

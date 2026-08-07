@@ -14,7 +14,7 @@ import type { CustomerDocument, DocumentType } from '@/types/document'
 
 const requiredDocs = [
   { key: 'driver_license' as DocumentType, label: "Driver's License" },
-  { key: 'valid_id' as DocumentType, label: 'Other Valid ID' },
+  { key: 'valid_id' as DocumentType, label: 'Valid ID' },
   { key: 'proof_of_billing' as DocumentType, label: 'Proof of Billing' },
 ]
 

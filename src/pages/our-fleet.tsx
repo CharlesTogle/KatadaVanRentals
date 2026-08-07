@@ -302,5 +302,5 @@ export default function OurFleet() {
     </div>
   )
 
-  return inCustomerShell ? <CustomerShellFrame>{content}</CustomerShellFrame> : <div className="min-h-[100dvh] bg-[#f7f9ff]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}><AppHeader />{content}</div>
+  return inCustomerShell ? <CustomerShellFrame>{content}</CustomerShellFrame> : <div className="min-h-[100dvh] bg-[#f7f9ff]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}><AppHeader /><div className="mx-auto max-w-[1180px]">{content}</div></div>
 }

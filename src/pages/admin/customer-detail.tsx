@@ -16,7 +16,7 @@ function formatDate(iso: string | null) {
 
 const DOC_LABELS: Record<string, string> = {
   driver_license: "Driver's License",
-  valid_id: 'Other Valid ID',
+  valid_id: 'Valid ID',
   proof_of_billing: 'Proof of Billing',
 }
 
