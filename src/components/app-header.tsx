@@ -78,9 +78,9 @@ export function AppHeader({ onMenuClick, mobileMenuOpen = false }: AppHeaderProp
   return (
     <header className="sticky top-0 z-50 border-b border-[#071f52]/10 bg-white/92 backdrop-blur-md">
       <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6">
-        <Link to="/" className="flex min-w-0 items-center gap-3">
-          <img src={settings?.logo_url || '/logo.jpg'} alt={settings?.business_name || 'Katada Transportation Services'} className="h-10 w-10 rounded-2xl object-cover ring-1 ring-[#071f52]/10" />
-          <span className="max-w-[170px] text-sm font-extrabold leading-tight tracking-[-0.02em] text-[#071f52] sm:max-w-none sm:text-base">
+        <Link to="/" className="flex min-w-0 flex-1 items-center gap-3 md:flex-none">
+          <img src={settings?.logo_url || '/logo.jpg'} alt={settings?.business_name || 'Katada Transportation Services'} className="h-10 w-10 shrink-0 rounded-2xl object-cover ring-1 ring-[#071f52]/10" />
+          <span className="min-w-0 truncate text-sm font-extrabold leading-tight tracking-[-0.02em] text-[#071f52] sm:text-base">
             {settings?.business_name || 'Katada Van Rentals'}
           </span>
         </Link>
