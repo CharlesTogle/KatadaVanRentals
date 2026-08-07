@@ -265,7 +265,7 @@ function Field({ field, values, invalid, onChange, wide, optional }: { field: { 
 }
 
 function ChoiceStep({ onBack, onChoose }: { onBack: () => void; onChoose: (answer: boolean) => void }) {
-  return <div><StepHeading title="What kind of trip are you planning?" description="Choose whether you want to drive the van yourself." /><div className="mt-6 space-y-3"><ChoiceButton icon={<Compass size={19} />} label="No, I need a driver" onClick={() => onChoose(false)} /><ChoiceButton icon={<MapPin size={19} />} label="Yes! I'm looking to self drive" onClick={() => onChoose(true)} /></div><button type="button" onClick={onBack} className="mt-5 inline-flex items-center gap-2 text-xs font-bold text-[#071f52]/58 hover:text-[#e92935]"><ArrowLeft size={14} /> Back</button></div>
+  return <div><StepHeading title="What kind of trip are you planning?" description="Choose whether you want to drive the van yourself." /><div className="mt-6 space-y-3"><ChoiceButton icon={<Compass size={19} />} label="I need a driver" onClick={() => onChoose(false)} /><ChoiceButton icon={<MapPin size={19} />} label="I'm looking to self drive" onClick={() => onChoose(true)} /></div><button type="button" onClick={onBack} className="mt-5 inline-flex items-center gap-2 text-xs font-bold text-[#071f52]/58 hover:text-[#e92935]"><ArrowLeft size={14} /> Back</button></div>
 }
 
 function ChoiceButton({ icon, label, onClick }: { icon: ReactNode; label: string; onClick: () => void }) {
