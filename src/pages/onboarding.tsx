@@ -277,7 +277,7 @@ function DocumentsStep({ documentsByType, loading, uploading, fileInputRef, onUp
 }
 
 function CompletionStep({ completing, onDashboard }: { completing: boolean; onDashboard: () => void }) {
-  return <div className="py-6 text-center sm:py-10"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#ffd923] text-[#071f52]"><CheckCircle2 size={32} /></div><h1 className="mt-6 text-3xl font-black tracking-[-0.04em] text-[#071f52]">Welcome to Katada Van Rentals!!</h1><p className="mx-auto mt-3 max-w-md text-sm font-medium leading-6 text-[#071f52]/58">Your onboarding is complete. You can now explore available vans and manage your bookings.</p><Button type="button" onClick={onDashboard} disabled={completing} className="mt-7 w-full bg-[#e92935] text-white hover:bg-[#c91f2a]" size="lg">{completing ? 'Opening dashboard...' : 'Go to dashboard'}</Button></div>
+  return <div className="py-6 text-center sm:py-10"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#ffd923] text-[#16a34a]"><CheckCircle2 size={32} /></div><h1 className="mt-6 text-3xl font-black tracking-[-0.04em] text-[#071f52]">Welcome to Katada Van Rentals!!</h1><p className="mx-auto mt-3 max-w-md text-sm font-medium leading-6 text-[#071f52]/58">Your onboarding is complete. You can now explore available vans and manage your bookings.</p><Button type="button" onClick={onDashboard} disabled={completing} className="mt-7 w-full bg-[#e92935] text-white hover:bg-[#c91f2a]" size="lg">{completing ? 'Opening dashboard...' : 'Go to dashboard'}</Button></div>
 }
 
 function StepHeading({ title, description }: { title: string; description: string }) {
