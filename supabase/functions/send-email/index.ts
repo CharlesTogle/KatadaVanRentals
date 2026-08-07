@@ -118,6 +118,9 @@ serve(async (req) => {
     headers: {
       'Authorization': `Bearer ${RESEND_API_KEY}`,
       'Content-Type': 'application/json',
+      ...(isBatch && typeof body.idempotencyKey === 'string'
+        ? { 'Idempotency-Key': body.idempotencyKey }
+        : {}),
     },
     body: JSON.stringify(batchEmails || {
       from: (body.from as string) || `${SENDER_NAME} <${SENDER_EMAIL}>`,

@@ -326,7 +326,7 @@ describe('AdminBookingDetail', () => {
         },
         customer: mockCustomer,
         vehicle: mockVehicle,
-        payments: [{ id: 'payment-1', channel: 'bank_transfer', status: 'verified', amount: 1100, reference_number: 'REF-1', receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+         payments: [{ id: 'payment-1', channel: 'bank_transfer', status: 'submitted', amount: 1100, reference_number: 'REF-1', receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
         requested_document_types: [],
         documents: [],
         status_events: [{ id: 'event-adjusted', from_status: null, to_status: 'pending_price_approval', note: 'Price adjusted to 10000. Reason: Out-of-city surcharge', created_at: '2026-07-23T10:30:00Z' }],
@@ -356,7 +356,7 @@ describe('AdminBookingDetail', () => {
         },
         customer: mockCustomer,
         vehicle: mockVehicle,
-        payments: [{ id: 'payment-1', channel: 'bank_transfer', status: 'verified', amount: 1100, reference_number: 'REF-1', receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+         payments: [{ id: 'payment-1', channel: 'bank_transfer', status: 'submitted', amount: 1100, reference_number: 'REF-1', receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
         requested_document_types: [],
         documents: [],
         status_events: [{ id: 'event-adjusted', from_status: null, to_status: 'on_trip', note: 'Price adjusted to 10000. Reason: Out-of-city surcharge', created_at: '2026-07-23T10:30:00Z' }],
@@ -373,7 +373,7 @@ describe('AdminBookingDetail', () => {
     expect(screen.getByText('Extension Charge (1 day)')).toBeInTheDocument()
     expect(screen.getByText('Payment Made')).toBeInTheDocument()
     expect(screen.getAllByText('+₱1,500.00').length).toBeGreaterThan(0)
-    expect(screen.getByText('₱10,400.00')).toBeInTheDocument()
+    expect(screen.getAllByText('₱11,500.00').length).toBeGreaterThan(0)
   })
 
   it('shows the reconstructed total when adjustments and extensions outpace the stored booking total', () => {
@@ -402,11 +402,11 @@ describe('AdminBookingDetail', () => {
 
     renderDetail()
 
-    expect(screen.getAllByText('₱42,500.00').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('₱23,000.00').length).toBeGreaterThan(0)
     expect(screen.getByText('Price Adjustment')).toBeInTheDocument()
     expect(screen.getByText('Extension Charge (9 days)')).toBeInTheDocument()
-    expect(screen.queryByText('Payment Made')).not.toBeInTheDocument()
-    expect(screen.getByText('₱40,200.00')).toBeInTheDocument()
+    expect(screen.getByText('Payment Made')).toBeInTheDocument()
+    expect(screen.getByText('₱23,700.00')).toBeInTheDocument()
   })
 
   it('confirms a for review booking from the modal', async () => {
@@ -669,10 +669,10 @@ describe('AdminBookingDetail', () => {
   it('shows make a payment for completed bookings with remaining balance', async () => {
     useAdminBooking.mockReturnValue({
       data: {
-        booking: { ...mockBooking, status: 'completed', remaining_amount: 1500 },
+          booking: { ...mockBooking, status: 'completed', remaining_amount: 1500 },
         customer: mockCustomer,
         vehicle: mockVehicle,
-        payments: [{ id: 'payment-1', channel: 'cash', status: 'verified', amount: 7500, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+          payments: [{ id: 'payment-1', channel: 'cash', status: 'submitted', amount: 7500, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
         requested_document_types: [],
         documents: [],
         status_events: [],
@@ -696,7 +696,7 @@ describe('AdminBookingDetail', () => {
         booking: { ...mockBooking, status: 'completed', remaining_amount: 0 },
         customer: mockCustomer,
         vehicle: mockVehicle,
-        payments: [{ id: 'payment-1', channel: 'cash', status: 'verified', amount: 9000, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+          payments: [{ id: 'payment-1', channel: 'cash', status: 'submitted', amount: 9000, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
         requested_document_types: [],
         documents: [],
         status_events: [],
@@ -714,13 +714,13 @@ describe('AdminBookingDetail', () => {
     })
   })
 
-  it('hides make a payment when displayed remaining balance is zero even if booking.remaining_amount is stale', async () => {
+  it('hides make a payment when the canonical remaining balance is zero', async () => {
     useAdminBooking.mockReturnValue({
       data: {
-        booking: { ...mockBooking, status: 'completed', remaining_amount: 1500 },
+        booking: { ...mockBooking, status: 'completed', remaining_amount: 0 },
         customer: mockCustomer,
         vehicle: mockVehicle,
-        payments: [{ id: 'payment-1', channel: 'cash', status: 'verified', amount: 9000, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+          payments: [{ id: 'payment-1', channel: 'cash', status: 'submitted', amount: 9000, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
         requested_document_types: [],
         documents: [],
         status_events: [],
@@ -745,7 +745,7 @@ describe('AdminBookingDetail', () => {
         booking: { ...mockBooking, status: 'completed', remaining_amount: 1500 },
         customer: mockCustomer,
         vehicle: mockVehicle,
-        payments: [{ id: 'payment-1', channel: 'cash', status: 'verified', amount: 7500, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+          payments: [{ id: 'payment-1', channel: 'cash', status: 'submitted', amount: 7500, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
         requested_document_types: [],
         documents: [],
         status_events: [],
@@ -768,7 +768,7 @@ describe('AdminBookingDetail', () => {
 
     await waitFor(() => {
       expect(upload).toHaveBeenCalled()
-      expect(mutateAsync).toHaveBeenCalledWith({ type: 'make_payment', bookingId: 'booking-1', collectedAmount: 1500, paymentMethodId: 'pm-1', paymentChannel: 'bank_transfer', referenceNumber: 'BAL-123', receiptPath: expect.stringMatching(/^booking-1\/\d+\.pdf$/) })
+       expect(mutateAsync).toHaveBeenCalledWith({ type: 'make_payment', bookingId: 'booking-1', collectedAmount: 1500, paymentMethodId: 'pm-1', paymentChannel: 'bank_transfer', referenceNumber: 'BAL-123', receiptPath: expect.stringMatching(/^booking-1\/\d+\.pdf$/), idempotencyKey: expect.any(String) })
     })
   })
 

@@ -100,7 +100,7 @@ serve(async (req) => {
     return json(req, { error: 'Invalid request body' }, 400)
   }
 
-  const { customerMode, existingCustomerId, newCustomer, vehicleId, rentalModel, bookingMode, startAt, endAt, pickupLocation, dropoffLocation, destination, purposeOfTravel, notes, pickupLat, pickupLng, dropoffLat, dropoffLng, distanceKm, durationMinutes, fuelEstimateLiters, fuelEstimateAmount, tollEstimateAmount, tollSegments, tollEntryPlaza, tollEntryExpressway, tollExitPlaza, tollExitExpressway, tollVehicleClass, tollRfidBreakdown, selfDriveAddress, inServiceArea, flaggedForManualPricing } = body as {
+  const { customerMode, existingCustomerId, newCustomer, vehicleId, rentalModel, bookingMode, startAt, endAt, pickupLocation, dropoffLocation, destination, purposeOfTravel, notes, pickupLat, pickupLng, dropoffLat, dropoffLng, distanceKm, durationMinutes, fuelEstimateLiters, fuelEstimateAmount, tollEstimateAmount, tollSegments, tollEntryPlaza, tollEntryExpressway, tollExitPlaza, tollExitExpressway, tollVehicleClass, tollRfidBreakdown, selfDriveAddress, inServiceArea, flaggedForManualPricing, bookingIdempotencyKey, paymentIdempotencyKey, paymentMethodId, paymentReference, paymentReceiptPath, paymentChannel } = body as {
     customerMode: string
     existingCustomerId?: string
     newCustomer?: { firstName: string; lastName: string; email: string; mobile?: string; sendInvite: boolean }
@@ -133,6 +133,12 @@ serve(async (req) => {
     selfDriveAddress?: Record<string, unknown>
     inServiceArea?: boolean
     flaggedForManualPricing?: boolean
+    bookingIdempotencyKey: string
+    paymentIdempotencyKey: string
+    paymentMethodId?: string | null
+    paymentReference?: string | null
+    paymentReceiptPath?: string | null
+    paymentChannel?: string
   }
 
   // Validate
@@ -150,6 +156,9 @@ serve(async (req) => {
   }
   if (!['self_drive', 'all_out', 'all_in'].includes(rentalModel)) {
     return json(req, { error: 'Invalid rental model' }, 400)
+  }
+  if (!bookingIdempotencyKey || !paymentIdempotencyKey) {
+    return json(req, { error: 'Booking and payment idempotency keys are required' }, 400)
   }
   if (!bookingMode || !['dropoff', 'keep'].includes(bookingMode)) {
     return json(req, { error: 'Invalid booking mode' }, 400)
@@ -182,72 +191,7 @@ serve(async (req) => {
     return json(req, { error: 'End date must be after start date' }, 400)
   }
 
-  let customerId: string
-
-  // Resolve or create customer
-  if (customerMode === 'existing') {
-    customerId = existingCustomerId!
-    const { data: existing } = await supabase.from('profiles').select('id').eq('id', customerId).single()
-    if (!existing) {
-      return json(req, { error: 'Customer not found' }, 400)
-    }
-  } else {
-    // Create new user
-    const { data: createdUser, error: createUserError } = await supabase.auth.admin.createUser({
-      email: newCustomer!.email,
-      email_confirm: true,
-      user_metadata: {
-        first_name: newCustomer!.firstName,
-        last_name: newCustomer!.lastName,
-        full_name: `${newCustomer!.firstName} ${newCustomer!.lastName}`.trim(),
-      },
-    })
-
-    if (createUserError) {
-      log('ERROR', 'Failed to create user', { error: createUserError.message })
-      return json(req, { error: createUserError.message.includes('already registered')
-        ? 'A user with this email already exists'
-        : 'Failed to create customer account' }, 400)
-    }
-
-    customerId = createdUser.user.id
-
-    // Update profile with mobile if provided
-    if (newCustomer!.mobile) {
-      await supabase.from('profiles').update({ mobile: newCustomer!.mobile }).eq('id', customerId)
-    }
-
-    // Send invite email if requested
-    if (newCustomer!.sendInvite) {
-      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-        type: 'recovery',
-        email: newCustomer!.email,
-        options: { redirectTo: `${SITE_URL}/login` },
-      })
-
-      if (!linkError && linkData?.properties?.action_link) {
-        const inviteUrl = linkData.properties.action_link
-        const emailHtml = `
-          <div style="font-family: 'Plus Jakarta Sans', sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 24px;">
-            <h1 style="font-size: 22px; font-weight: 900; color: #071f52; margin: 0 0 8px;">Welcome to ${SENDER_NAME}</h1>
-            <p style="font-size: 14px; color: #071f52; opacity: 0.6; margin: 0 0 24px;">Your account has been created by an administrator.</p>
-            <p style="font-size: 14px; color: #071f52; margin: 0 0 16px;">Click the button below to set your password and access your account:</p>
-            <a href="${inviteUrl}" style="display: inline-block; background: #071f52; color: white; padding: 12px 28px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 14px;">Set your password</a>
-            <p style="font-size: 12px; color: #071f52; opacity: 0.38; margin: 32px 0 0;">If you didn't expect this email, you can safely ignore it.</p>
-          </div>`
-
-        await supabase.functions.invoke('send-email', {
-          body: {
-            to: newCustomer!.email,
-            subject: `Set your ${SENDER_NAME} password`,
-            html: emailHtml,
-          },
-        })
-      }
-    }
-  }
-
-  // Check vehicle availability — no overlapping live bookings
+  // Check availability before creating a customer account.
   const overlapEndAt = normalizedEndAt ?? new Date(new Date(startAt).getTime() + 24 * 60 * 60 * 1000).toISOString()
   const { data: overlapping } = await supabase
     .from('bookings')
@@ -264,13 +208,45 @@ serve(async (req) => {
     }, 409)
   }
 
-  // Insert booking — trigger computes prices
+  let customerId: string | null = null
+  let newlyCreatedCustomerId: string | null = null
+
+  // Resolve or create customer
+  if (customerMode === 'existing') {
+    customerId = existingCustomerId!
+    const { data: existing } = await supabase.from('profiles').select('id').eq('id', customerId).single()
+    if (!existing) {
+      return json(req, { error: 'Customer not found' }, 400)
+    }
+  }
+
+  if (customerMode === 'new') {
+    const { data: existingProfile } = await supabase.from('profiles').select('id').eq('email', newCustomer!.email).maybeSingle()
+    if (existingProfile) {
+      customerId = existingProfile.id
+    } else {
+      const { data: createdUser, error: createUserError } = await supabase.auth.admin.createUser({
+        email: newCustomer!.email,
+        email_confirm: true,
+        user_metadata: { first_name: newCustomer!.firstName, last_name: newCustomer!.lastName, full_name: `${newCustomer!.firstName} ${newCustomer!.lastName}`.trim() },
+      })
+      if (createUserError) return json(req, { error: 'Failed to create customer account' }, 500)
+      customerId = createdUser.user.id
+      newlyCreatedCustomerId = customerId
+      if (newCustomer!.mobile) await supabase.from('profiles').update({ mobile: newCustomer!.mobile }).eq('id', customerId)
+    }
+  }
+
+  // Insert booking and its mandatory payment in one database transaction.
   const durationDays = computeDurationDays(startAt, normalizedEndAt)
-  const { data: booking, error: bookingError } = await supabase
-    .from('bookings')
-    .insert({
+  const { data: booking, error: bookingError } = await supabase.rpc('admin_create_booking_with_payment', {
+    p_customer_id: customerId,
+    p_actor_id: user.id,
+    p_booking: {
       booking_number: generateBookingNumber(),
-      customer_id: customerId,
+      guest_name: customerMode === 'new' ? `${newCustomer!.firstName} ${newCustomer!.lastName}`.trim() : null,
+      guest_email: customerMode === 'new' ? newCustomer!.email : null,
+      guest_mobile: customerMode === 'new' ? newCustomer!.mobile || null : null,
       vehicle_id: vehicleId,
       rental_model: rentalModel,
       booking_mode: bookingMode,
@@ -303,13 +279,40 @@ serve(async (req) => {
       in_service_area: inServiceArea ?? true,
       flagged_for_manual_pricing: flaggedForManualPricing ?? false,
       created_by: user.id,
-    })
-    .select('id, booking_number, customer_id, total_amount, deposit_amount, remaining_amount, price_line_items')
-    .single()
+      idempotency_key: bookingIdempotencyKey,
+    },
+    p_payment: {
+      idempotency_key: paymentIdempotencyKey,
+      payment_method_id: paymentMethodId ?? null,
+      channel: paymentChannel ?? 'cash',
+      reference_number: paymentReference ?? null,
+      receipt_path: paymentReceiptPath ?? null,
+    },
+  })
 
   if (bookingError) {
+    if (newlyCreatedCustomerId) await supabase.auth.admin.deleteUser(newlyCreatedCustomerId)
     log('ERROR', 'Failed to create booking', { error: bookingError.message })
     return json(req, { error: 'Failed to create booking' }, 500)
+  }
+
+  if (newCustomer?.sendInvite && customerId) {
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email: newCustomer!.email,
+      options: { redirectTo: `${SITE_URL}/login` },
+    })
+
+    if (!linkError && linkData?.properties?.action_link) {
+      const inviteUrl = linkData.properties.action_link
+      await supabase.functions.invoke('send-email', {
+        body: {
+          to: newCustomer!.email,
+          subject: `Set your ${SENDER_NAME} password`,
+          html: `<div style="font-family: 'Plus Jakarta Sans', sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 24px;"><h1 style="font-size: 22px; font-weight: 900; color: #071f52; margin: 0 0 8px;">Welcome to ${SENDER_NAME}</h1><p style="font-size: 14px; color: #071f52; margin: 0 0 16px;">Set your password to access your account:</p><a href="${inviteUrl}" style="display: inline-block; background: #071f52; color: white; padding: 12px 28px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 14px;">Set your password</a></div>`,
+        },
+      })
+    }
   }
 
   // Send booking confirmation email to customer

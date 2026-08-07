@@ -23,6 +23,38 @@ export function useAdminFeedback() {
   })
 }
 
+export function useSetFeedbackHomepageVisibility() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, displayOnHomepage }: { id: string; displayOnHomepage: boolean }) =>
+      bookingService.setFeedbackHomepageVisibility(id, displayOnHomepage),
+    onMutate: async ({ id, displayOnHomepage }) => {
+      await queryClient.cancelQueries({ queryKey: ['admin', 'feedback'] })
+      const previousFeedback = queryClient.getQueryData<bookingService.AdminFeedbackRow[]>(['admin', 'feedback'])
+
+      queryClient.setQueryData<bookingService.AdminFeedbackRow[]>(['admin', 'feedback'], (current) =>
+        current?.map((entry) => entry.id === id ? { ...entry, display_on_homepage: displayOnHomepage } : entry),
+      )
+
+      return { previousFeedback }
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousFeedback) {
+        queryClient.setQueryData(['admin', 'feedback'], context.previousFeedback)
+      }
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['admin', 'feedback'] }),
+  })
+}
+
+export function useHomepageTestimonials() {
+  return useQuery({
+    queryKey: ['homepage', 'testimonials'],
+    queryFn: bookingService.getHomepageTestimonials,
+  })
+}
+
 export function useMyBookings(status?: string) {
   return useQuery({
     queryKey: ['customer', 'bookings', status],

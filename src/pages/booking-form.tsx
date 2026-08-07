@@ -21,6 +21,22 @@ import { queryClient } from '@/lib/query'
 import { useBookingStore } from '@/store/booking-store'
 import { useVatPercent } from '@/hooks/use-vat-percent'
 
+function getPersistentIdempotencyKeys(storageKey: string) {
+  const stored = localStorage.getItem(storageKey)
+  if (stored) {
+    try {
+      const keys = JSON.parse(stored) as { booking: string; payment: string }
+      if (keys.booking && keys.payment) return keys
+    } catch {
+      localStorage.removeItem(storageKey)
+    }
+  }
+
+  const keys = { booking: crypto.randomUUID(), payment: crypto.randomUUID() }
+  localStorage.setItem(storageKey, JSON.stringify(keys))
+  return keys
+}
+
 function generateBookingNumber(): string {
   const now = new Date()
   const y = now.getFullYear().toString().slice(-2)
@@ -143,6 +159,8 @@ export default function BookingForm() {
   const [tollError, setTollError] = useState('')
   const [completeAddress, setCompleteAddress] = useState<SelfDriveAddress>(emptySelfDriveAddress)
   const [completeAddressEdited, setCompleteAddressEdited] = useState(false)
+  const idempotencyStorageKey = `katada:booking:${user?.id || 'guest'}:${vehicleId || ''}:${startParam}:${endParam}:${rentalType}:${mode}`
+  const [idempotencyKeys] = useState(() => getPersistentIdempotencyKeys(idempotencyStorageKey))
 
   const vehicleQuery = useVehicleById(vehicleId)
   const profileQuery = useProfile(user?.id)
@@ -499,12 +517,26 @@ export default function BookingForm() {
     setError('')
 
     const rentalModel = toBookingRentalModel(rentalType)
-    const idempotencyKey = crypto.randomUUID()
+    const idempotencyKey = idempotencyKeys.booking
+    const paymentIdempotencyKey = idempotencyKeys.payment
     const bookingNotes = notes || null
     const selfDriveAddress = rentalType === 'self-drive' ? completeAddress : null
 
+    let receiptPath: string | null = null
+    if (requiresPayment && receiptFile) {
+      receiptPath = `${user.id}/${paymentIdempotencyKey}`
+      const { error: uploadError } = await supabase.storage
+        .from('payment-receipts')
+        .upload(receiptPath, receiptFile, { upsert: true })
+      if (uploadError) {
+        setError('Receipt upload failed. Please try again.')
+        setSubmitting(false)
+        return
+      }
+    }
+
     const { data: booking, error: bookingError } = await supabase.rpc(
-      'create_booking',
+      'create_booking_with_payment',
       {
         p_booking_number: generateBookingNumber(),
         p_vehicle_id: bookingVehicle.id,
@@ -538,40 +570,19 @@ export default function BookingForm() {
         p_self_drive_address: selfDriveAddress,
         p_in_service_area: routeQuote?.inServiceArea ?? true,
         p_flagged_for_manual_pricing: routeQuote?.inServiceArea === false,
+        p_payment_method_id: requiresPayment ? payment.method : null,
+        p_payment_channel: selectedPaymentMethod?.channel || 'bank_transfer',
+        p_payment_reference: requiresPayment ? payment.reference.trim() : null,
+        p_payment_receipt_path: receiptPath,
+        p_payment_idempotency_key: paymentIdempotencyKey,
       },
     )
 
     if (bookingError) {
+      if (receiptPath) await supabase.storage.from('payment-receipts').remove([receiptPath])
       setError(showError(bookingError))
       setSubmitting(false)
       return
-    }
-
-    let receiptPath: string | null = null
-
-    if (requiresPayment && receiptFile) {
-      const ext = receiptFile.name.split('.').pop()
-      const path = `${booking.id}/${Date.now()}.${ext}`
-      const { error: uploadError } = await supabase.storage
-        .from('payment-receipts')
-        .upload(path, receiptFile)
-
-      if (!uploadError) {
-        receiptPath = path
-      }
-    }
-
-    if (requiresPayment) {
-      await supabase.from('payments').insert({
-        booking_id: booking.id,
-        payment_method_id: payment.method,
-        channel: selectedPaymentMethod?.channel || 'bank_transfer',
-        status: 'submitted',
-        amount: booking.deposit_amount,
-        reference_number: payment.reference || null,
-        receipt_path: receiptPath,
-        submitted_by: user.id,
-      })
     }
 
     try {
@@ -611,6 +622,7 @@ export default function BookingForm() {
       // ponytail: booking success matters more than mail delivery here
     }
 
+    localStorage.removeItem(idempotencyStorageKey)
     queryClient.invalidateQueries({ queryKey: ['customer', 'bookings'] })
     useBookingStore.getState().reset()
     navigate('/bookings')

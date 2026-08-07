@@ -50,6 +50,12 @@ export interface AdminBookingCreateInput {
   tollRfidBreakdown: { system: string; amount: number }[]
   inServiceArea: boolean
   flaggedForManualPricing: boolean
+  bookingIdempotencyKey: string
+  paymentIdempotencyKey: string
+  paymentMethodId: string | null
+  paymentReference: string | null
+  paymentReceiptPath: string | null
+  paymentChannel: string
   selfDriveAddress: {
     addressLine1: string
     addressLine2: string

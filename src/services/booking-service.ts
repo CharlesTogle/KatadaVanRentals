@@ -120,6 +120,7 @@ export interface AdminFeedbackRow {
   id: string
   rating: number
   feedback: string | null
+  display_on_homepage: boolean
   created_at: string
   booking_number: string
   customer_name: string
@@ -128,10 +129,18 @@ export interface AdminFeedbackRow {
   vehicle_plate: string
 }
 
+export interface HomepageTestimonial {
+  id: string
+  rating: number
+  feedback: string | null
+  customer_name: string
+  profile_image_path: string | null
+}
+
 export async function getAdminFeedback() {
   const { data, error } = await supabase
     .from('booking_feedback')
-    .select('id,rating,feedback,created_at,bookings!booking_id(booking_number),profiles!customer_id(first_name,last_name,email,profile_image_path),vehicles!vehicle_id(plate_number)')
+    .select('id,rating,feedback,display_on_homepage,created_at,bookings!booking_id(booking_number),profiles!customer_id(first_name,last_name,email,profile_image_path),vehicles!vehicle_id(plate_number)')
     .order('created_at', { ascending: false })
 
   if (error) throw error
@@ -145,6 +154,7 @@ export async function getAdminFeedback() {
       id: row.id,
       rating: row.rating,
       feedback: row.feedback,
+      display_on_homepage: row.display_on_homepage,
       created_at: row.created_at,
       booking_number: booking?.booking_number || '',
       customer_name: [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || profile?.email || 'Unknown customer',
@@ -153,6 +163,29 @@ export async function getAdminFeedback() {
       vehicle_plate: vehicle?.plate_number || '—',
     }
   }) as AdminFeedbackRow[]
+}
+
+export async function setFeedbackHomepageVisibility(id: string, displayOnHomepage: boolean) {
+  const { error } = await supabase
+    .from('booking_feedback')
+    .update({ display_on_homepage: displayOnHomepage })
+    .eq('id', id)
+
+  if (error) throw error
+}
+
+export async function getHomepageTestimonials(): Promise<HomepageTestimonial[]> {
+  const { data, error } = await supabase.rpc('get_homepage_testimonials')
+
+  if (error) throw error
+
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    rating: row.rating,
+    feedback: row.feedback,
+    customer_name: row.customer_name,
+    profile_image_path: row.profile_image_path,
+  }))
 }
 
 export async function getAdminDashboardData() {
@@ -264,6 +297,7 @@ export async function getBookingInvoiceData(id: string): Promise<BookingInvoiceD
       .from('payments')
       .select('id,channel,amount,reference_number,paid_at,created_at')
       .eq('booking_id', id)
+      .eq('status', 'submitted')
       .order('created_at', { ascending: true }),
     supabase
       .from('app_settings')
@@ -417,7 +451,7 @@ export type AdminBookingActionInput =
   | { type: 'start_trip'; bookingId: string; collectedAmount: number; paymentMethodId?: string; paymentChannel?: string; referenceNumber?: string; receiptPath?: string }
   | { type: 'extend'; bookingId: string; newEndAt: string; extensionAmount: number; reason?: string; collectNow?: boolean; paymentMethodId?: string; paymentChannel?: string; referenceNumber?: string; receiptPath?: string }
   | { type: 'complete'; bookingId: string; collectedAmount?: number; paymentMethodId?: string; paymentChannel?: string; referenceNumber?: string; receiptPath?: string; actualTollAmount?: number; actualFuelAmount?: number; note?: string }
-  | { type: 'make_payment'; bookingId: string; collectedAmount: number; paymentMethodId?: string; paymentChannel?: string; referenceNumber?: string; receiptPath?: string }
+  | { type: 'make_payment'; bookingId: string; collectedAmount: number; paymentMethodId?: string; paymentChannel?: string; referenceNumber?: string; receiptPath?: string; idempotencyKey?: string }
   | { type: 'cancel'; bookingId: string; cancellationType: string; reason: string }
   | { type: 'delete'; bookingId: string }
   | { type: 'set_price_for_manual'; bookingId: string; adjustedTotal: number; reason: string }
@@ -538,6 +572,7 @@ export async function runAdminBookingAction(input: AdminBookingActionInput): Pro
         payment_channel: (params as { paymentChannel?: string }).paymentChannel ?? 'cash',
         reference_number: (params as { referenceNumber?: string }).referenceNumber ?? null,
         receipt_path: (params as { receiptPath?: string }).receiptPath ?? null,
+        p_idempotency_key: (params as { idempotencyKey?: string }).idempotencyKey ?? null,
       },
     },
     cancel: { fn: 'admin_cancel_booking', args: { target_booking_id: bookingId, cancellation_type: (params as { cancellationType: string }).cancellationType, reason: (params as { reason: string }).reason } },

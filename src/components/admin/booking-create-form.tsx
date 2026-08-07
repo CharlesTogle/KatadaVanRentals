@@ -20,6 +20,24 @@ import { useBookingStore } from '@/store/booking-store'
 import type { AdminBookingCreateInput } from '@/types/admin-booking'
 import { useVatPercent } from '@/hooks/use-vat-percent'
 
+const ADMIN_BOOKING_IDEMPOTENCY_KEY = 'katada:admin-booking:idempotency'
+
+function getAdminBookingIdempotencyKeys() {
+  const stored = localStorage.getItem(ADMIN_BOOKING_IDEMPOTENCY_KEY)
+  if (stored) {
+    try {
+      const keys = JSON.parse(stored) as { booking: string; payment: string }
+      if (keys.booking && keys.payment) return keys
+    } catch {
+      localStorage.removeItem(ADMIN_BOOKING_IDEMPOTENCY_KEY)
+    }
+  }
+
+  const keys = { booking: crypto.randomUUID(), payment: crypto.randomUUID() }
+  localStorage.setItem(ADMIN_BOOKING_IDEMPOTENCY_KEY, JSON.stringify(keys))
+  return keys
+}
+
 type SelfDriveAddress = {
   addressLine1: string
   addressLine2: string
@@ -71,6 +89,7 @@ export function BookingCreateForm() {
     existingCustomer: null,
     newCustomer: { firstName: '', lastName: '', email: '', mobile: '', sendInvite: true },
   })
+  const [idempotencyKeys] = useState(getAdminBookingIdempotencyKeys)
   const [vehicleId, setVehicleId] = useState('')
   const [routeLoading, setRouteLoading] = useState(false)
   const [routeError, setRouteError] = useState('')
@@ -314,32 +333,12 @@ export function BookingCreateForm() {
   const formIncomplete = !vehicleId || !startParam || (!endParam && !isWithDriverDropoff) || selfDriveAddressIncomplete || routeIncomplete || needsTollEstimate || tollLoading || paymentIncomplete || createBooking.isPending || paymentMethodsQuery.isLoading
   const selectedPaymentMethod = paymentMethodsQuery.data?.find((method) => method.id === payment.method)
 
-  const uploadReceipt = async (bookingId: string) => {
+  const uploadReceipt = async (paymentIdempotencyKey: string) => {
     if (!receiptFile) return null
-    const ext = receiptFile.name.split('.').pop()
-    const path = `${bookingId}/${Date.now()}.${ext}`
-    const { error: uploadError } = await supabase.storage.from('payment-receipts').upload(path, receiptFile)
+    const path = `${user?.id || 'admin'}/${paymentIdempotencyKey}`
+    const { error: uploadError } = await supabase.storage.from('payment-receipts').upload(path, receiptFile, { upsert: true })
     if (uploadError) throw uploadError
     return path
-  }
-
-  const recordDepositPayment = async (bookingId: string) => {
-    const receiptPath = await uploadReceipt(bookingId)
-    const channel = selectedPaymentMethod?.channel || 'cash'
-    const { error: paymentError } = await supabase.from('payments').insert({
-      booking_id: bookingId,
-      payment_method_id: payment.method || null,
-      channel,
-      status: 'verified',
-      amount: pricing.deposit,
-      reference_number: payment.reference.trim(),
-      receipt_path: receiptPath,
-      paid_at: new Date().toISOString(),
-      submitted_by: user?.id ?? null,
-      verified_by: user?.id ?? null,
-      verified_at: new Date().toISOString(),
-    })
-    if (paymentError) throw paymentError
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -396,6 +395,20 @@ export function BookingCreateForm() {
 
     setSubmitting(true)
 
+    const bookingIdempotencyKey = idempotencyKeys.booking
+    const paymentIdempotencyKey = idempotencyKeys.payment
+    const receiptPath = receiptFile ? `${user?.id || 'admin'}/${paymentIdempotencyKey}` : null
+
+    if (receiptPath) {
+      try {
+        await uploadReceipt(paymentIdempotencyKey)
+      } catch {
+        setError('Receipt upload failed. Please try again.')
+        setSubmitting(false)
+        return
+      }
+    }
+
     const input: AdminBookingCreateInput = {
       customerMode: customer.mode,
       existingCustomerId: customer.existingCustomer?.id ?? null,
@@ -429,24 +442,23 @@ export function BookingCreateForm() {
       selfDriveAddress: rentalType === 'self-drive' ? completeAddress : null,
       inServiceArea: routeQuote?.inServiceArea ?? true,
       flaggedForManualPricing: routeQuote?.inServiceArea === false,
+      bookingIdempotencyKey,
+      paymentIdempotencyKey,
+      paymentMethodId: payment.method || null,
+      paymentReference: payment.reference.trim() || null,
+      paymentReceiptPath: receiptPath,
+      paymentChannel: selectedPaymentMethod?.channel || 'cash',
     }
 
     try {
       const result = await createBooking.mutateAsync(input)
 
-      try {
-        await recordDepositPayment(result.bookingId)
-      } catch (paymentError) {
-        reset()
-        toast.error(`Booking ${result.bookingNumber} was confirmed, but the deposit record could not be saved: ${showError(paymentError as Error)}`)
-        navigate('/admin/bookings')
-        return
-      }
-
+      localStorage.removeItem(ADMIN_BOOKING_IDEMPOTENCY_KEY)
       reset()
       toast.success(`Booking ${result.bookingNumber} confirmed.`)
       navigate('/admin/bookings')
     } catch (err: any) {
+      if (receiptPath) await supabase.storage.from('payment-receipts').remove([receiptPath])
       setError(err?.status === 409 ? err.message || 'Vehicle is not available for these dates.' : showError(err))
     } finally {
       setSubmitting(false)

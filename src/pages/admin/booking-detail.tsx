@@ -155,14 +155,13 @@ export default function BookingDetail() {
     getBookingExpiryDeadline(booking.start_at, appSettings?.booking_expiry_hours ?? 2),
   )
   const tripReconciliationAmount = Number(booking.actual_toll_amount || 0) + Number(booking.actual_fuel_amount || 0)
-  const totalIncludesTripReconciliation = booking.status === 'completed' && booking.rental_model === 'all_in' && tripReconciliationAmount > 0 && status_events.some((event) => event.note?.startsWith('Trip reconciled.'))
-  const pricingBooking = totalIncludesTripReconciliation ? { ...booking, total_amount: booking.total_amount - tripReconciliationAmount } : booking
-  const balanceSummary = getBookingAdjustmentSummary(pricingBooking, status_events, extensions)
-  const displayedTotal = balanceSummary?.currentTotal ?? pricingBooking.total_amount
+  const balanceSummary = getBookingAdjustmentSummary(booking, status_events, extensions)
+  const displayedTotal = Number(booking.total_amount || 0)
   const depositAmount = Number(booking.deposit_amount || 0)
-  const paymentTotal = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
-  const paymentMadeAmount = Math.max(paymentTotal - depositAmount, 0)
-  const displayedRemainingBalance = Math.max(displayedTotal + tripReconciliationAmount - depositAmount - paymentMadeAmount, 0)
+  const paymentMadeAmount = payments
+    .filter((payment) => payment.status === 'submitted')
+    .reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
+  const displayedRemainingBalance = Number(booking.remaining_amount || 0)
   const requiresTripReconciliation = booking.rental_model === 'all_in' && booking.status === 'on_trip'
   const actualTollAmount = Number(modalForm.actualTollAmount || 0)
   const actualFuelAmount = Number(modalForm.actualFuelAmount || 0)
@@ -245,6 +244,7 @@ export default function BookingDetail() {
       paymentChannel: modalForm.paymentChannel,
       referenceNumber: modalForm.referenceNumber.trim() || undefined,
       receiptPath,
+      idempotencyKey: crypto.randomUUID(),
     }, 'Payment recorded.')
   }
   const handleDeleteBooking = () => runAction({ type: 'delete', bookingId: booking.id }, 'Booking deleted.', () => navigate('/admin/bookings'))
@@ -507,7 +507,7 @@ export default function BookingDetail() {
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="text-base font-black text-[#1f2a44] tabular-nums">{formatCurrency(payment.amount)}</p>
-                              <span className={cn('rounded-full px-3 py-1 text-[11px] font-bold', payment.status === 'verified' ? 'bg-[#16a34a]/10 text-[#16a34a]' : 'bg-[#eef2ff] text-[#4f46e5]')}>
+                              <span className="rounded-full bg-[#eef2ff] px-3 py-1 text-[11px] font-bold text-[#4f46e5]">
                                 {payment.status}
                               </span>
                             </div>
@@ -529,7 +529,7 @@ export default function BookingDetail() {
 
                     <div className="flex items-center justify-between border-t border-[#071f52]/8 pt-4 text-sm font-semibold text-[#071f52]/62">
                       <span>Recorded Payments</span>
-                      <span className="font-black text-[#1f2a44] tabular-nums">{formatCurrency(payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0))}</span>
+                      <span className="font-black text-[#1f2a44] tabular-nums">{formatCurrency(paymentMadeAmount)}</span>
                     </div>
                   </div>
                 ) : (

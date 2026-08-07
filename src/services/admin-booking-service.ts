@@ -42,6 +42,12 @@ export async function createAdminBooking(input: AdminBookingCreateInput): Promis
       tollVehicleClass: input.tollVehicleClass,
       tollRfidBreakdown: input.tollRfidBreakdown,
       selfDriveAddress: input.selfDriveAddress ?? undefined,
+      bookingIdempotencyKey: input.bookingIdempotencyKey,
+      paymentIdempotencyKey: input.paymentIdempotencyKey,
+      paymentMethodId: input.paymentMethodId ?? undefined,
+      paymentReference: input.paymentReference ?? undefined,
+      paymentReceiptPath: input.paymentReceiptPath ?? undefined,
+      paymentChannel: input.paymentChannel,
     },
   })
 

@@ -265,7 +265,7 @@ describe('BookingForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Submit Booking' }))
 
     await waitFor(() => {
-      expect(rpc).toHaveBeenCalledWith('create_booking', expect.objectContaining({
+      expect(rpc).toHaveBeenCalledWith('create_booking_with_payment', expect.objectContaining({
         p_vehicle_id: 'vehicle-1',
         p_rental_model: 'self_drive',
         p_self_drive_address: expect.objectContaining({
@@ -338,7 +338,7 @@ describe('BookingForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Submit Booking' }))
 
     await waitFor(() => {
-      expect(rpc).toHaveBeenCalledWith('create_booking', expect.objectContaining({
+      expect(rpc).toHaveBeenCalledWith('create_booking_with_payment', expect.objectContaining({
         p_rental_model: 'all_in',
         p_distance_km: 42,
         p_duration_minutes: 95,
@@ -348,14 +348,13 @@ describe('BookingForm', () => {
         p_toll_estimate_amount: 105,
         p_toll_entry_plaza: 'Balintawak',
         p_toll_exit_plaza: 'Bocaue',
+        p_payment_reference: 'REF-123',
+        p_payment_method_id: 'pm-1',
+        p_payment_channel: 'bank_transfer',
       }))
     })
 
-    expect(paymentsInsert).toHaveBeenCalledWith(expect.objectContaining({
-      amount: 450,
-      reference_number: 'REF-123',
-      status: 'submitted',
-    }))
+    expect(paymentsInsert).not.toHaveBeenCalled()
   })
 
   it('does not loop toll calculation after a rejected plaza selection', async () => {

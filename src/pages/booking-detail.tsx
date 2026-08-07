@@ -8,7 +8,6 @@ import { saveBookingRequestedDocument, deleteBookingRequestedDocument, getCustom
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ImageViewer } from '@/components/ui/image-viewer'
-import { usePaymentMethods } from '@/hooks/use-payment-methods'
 import { useAppSettings } from '@/hooks/use-app-settings'
 import {
   ArrowLeft,
@@ -62,12 +61,6 @@ export default function BookingDetail() {
   const [submitted, setSubmitted] = useState(false)
   const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
   const [adjustmentAction, setAdjustmentAction] = useState<'accept' | 'cancel' | null>(null)
-  const [showManualPayModal, setShowManualPayModal] = useState(false)
-  const [manualPayMethod, setManualPayMethod] = useState('')
-  const [manualPayReference, setManualPayReference] = useState('')
-  const [manualPayReceipt, setManualPayReceipt] = useState<File | null>(null)
-  const [manualPaySubmitting, setManualPaySubmitting] = useState(false)
-  const { data: paymentMethods = [] } = usePaymentMethods()
   const { data: appSettings } = useAppSettings()
   const [uploadingTypeId, setUploadingTypeId] = useState<string | null>(null)
   const [sizeError, setSizeError] = useState<string | null>(null)
@@ -126,6 +119,8 @@ export default function BookingDetail() {
     if (!error) {
       setSubmitted(true)
       setTimeout(() => setSubmitted(false), 5000)
+    } else {
+      toast.error(showError(error))
     }
   }
 
@@ -204,14 +199,13 @@ export default function BookingDetail() {
     getBookingExpiryDeadline(booking.start_at, appSettings?.booking_expiry_hours ?? 2),
   )
   const tripReconciliationAmount = Number(booking.actual_toll_amount || 0) + Number(booking.actual_fuel_amount || 0)
-  const totalIncludesTripReconciliation = booking.status === 'completed' && booking.rental_model === 'all_in' && tripReconciliationAmount > 0 && status_events.some((event) => event.note?.startsWith('Trip reconciled.'))
-  const pricingBooking = totalIncludesTripReconciliation ? { ...booking, total_amount: booking.total_amount - tripReconciliationAmount } : booking
-  const balanceSummary = getBookingAdjustmentSummary(pricingBooking, status_events, extensions)
-  const displayedTotal = balanceSummary?.currentTotal ?? pricingBooking.total_amount
+  const balanceSummary = getBookingAdjustmentSummary(booking, status_events, extensions)
   const depositAmount = Number(booking.deposit_amount || 0)
-  const paymentTotal = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
-  const paymentMadeAmount = Math.max(paymentTotal - depositAmount, 0)
-  const displayedRemainingBalance = Math.max(displayedTotal + tripReconciliationAmount - depositAmount - paymentMadeAmount, 0)
+  const displayedTotal = Number(booking.total_amount || 0)
+  const paymentMadeAmount = payments
+    .filter((payment) => payment.status === 'submitted')
+    .reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
+  const displayedRemainingBalance = Number(booking.remaining_amount || 0)
   const customerNote = getDisplayBookingNote(booking.notes)
   const priceApprovalDeadline = getBookingExpiryDeadline(booking.start_at, appSettings?.booking_expiry_hours ?? 2)
   const bookingSummary = [vehicle?.name || 'Vehicle pending', formatDateRange(booking.start_at, booking.end_at)]
@@ -336,47 +330,6 @@ export default function BookingDetail() {
       toast.error(showError(error as Error))
     } finally {
       setAdjustmentAction(null)
-    }
-  }
-
-  const depositPercent = 10
-  const manualPayAmount = Math.round(Number(booking.total_amount) * (depositPercent / 100))
-
-  const handleAcceptManualPrice = async () => {
-    setManualPaySubmitting(true)
-    try {
-      let receiptPath: string | null = null
-      if (manualPayReceipt) {
-        const ext = manualPayReceipt.name.split('.').pop()
-        const path = `manual-pay/${booking.id}/${Date.now()}.${ext}`
-        const { error: uploadError } = await supabase.storage
-          .from(PAYMENT_RECEIPT_BUCKET)
-          .upload(path, manualPayReceipt)
-        if (uploadError) throw uploadError
-        receiptPath = path
-      }
-
-      const selectedMethod = paymentMethods.find((m) => m.id === manualPayMethod)
-      if (manualPayAmount > 0) {
-        await supabase.from('payments').insert({
-          booking_id: booking.id,
-          payment_method_id: manualPayMethod,
-          channel: selectedMethod?.channel || 'bank_transfer',
-          status: 'submitted',
-          amount: manualPayAmount,
-          reference_number: manualPayReference.trim() || null,
-          receipt_path: receiptPath,
-          submitted_by: user?.id,
-        })
-      }
-
-      await acceptPriceAdjustment.mutateAsync({ id: booking.id })
-      setShowManualPayModal(false)
-      toast.success('Price accepted. Payment recorded.')
-    } catch (error) {
-      toast.error(showError(error as Error))
-    } finally {
-      setManualPaySubmitting(false)
     }
   }
 
@@ -582,7 +535,7 @@ export default function BookingDetail() {
                         <div>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <p className="text-sm font-black text-[#1f2a44] tabular-nums sm:text-base">{formatCurrency(payment.amount)}</p>
-                             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold sm:text-xs ${payment.status === 'verified' ? 'bg-[#16a34a]/10 text-[#16a34a]' : 'bg-[#eef2ff] text-[#4f46e5]'}`}>
+                              <span className="rounded-full bg-[#eef2ff] px-2 py-0.5 text-[10px] font-bold text-[#4f46e5] sm:text-xs">
                               {payment.status}
                             </span>
                           </div>
@@ -604,7 +557,7 @@ export default function BookingDetail() {
 
                   <div className="flex items-center justify-between border-t border-[#071f52]/8 pt-3 text-xs font-semibold text-[#071f52]/62 sm:text-sm">
                     <span>Recorded Payments</span>
-                    <span className="font-black text-[#1f2a44] tabular-nums">{formatCurrency(payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0))}</span>
+                    <span className="font-black text-[#1f2a44] tabular-nums">{formatCurrency(paymentMadeAmount)}</span>
                   </div>
                 </div>
               ) : (
@@ -651,13 +604,12 @@ export default function BookingDetail() {
                 <p className="mt-2 text-xs font-medium text-[#78350f]">Your booking is outside our service area and has been manually priced. Please review and accept.</p>
                 <div className="mt-3 space-y-1.5 border-b border-[#f59e0b]/30 pb-3">
                   <SummaryRow label="Price" value={formatCurrency(Number(booking.total_amount))} strong />
-                  <SummaryRow label="Downpayment (10%)" value={formatCurrency(manualPayAmount)} valueClassName="text-[#f97316]" />
-                </div>
-                <p className="mt-2 text-xs font-medium leading-5 text-[#78350f]">By accepting, you agree to pay 10% now. The remainder is due after the trip.</p>
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                  <button type="button" onClick={() => setShowManualPayModal(true)} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#16a34a] px-3 py-2.5 text-xs font-bold text-white shadow-[0_6px_16px_rgba(22,163,74,0.14)] transition hover:bg-[#15803d]">
-                    Accept Price
-                  </button>
+                 </div>
+                 <p className="mt-2 text-xs font-medium leading-5 text-[#78350f]">Payment is collected only during booking creation. By accepting, you agree to the updated price.</p>
+                 <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                   <button type="button" onClick={handleAcceptAdjustment} disabled={adjustmentAction !== null || acceptPriceAdjustment.isPending} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#16a34a] px-3 py-2.5 text-xs font-bold text-white shadow-[0_6px_16px_rgba(22,163,74,0.14)] transition hover:bg-[#15803d] disabled:opacity-50">
+                     Accept Price
+                   </button>
                   <button type="button" onClick={handleCancelBooking} disabled={cancelBooking.isPending} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-[#f0a1a8] bg-white px-3 py-2.5 text-xs font-bold text-[#e11d48] transition hover:bg-[#fff1f2] disabled:opacity-50">
                     Decline & Cancel
                   </button>
@@ -868,51 +820,6 @@ export default function BookingDetail() {
 
       <ImageViewer open={!!viewing} onClose={closeViewer} src={viewing?.src || ''} alt={viewing?.alt || ''} />
 
-      {showManualPayModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowManualPayModal(false)}>
-          <div className="mx-4 w-full max-w-md rounded-2xl border border-[#071f52]/10 bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-sm font-bold text-[#071f52]">Accept Price & Pay Downpayment</h3>
-            <p className="mt-1 text-xs font-medium text-[#071f52]/58">10% of the total price is required to confirm.</p>
-
-            <div className="mt-4 space-y-3">
-              <div>
-                <label className="text-xs font-bold text-[#071f52]">Payment Method</label>
-                <select value={manualPayMethod} onChange={(e) => setManualPayMethod(e.target.value)} className="mt-1 block w-full rounded-xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] focus:border-[#071f52] focus:bg-white focus:outline-none">
-                  <option value="">Select a method...</option>
-                  {paymentMethods.map((m) => (
-                    <option key={m.id} value={m.id}>{m.provider} ({m.account_number})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-[#071f52]">Amount</label>
-                <input readOnly value={`₱${manualPayAmount.toLocaleString()}.00`} className="mt-1 block w-full rounded-xl border border-[#071f52]/14 bg-gray-100 px-4 py-2.5 text-sm font-bold text-[#071f52]" />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-[#071f52]">Reference Number</label>
-                <input value={manualPayReference} onChange={(e) => setManualPayReference(e.target.value)} placeholder="Transaction reference" className="mt-1 block w-full rounded-xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] focus:border-[#071f52] focus:bg-white focus:outline-none" />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-[#071f52]">Receipt</label>
-                <input type="file" accept="image/*,.pdf" onChange={(e) => setManualPayReceipt(e.target.files?.[0] || null)} className="mt-1 block w-full text-sm text-[#071f52]/58 file:mr-3 file:rounded-lg file:border-0 file:bg-[#071f52]/8 file:px-3 file:py-1 file:text-xs file:font-bold file:text-[#071f52]" />
-              </div>
-            </div>
-
-            <div className="mt-5 flex gap-2">
-              <button onClick={() => setShowManualPayModal(false)} type="button" className="flex-1 rounded-full border border-[#d9dfeb] px-4 py-2.5 text-sm font-semibold text-[#4d5a72] hover:bg-[#f8fafc]">Cancel</button>
-              <button onClick={handleAcceptManualPrice} disabled={manualPaySubmitting || !manualPayMethod || !manualPayReference.trim() || !manualPayReceipt} type="button" className="flex-1 rounded-full bg-[#16a34a] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#15803d] disabled:opacity-50">
-                {manualPaySubmitting ? 'Processing...' : 'Confirm & Pay'}
-              </button>
-            </div>
-            {(!manualPayReference.trim() || !manualPayReceipt) && manualPayMethod ? (
-              <p className="mt-2 text-xs font-medium text-[#e92935]">Reference number and receipt are required.</p>
-            ) : null}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { HeroSection } from '@/components/landing/hero-section'
 import { FleetSection } from '@/components/landing/fleet-section'
 import { ServicesSection } from '@/components/landing/services-section'
 import { WhySection } from '@/components/landing/why-section'
+import { TestimonialsSection } from '@/components/landing/testimonials-section'
 import { CTASection } from '@/components/landing/cta-section'
 import { FAQSection } from '@/components/landing/faq-section'
 import { ContactSection } from '@/components/landing/contact-section'
@@ -27,6 +28,10 @@ export default function Landing() {
 
         <FadeSection>
           <WhySection />
+        </FadeSection>
+
+        <FadeSection>
+          <TestimonialsSection />
         </FadeSection>
 
         <FadeSection>

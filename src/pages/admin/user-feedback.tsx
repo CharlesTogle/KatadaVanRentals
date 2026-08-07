@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
-import { Star } from 'lucide-react'
-import { useAdminFeedback } from '@/hooks/use-bookings'
+import { Star, Check } from 'lucide-react'
+import { useAdminFeedback, useSetFeedbackHomepageVisibility } from '@/hooks/use-bookings'
+import { toast } from '@/lib/toast'
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString()
@@ -16,7 +17,15 @@ function getInitials(name: string) {
 }
 
 export default function AdminUserFeedback() {
-  const { data: feedback = [], isLoading } = useAdminFeedback()
+  const { data: feedback = [], isLoading, error } = useAdminFeedback()
+  const { mutate: setHomepageVisibility, isPending } = useSetFeedbackHomepageVisibility()
+  const homepageCount = feedback.filter((entry) => entry.display_on_homepage).length
+
+  const toggleHomepage = (id: string, displayOnHomepage: boolean) => {
+    setHomepageVisibility({ id, displayOnHomepage }, {
+      onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not update homepage display.'),
+    })
+  }
 
   return (
     <div className="py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
@@ -28,6 +37,10 @@ export default function AdminUserFeedback() {
       {isLoading ? (
         <div className="mt-6 space-y-4">
           {[...Array(4)].map((_, index) => <div key={index} className="h-36 animate-pulse rounded-3xl bg-[#071f52]/6" />)}
+        </div>
+      ) : error ? (
+        <div className="mt-8 rounded-2xl border border-[#e92935]/20 bg-[#e92935]/5 p-8 text-center text-sm font-semibold text-[#b91c1c]">
+          Could not load feedback. Please try again.
         </div>
       ) : !feedback.length ? (
         <div className="mt-8 rounded-2xl border border-[#071f52]/10 bg-white p-8 text-center text-sm font-semibold text-[#071f52]/48">
@@ -81,9 +94,24 @@ export default function AdminUserFeedback() {
                 </div>
               </div>
 
-              <div className="mt-4 rounded-2xl bg-[#f7f9ff] px-4 py-3">
+              <div className="mt-4 flex flex-col gap-4 rounded-2xl bg-[#f7f9ff] px-4 py-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#071f52]/38">Feedback</p>
                 <p className="mt-2 text-sm leading-6 text-[#071f52]/78">{entry.feedback || 'No written feedback provided.'}</p>
+                </div>
+                <label className="flex shrink-0 cursor-pointer items-center gap-2 text-sm font-bold text-[#071f52]">
+                  <input
+                    type="checkbox"
+                    checked={entry.display_on_homepage}
+                    disabled={isPending || (!entry.display_on_homepage && homepageCount >= 10)}
+                    onChange={(event) => toggleHomepage(entry.id, event.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg border border-[#071f52]/20 bg-white text-white transition-colors peer-checked:border-[#071f52] peer-checked:bg-[#071f52] peer-focus-visible:ring-2 peer-focus-visible:ring-[#ffd923]">
+                    <Check size={15} strokeWidth={3} aria-hidden="true" />
+                  </span>
+                  Display on homepage
+                </label>
               </div>
             </article>
           ))}

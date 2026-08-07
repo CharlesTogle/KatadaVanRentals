@@ -215,7 +215,7 @@ describe('booking-service', () => {
       },
       error: null,
     })
-    mocks.paymentsOrder.mockResolvedValue({ data: [{ id: 'payment-1', amount: 250, channel: 'bank_transfer', status: 'verified', reference_number: 'REF-1', receipt_path: 'booking-1/receipt.png', paid_at: null, created_at: '2026-07-23T12:18:00.000Z' }], error: null })
+    mocks.paymentsOrder.mockResolvedValue({ data: [{ id: 'payment-1', amount: 250, channel: 'bank_transfer', status: 'submitted', reference_number: 'REF-1', receipt_path: 'booking-1/receipt.png', paid_at: null, created_at: '2026-07-23T12:18:00.000Z' }], error: null })
     mocks.statusEventsOrder.mockResolvedValue({ data: [{ id: 'event-1', from_status: 'for_review', to_status: 'confirmed', note: 'Approved', created_at: '2026-07-23T12:20:00.000Z' }], error: null })
     mocks.extensionsOrder.mockResolvedValue({ data: [{ id: 'extension-1', previous_end_at: '2026-07-24T00:00:00.000Z', new_end_at: '2026-07-25T00:00:00.000Z', extension_amount: 1000, reason: 'Extra day', created_at: '2026-07-24T12:18:00.000Z' }], error: null })
     mocks.invoicesMaybeSingle.mockResolvedValue({ data: { id: 'invoice-1', invoice_number: 'INV-1', status: 'issued', total_amount: 2250, file_path: null, issued_at: '2026-07-23T12:18:00.000Z' }, error: null })
@@ -375,6 +375,7 @@ describe('booking-service', () => {
       payment_channel: 'bank_transfer',
       reference_number: 'BAL-123',
       receipt_path: 'booking-1/balance.pdf',
+      p_idempotency_key: null,
     })
   })
 })
