@@ -20,7 +20,6 @@ export function LocationSelector({ id, label, value, placeholder, required = fal
   const [isFocused, setIsFocused] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const selectedAddressRef = useRef('')
-  const lastQueryRef = useRef('')
   const cacheRef = useRef(new Map<string, LocationSuggestion[]>())
 
   useEffect(() => {
@@ -70,24 +69,11 @@ export function LocationSelector({ id, label, value, placeholder, required = fal
       return
     }
 
-    const normalizedValue = trimmedValue.toLowerCase()
-    const normalizedQuery = lastQueryRef.current.toLowerCase()
-    const lastQuerySuggestions = cacheRef.current.get(normalizedQuery)
-    if (lastQueryRef.current && normalizedValue.startsWith(normalizedQuery) && lastQuerySuggestions) {
-      const filteredSuggestions = lastQuerySuggestions.filter((suggestion) => suggestion.label.toLowerCase().includes(normalizedValue))
-      if (filteredSuggestions.length > 0) {
-        setSuggestions(filteredSuggestions)
-        setLoading(false)
-        return
-      }
-    }
-
     const timeoutId = window.setTimeout(async () => {
       setLoading(true)
 
       try {
         const nextSuggestions = await suggestLocations(trimmedValue)
-        lastQueryRef.current = trimmedValue
         cacheRef.current.set(trimmedValue.toLowerCase(), nextSuggestions)
         setSuggestions(nextSuggestions)
       } catch {
@@ -100,10 +86,7 @@ export function LocationSelector({ id, label, value, placeholder, required = fal
     return () => window.clearTimeout(timeoutId)
   }, [value, isFocused, readOnly])
 
-  const normalizedValue = value.trim().toLowerCase()
-  const visibleSuggestions = normalizedValue.length >= 3
-    ? suggestions.filter((suggestion) => suggestion.label.toLowerCase().includes(normalizedValue))
-    : []
+  const canShowSuggestions = value.trim().length >= 3
 
   return (
     <div
@@ -144,13 +127,13 @@ export function LocationSelector({ id, label, value, placeholder, required = fal
           className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
         />
 
-        {(value.trim().length > 0 && value.trim().length < 3) || loading || visibleSuggestions.length > 0 ? (
+        {(value.trim().length > 0 && value.trim().length < 3) || loading || (canShowSuggestions && suggestions.length > 0) ? (
           <div className="absolute z-10 mt-2 w-full overflow-hidden rounded-2xl border border-[#071f52]/10 bg-white shadow-[0_18px_44px_rgba(7,31,82,0.12)]">
             {value.trim().length > 0 && value.trim().length < 3 ? (
               <p className="px-4 py-3 text-sm font-semibold text-[#071f52]/48">Keep Typing...</p>
             ) : loading ? (
               <p className="px-4 py-3 text-sm font-semibold text-[#071f52]/48">Looking up locations...</p>
-            ) : visibleSuggestions.map((suggestion) => (
+            ) : suggestions.map((suggestion) => (
               <button
                 key={suggestion.id}
                 type="button"
