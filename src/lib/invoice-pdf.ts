@@ -200,8 +200,7 @@ export function buildInvoicePlaintext(data: BookingInvoiceData) {
 }
 
 function getInvoiceView(data: BookingInvoiceData) {
-  const paymentsTotal = data.payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
-  const dueAmount = Number(data.booking.remaining_amount || Math.max(0, data.booking.total_amount - paymentsTotal))
+  const dueAmount = Number(data.booking.remaining_amount)
   const vehicleMeta = data.vehicle?.year ? `Toyota · ${data.vehicle.year}` : 'Toyota'
   const pickupDropoff = [data.booking.pickup_location, data.booking.dropoff_location].filter(Boolean).join(' - ')
   const paymentsHtml = data.payments.length

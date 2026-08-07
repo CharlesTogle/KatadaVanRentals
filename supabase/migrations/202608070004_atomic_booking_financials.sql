@@ -600,7 +600,7 @@ begin
   end if;
 
   insert into public.payments (booking_id, payment_method_id, channel, status, amount, reference_number, receipt_path, paid_at, submitted_by, idempotency_key)
-  values (target_booking_id, payment_method_id, payment_channel, 'submitted', collected_amount, p_reference_number, receipt_path, now(), auth.uid(), p_idempotency_key)
+  values (target_booking_id, payment_method_id, payment_channel, 'submitted', collected_amount, p_reference_number, receipt_path, now(), auth.uid(), p_idempotency_key);
   perform public.recalculate_booking_financials(target_booking_id);
 
   select * into booking_record from public.bookings where id = target_booking_id;
@@ -660,6 +660,8 @@ begin
 
   perform public.recalculate_booking_financials(target_booking_id);
   select * into booking_record from public.bookings where id = target_booking_id;
+  insert into public.booking_status_events (booking_id, from_status, to_status, note, actor_id)
+  values (target_booking_id, 'on_trip', 'completed', coalesce(note, 'Booking completed.'), auth.uid());
   return booking_record;
 end;
 $$;
@@ -720,3 +722,10 @@ begin
   end loop;
 end;
 $$;
+
+alter table public.bookings
+  drop constraint if exists bookings_remaining_amount_bounds;
+
+alter table public.bookings
+  add constraint bookings_remaining_amount_bounds
+  check (remaining_amount >= 0 and remaining_amount <= total_amount);

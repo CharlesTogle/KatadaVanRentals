@@ -113,6 +113,16 @@ describe('invoice pdf', () => {
     expect(plainText).toContain('No payments recorded')
   })
 
+  it('uses a stored zero remaining balance without recomputing it', () => {
+    const html = buildInvoiceHtml({
+      ...invoiceData,
+      booking: { ...invoiceData.booking, total_amount: 100, remaining_amount: 0 },
+      payments: [],
+    })
+
+    expect(html).toContain('<strong>₱0.00</strong>')
+  })
+
   it('captures invoice content inside the viewport', async () => {
     mocks.getBookingInvoiceData.mockResolvedValue(invoiceData)
 

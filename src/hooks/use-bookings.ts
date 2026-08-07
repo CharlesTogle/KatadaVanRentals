@@ -148,7 +148,7 @@ export function useDeleteBooking() {
 export function useRevenueReport(from?: string, to?: string) {
   return useQuery({
     queryKey: ['admin', 'revenue-report', from, to],
-    queryFn: () => bookingService.getVerifiedPayments(from, to),
+    queryFn: () => bookingService.getSubmittedPayments(from, to),
   })
 }
 

@@ -15,7 +15,7 @@ import {
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
 import { useRevenueReport } from '@/hooks/use-bookings'
-import type { VerifiedPaymentRow } from '@/services/booking-service'
+import type { SubmittedPaymentRow } from '@/services/booking-service'
 import { cn } from '@/lib/utils'
 import { Download, Table, BarChart3, X, Check } from 'lucide-react'
 
@@ -165,7 +165,7 @@ function escapeCsvField(value: string) {
   return value
 }
 
-function downloadCsv(payments: VerifiedPaymentRow[], fields: CsvField[]) {
+function downloadCsv(payments: SubmittedPaymentRow[], fields: CsvField[]) {
   const selectedDefs = CSV_FIELDS.filter((f) => fields.includes(f.key))
   const headers = selectedDefs.map((f) => f.label)
   const lines = payments.map((p) => {
@@ -328,7 +328,7 @@ export default function RevenueReport() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52]">Revenue Report</h1>
-          <p className="mt-0.5 text-sm font-medium text-[#071f52]/48">Verified payment collections.</p>
+          <p className="mt-0.5 text-sm font-medium text-[#071f52]/48">Submitted payment collections.</p>
         </div>
         <button
           onClick={() => setExportOpen(true)}
@@ -402,7 +402,7 @@ export default function RevenueReport() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-black text-[#071f52]">Daily Revenue</h2>
-            <p className="mt-1 text-sm text-[#071f52]/56">Verified revenue per day.</p>
+            <p className="mt-1 text-sm text-[#071f52]/56">Submitted revenue per day.</p>
           </div>
           <div className="flex items-center gap-1 rounded-lg border border-[#071f52]/12 bg-[#071f52]/4 p-0.5">
             <button
@@ -527,7 +527,7 @@ export default function RevenueReport() {
         <div className="card relative">
           {(isFetching && !isLoading) && <SectionLoader />}
           <h2 className="text-base font-black text-[#071f52]">Top Vehicles</h2>
-          <p className="mt-1 text-sm text-[#071f52]/56">By verified revenue.</p>
+          <p className="mt-1 text-sm text-[#071f52]/56">By submitted revenue.</p>
           {topVehicles.length === 0 ? (
             <p className="mt-6 text-center text-sm text-[#071f52]/40">No vehicle data.</p>
           ) : (
@@ -558,7 +558,7 @@ export default function RevenueReport() {
         <div className="card relative">
           {(isFetching && !isLoading) && <SectionLoader />}
           <h2 className="text-base font-black text-[#071f52]">Top Customers</h2>
-          <p className="mt-1 text-sm text-[#071f52]/56">By verified payments.</p>
+          <p className="mt-1 text-sm text-[#071f52]/56">By submitted payments.</p>
           {topCustomers.length === 0 ? (
             <p className="mt-6 text-center text-sm text-[#071f52]/40">No customer data.</p>
           ) : (
@@ -592,7 +592,7 @@ export default function RevenueReport() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-black text-[#071f52]">Payment Transactions</h2>
-            <p className="mt-1 text-sm text-[#071f52]/56">Verified payments for the selected period.</p>
+            <p className="mt-1 text-sm text-[#071f52]/56">Submitted payments for the selected period.</p>
           </div>
           <span className="rounded-full bg-[#071f52]/6 px-3 py-1 text-xs font-bold text-[#071f52]/56">
             {payments.length} transaction{payments.length !== 1 ? 's' : ''}
@@ -615,7 +615,7 @@ export default function RevenueReport() {
               {payments.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-5 py-8 text-center text-sm text-[#071f52]/40">
-                    No verified payments for this period.
+                    No submitted payments for this period.
                   </td>
                 </tr>
               ) : (

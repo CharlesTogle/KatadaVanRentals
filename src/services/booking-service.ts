@@ -456,7 +456,7 @@ export type AdminBookingActionInput =
   | { type: 'delete'; bookingId: string }
   | { type: 'set_price_for_manual'; bookingId: string; adjustedTotal: number; reason: string }
 
-export interface VerifiedPaymentRow {
+export interface SubmittedPaymentRow {
   id: string
   booking_id: string
   channel: string
@@ -477,7 +477,7 @@ export interface VerifiedPaymentRow {
   payment_method_provider: string | null
 }
 
-export async function getVerifiedPayments(from?: string, to?: string): Promise<VerifiedPaymentRow[]> {
+export async function getSubmittedPayments(from?: string, to?: string): Promise<SubmittedPaymentRow[]> {
   const { data, error } = await supabase.rpc('get_revenue_report', {
     from_date: from || null,
     to_date: to || null,
