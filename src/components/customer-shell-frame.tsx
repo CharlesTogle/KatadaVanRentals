@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 
 function sidebarLinkClasses(isActive: boolean) {
   return cn(
-    'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-base',
+    'flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-base',
     isActive
       ? 'bg-[#eef2fb] text-[#071f52]'
       : 'text-[#071f52]/72 hover:bg-[#f7f9ff] hover:text-[#071f52]',
