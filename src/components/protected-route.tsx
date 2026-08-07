@@ -1,10 +1,11 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/useAuth'
 import { useProfile } from '@/hooks/use-profile'
 import { isAdminRole } from '@/lib/rbac'
 
 export function ProtectedRoute({ children, adminOnly }: { children: React.ReactNode; adminOnly?: boolean }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
 
   const { data: profile, isLoading: fetchingRole } = useProfile(user?.id)
   const role = profile?.role
@@ -23,6 +24,8 @@ export function ProtectedRoute({ children, adminOnly }: { children: React.ReactN
 
   if (adminOnly && !isAdmin) return <Navigate to="/dashboard" replace />
   if (!adminOnly && isAdmin) return <Navigate to="/admin" replace />
+  if (!adminOnly && location.pathname === '/onboarding' && profile?.onboarding_completed) return <Navigate to="/dashboard" replace />
+  if (!adminOnly && location.pathname !== '/onboarding' && !profile?.onboarding_completed) return <Navigate to="/onboarding" replace />
 
   return <>{children}</>
 }

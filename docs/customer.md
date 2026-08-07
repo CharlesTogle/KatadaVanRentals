@@ -23,9 +23,8 @@
 1. Customer clicks "Register" on `/login` or proceeds through booking flow
 2. Google OAuth or email/password registration
 3. Email verification via OTP
-4. Address collection (`/registration/address`) — redirects to dashboard once logged in
-5. Document upload (`/registration/documents`) — redirects to dashboard once logged in
-6. Redirected to `/dashboard`
+4. Onboarding (`/onboarding`) — confirms profile details, asks about self-drive, and conditionally collects a driver's license and valid ID
+5. Redirected to `/dashboard`
 
 ### Login Methods
 - Email + Password
@@ -212,14 +211,12 @@ All three password fields have show/hide toggle buttons.
 - Redirects to dashboard if already logged in
 - Otherwise: OTP verification page (this customer already verified)
 
-### `/registration/address`
-- Redirects to dashboard if already logged in
-- Onboarding step: collect address before first booking
-- Fields likely: address, city, province, zip, country (same as profile)
-
-### `/registration/documents`
-- Redirects to dashboard if already logged in
-- Onboarding step: upload documents before booking (Driver's License, Valid ID, Proof of Billing)
+### `/onboarding`
+- Requires an authenticated customer
+- Step 1 confirms first name, last name, phone number, and the complete address against `/profile`
+- Step 2 asks whether the customer will self drive a van
+- Step 3 appears only for self-drive customers and requires a Driver's License and Valid ID
+- Step 4 welcomes the customer and links to `/dashboard`
 
 ---
 

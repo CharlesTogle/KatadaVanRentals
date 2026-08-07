@@ -17,6 +17,7 @@ export interface Profile {
   zip_code: string | null
   country: string
   profile_image_path: string | null
+  onboarding_completed: boolean
   is_active: boolean
   last_login_at: string | null
   created_at: string

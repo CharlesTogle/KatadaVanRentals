@@ -60,8 +60,10 @@ A scrollable single-page marketing site with sections drawn from admin content s
 
 ### Onboarding
 After initial registration, customers are guided through:
-1. **Address collection** (`/registration/address`) — line1, line2, street, barangay, city, province, zip code, country, with autocomplete suggestions on city
-2. **Document upload** (`/registration/documents`) — driver's license, valid ID, proof of billing; one-at-a-time upload with auto-save; each document type independently uploadable
+1. **Profile confirmation** (`/onboarding`) — first name, last name, phone number, and complete address must match the saved profile
+2. **Rental preference** — customers choose whether they intend to self drive a van
+3. **Conditional document upload** — self-drive customers upload a driver's license and valid ID; each document is saved automatically
+4. **Completion** — customers see a welcome screen and continue to the dashboard
 
 ### Roles
 - `customer` — default new-user role

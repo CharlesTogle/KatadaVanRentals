@@ -8,15 +8,17 @@ import Notifications from '@/pages/notifications'
 import Profile from '@/pages/profile'
 import MyBookings from '@/pages/my-bookings'
 import Documents from '@/pages/documents'
+import Onboarding from '@/pages/onboarding'
 
 export const customerRoutes = (
-  <Route
-    element={
-      <ProtectedRoute>
-        <CustomerLayout />
-      </ProtectedRoute>
-    }
-  >
+  <>
+    <Route
+      element={
+        <ProtectedRoute>
+          <CustomerLayout />
+        </ProtectedRoute>
+      }
+    >
     <Route path="/dashboard" element={<CustomerDashboard />} />
     <Route path="/dashboard/book/:vehicleId" element={<BookingForm />} />
     <Route path="/dashboard/bookings/:id" element={<BookingDetail />} />
@@ -24,5 +26,7 @@ export const customerRoutes = (
     <Route path="/profile" element={<Profile />} />
     <Route path="/bookings" element={<MyBookings />} />
     <Route path="/documents" element={<Documents />} />
-  </Route>
+    </Route>
+    <Route element={<ProtectedRoute><Onboarding /></ProtectedRoute>} path="/onboarding" />
+  </>
 )

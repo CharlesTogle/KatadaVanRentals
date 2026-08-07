@@ -15,16 +15,14 @@ export default function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const { data: settings } = useAppSettings()
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
   const [loading, setLoading] = useState(false)
   const passwordChecks = getPasswordRequirementChecks(password)
-  const trimmedName = name.trim()
   const trimmedEmail = email.trim()
-  const canSubmit = !!trimmedName && isValidEmail(trimmedEmail) && isValidPassword(password) && !loading
+  const canSubmit = isValidEmail(trimmedEmail) && isValidPassword(password) && !loading
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -56,7 +54,6 @@ export default function Register() {
       email: trimmedEmail,
       password,
       options: {
-        data: { full_name: trimmedName },
         emailRedirectTo: new URL('/verify-email', window.location.origin).toString(),
       },
     })
@@ -138,22 +135,6 @@ export default function Register() {
                   )}
                 </div>
               )}
-
-            <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-bold text-[#071f52]">
-                Full name
-              </label>
-              <input
-                id="name"
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Juan Dela Cruz"
-                autoComplete="name"
-                className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
-              />
-            </div>
 
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-bold text-[#071f52]">
