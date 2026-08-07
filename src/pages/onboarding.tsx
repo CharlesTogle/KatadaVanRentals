@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Check, CheckCircle2, Compass, MapPin, ShieldCheck, Upload } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Compass, MapPin, ShieldCheck, Upload } from 'lucide-react'
 import { useAuth } from '@/contexts/useAuth'
 import { useProfile, useUpdateProfile } from '@/hooks/use-profile'
 import { useCustomerDocuments, useSaveCustomerDocument } from '@/hooks/use-documents'
@@ -200,7 +200,7 @@ export default function Onboarding() {
     <div className="relative min-h-[100dvh] overflow-x-hidden bg-[#071f52] text-[#071f52] lg:h-[100dvh] lg:overflow-hidden" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <div className="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_10%_10%,rgba(255,217,35,0.26),transparent_30%),radial-gradient(circle_at_85%_90%,rgba(233,41,53,0.28),transparent_36%)]" />
       <div className="relative mx-auto grid h-full max-w-[1440px] lg:grid-cols-[0.88fr_1.12fr]">
-        <VisualPanel stepNumber={stepNumber} />
+        <VisualPanel />
 
         <main className="flex min-h-[100dvh] items-start justify-center overflow-y-auto bg-[#f7f9ff] px-3 py-4 sm:px-6 sm:py-6 lg:min-h-0 lg:items-center lg:rounded-l-[40px] lg:px-8 lg:py-8">
           <div className="w-full max-w-[600px]">
@@ -224,8 +224,7 @@ export default function Onboarding() {
   )
 }
 
-function VisualPanel({ stepNumber }: { stepNumber: number }) {
-  const steps = ['Your details', 'Your address', 'Rental preference', 'Documents', 'Ready to go']
+function VisualPanel() {
   return (
     <section className="relative hidden min-h-0 overflow-hidden px-10 py-10 text-white lg:flex lg:flex-col lg:justify-between xl:px-16">
       <div>
@@ -234,17 +233,6 @@ function VisualPanel({ stepNumber }: { stepNumber: number }) {
           <p className="text-xs font-black uppercase tracking-[0.24em] text-[#ffd923]">A smoother start</p>
           <h1 className="mt-4 text-5xl font-black leading-[0.98] tracking-[-0.06em] xl:text-6xl">Set the trip in motion.</h1>
           <p className="mt-6 max-w-[360px] text-sm font-medium leading-7 text-white/62">A few details now means faster van requests later. Your account stays in your hands at every step.</p>
-        </div>
-      </div>
-
-      <div className="relative mb-2 rounded-[28px] border border-white/12 bg-white/8 p-5 backdrop-blur-sm">
-        <div className="absolute left-[31px] top-8 h-[calc(100%-64px)] w-px bg-white/15" />
-        <div className="space-y-4">
-          {steps.map((label, index) => {
-            const complete = index + 1 < stepNumber
-            const current = index + 1 === stepNumber
-            return <div key={label} className="relative flex items-center gap-3"><div className={`z-10 flex h-4 w-4 items-center justify-center rounded-full border ${complete ? 'border-[#ffd923] bg-[#ffd923] text-[#071f52]' : current ? 'border-white bg-white text-[#071f52]' : 'border-white/25 bg-[#071f52]'}`}>{complete && <Check size={10} strokeWidth={4} />}</div><span className={`text-xs font-bold ${current ? 'text-white' : 'text-white/42'}`}>{label}</span></div>
-          })}
         </div>
       </div>
     </section>
