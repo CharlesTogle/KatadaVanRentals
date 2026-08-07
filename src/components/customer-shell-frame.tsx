@@ -114,6 +114,15 @@ export function CustomerShellFrame({ children }: { children: ReactNode }) {
 
               <div className="mt-2 border-t border-[#071f52]/10 pt-2">
                 <NavLink
+                  to="/"
+                  end
+                  onClick={() => setSidebarOpen(false)}
+                  className={({ isActive }) => sidebarLinkClasses(isActive)}
+                >
+                  <Home size={16} />
+                  Home
+                </NavLink>
+                <NavLink
                   to="/our-fleet"
                   end
                   onClick={() => setSidebarOpen(false)}

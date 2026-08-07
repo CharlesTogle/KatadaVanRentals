@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
+import { useProfile } from '@/hooks/use-profile'
 import { useAppSettings } from '@/hooks/use-app-settings'
 import { LogOut, LayoutDashboard, CalendarCheck, Users, Truck, BarChart3, Settings, Home, MessageSquareMore, Menu, X } from 'lucide-react'
 
@@ -16,6 +17,7 @@ const navGroups = [
 
 export default function AdminLayout() {
   const { user, signOut } = useAuth()
+  const { data: profile } = useProfile(user?.id)
   const { data: settings } = useAppSettings()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -107,9 +109,13 @@ export default function AdminLayout() {
               Home
             </NavLink>
             <div className="flex items-center gap-3 rounded-xl px-3 py-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#071f52] text-xs font-black text-white">
-                {name.charAt(0).toUpperCase()}
-              </div>
+              {profile?.profile_image_path ? (
+                <img src={profile.profile_image_path} alt={name} className="h-8 w-8 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#071f52] text-xs font-black text-white">
+                  {name.charAt(0).toUpperCase()}
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-[#071f52]">{name}</p>
                 <p className="truncate text-xs font-medium text-[#071f52]/48">Admin</p>
@@ -164,9 +170,13 @@ export default function AdminLayout() {
               Home
             </NavLink>
             <div className="flex items-center gap-3 rounded-xl px-3 py-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#071f52] text-xs font-black text-white">
-                {name.charAt(0).toUpperCase()}
-              </div>
+              {profile?.profile_image_path ? (
+                <img src={profile.profile_image_path} alt={name} className="h-8 w-8 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#071f52] text-xs font-black text-white">
+                  {name.charAt(0).toUpperCase()}
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-[#071f52]">{name}</p>
                 <p className="truncate text-xs font-medium text-[#071f52]/48">Admin</p>

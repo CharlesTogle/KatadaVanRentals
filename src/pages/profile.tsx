@@ -144,6 +144,7 @@ export default function Profile() {
     if (!error) {
       const { data: { publicUrl } } = supabase.storage.from('business-assets').getPublicUrl(path)
       setProfile({ ...profile, profile_image_path: publicUrl })
+      updateProfile.mutate({ id: user.id, data: { profile_image_path: publicUrl } })
     }
     setUploading(false)
   }
