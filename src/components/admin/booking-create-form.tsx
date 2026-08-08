@@ -171,26 +171,29 @@ export function BookingCreateForm() {
     let cancelled = false
     setRouteLoading(true)
 
-    void getRouteQuote({
-      pickup: routeSelections.pickup,
-      destination: needsDestination ? routeSelections.destination : undefined,
-      dropoff: routeSelections.dropoff,
-      vehicleId,
-      rentalModel: toBookingRentalModel(rentalType),
-    }).then((quote) => {
-      if (cancelled) return
-      setRouteQuote(quote)
-      setRouteError('')
-    }).catch((err) => {
-      if (cancelled) return
-      setRouteQuote(null)
-      setRouteError(err instanceof Error ? err.message : 'Failed to compute route quote')
-    }).finally(() => {
-      if (!cancelled) setRouteLoading(false)
-    })
+    const routeQuoteTimeout = window.setTimeout(() => {
+      void getRouteQuote({
+        pickup: routeSelections.pickup,
+        destination: needsDestination ? routeSelections.destination : undefined,
+        dropoff: routeSelections.dropoff,
+        vehicleId,
+        rentalModel: toBookingRentalModel(rentalType),
+      }).then((quote) => {
+        if (cancelled) return
+        setRouteQuote(quote)
+        setRouteError('')
+      }).catch((err) => {
+        if (cancelled) return
+        setRouteQuote(null)
+        setRouteError(err instanceof Error ? err.message : 'Failed to compute route quote')
+      }).finally(() => {
+        if (!cancelled) setRouteLoading(false)
+      })
+    }, 300)
 
     return () => {
       cancelled = true
+      window.clearTimeout(routeQuoteTimeout)
     }
   }, [locations.dropoff, locations.destination, locations.pickup, mode, rentalType, routeSelections.dropoff, routeSelections.destination, routeSelections.pickup, setRouteQuote, setRouteSelection, vehicleId])
 
