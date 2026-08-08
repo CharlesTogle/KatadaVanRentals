@@ -46,8 +46,8 @@ where vehicle_type is not null
 alter table public.vehicles
   drop constraint if exists vehicles_brand_id_fkey,
   drop constraint if exists vehicles_vehicle_type_id_fkey,
-  drop column brand_id,
-  drop column vehicle_type_id,
+  drop column if exists brand_id,
+  drop column if exists vehicle_type_id,
   add constraint vehicles_vehicle_type_check
     check (vehicle_type is null or vehicle_type in ('Car', 'Van', 'Truck', 'Mini Van', 'Mini Bus', 'Others'));
 
