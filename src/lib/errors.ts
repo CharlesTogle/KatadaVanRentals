@@ -17,6 +17,7 @@ const authMap: Record<string, string> = {
   'Invalid login credentials': 'Incorrect email or password. Check your credentials and try again.',
   'User already registered': 'An account with this email already exists. Try logging in instead.',
   'Password should be at least 6 characters': 'Password must be at least 6 characters. Choose a longer password.',
+  'New password should be different from the old password': 'New password should be different from the old password.',
   'Email not confirmed': 'Please verify your email first. Check your inbox for the confirmation link.',
   'Email rate limit exceeded': 'Too many attempts. Please wait a moment before trying again.',
   'User not found': 'No account found with this email. Check the email or create a new account.',

@@ -23,6 +23,8 @@ describe('showError', () => {
       .toContain('already exists')
     expect(showError(new Error('Password should be at least 6 characters')))
       .toContain('at least 6 characters')
+    expect(showError(new Error('New password should be different from the old password.')))
+      .toBe('New password should be different from the old password.')
   })
 
   it('returns generic message for unknown errors', () => {
