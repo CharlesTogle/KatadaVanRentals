@@ -68,6 +68,7 @@ describe('Onboarding', () => {
 
   it('keeps the phone number at the +63 prefix and ten local digits', async () => {
     const user = userEvent.setup()
+    useProfileMock.mockReturnValue({ data: { ...profile, mobile: '' }, isLoading: false })
     renderOnboarding()
     const phone = screen.getByLabelText('Phone Number')
     await user.clear(phone)
@@ -76,11 +77,17 @@ describe('Onboarding', () => {
     expect(phone).toHaveValue('+63 9171234567')
   })
 
+  it('does not ask for a mobile number that was already added by admin', () => {
+    renderOnboarding()
+
+    expect(screen.queryByLabelText('Phone Number')).not.toBeInTheDocument()
+  })
+
   it('takes the no branch directly to the welcome page', async () => {
     const user = userEvent.setup()
     renderOnboarding()
     await advanceToChoice(user)
-    await user.click(screen.getByRole('button', { name: /no, i need a driver/i }))
+    await user.click(screen.getByRole('button', { name: /i need a driver/i }))
 
     expect(screen.getByText('Welcome to Katada Van Rentals!!')).toBeInTheDocument()
   })
@@ -89,7 +96,7 @@ describe('Onboarding', () => {
     const user = userEvent.setup()
     renderOnboarding()
     await advanceToChoice(user)
-    await user.click(screen.getByRole('button', { name: /yes.*self drive/i }))
+    await user.click(screen.getByRole('button', { name: /looking to self drive/i }))
 
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled()
   })
@@ -98,7 +105,7 @@ describe('Onboarding', () => {
     const user = userEvent.setup()
     renderOnboarding()
     await advanceToChoice(user)
-    await user.click(screen.getByRole('button', { name: /yes.*self drive/i }))
+    await user.click(screen.getByRole('button', { name: /looking to self drive/i }))
     await user.click(screen.getAllByRole('button', { name: /upload/i })[0])
     await user.upload(screen.getByLabelText('Upload document file'), new File(['license'], 'license.jpg', { type: 'image/jpeg' }))
 
@@ -110,7 +117,7 @@ describe('Onboarding', () => {
     useCustomerDocumentsMock.mockReturnValue({ data: documents, isLoading: false })
     renderOnboarding()
     await advanceToChoice(user)
-    await user.click(screen.getByRole('button', { name: /yes.*self drive/i }))
+    await user.click(screen.getByRole('button', { name: /looking to self drive/i }))
     await user.click(screen.getByRole('button', { name: 'Continue' }))
 
     expect(screen.getByText('Welcome to Katada Van Rentals!!')).toBeInTheDocument()
@@ -120,7 +127,7 @@ describe('Onboarding', () => {
     const user = userEvent.setup()
     renderOnboarding()
     await advanceToChoice(user)
-    await user.click(screen.getByRole('button', { name: /no, i need a driver/i }))
+    await user.click(screen.getByRole('button', { name: /i need a driver/i }))
     await user.click(screen.getByRole('button', { name: /go to dashboard/i }))
 
     expect(navigateMock).toHaveBeenCalledWith('/dashboard', { replace: true })

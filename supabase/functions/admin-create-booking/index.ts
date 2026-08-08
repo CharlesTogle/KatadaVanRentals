@@ -301,7 +301,7 @@ serve(async (req) => {
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email: newCustomer!.email,
-      options: { redirectTo: `${SITE_URL}/login` },
+      options: { redirectTo: `${SITE_URL}/password/reset?source=admin-create-booking` },
     })
 
     if (!linkError && linkData?.properties?.action_link) {

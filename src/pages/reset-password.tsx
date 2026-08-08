@@ -12,6 +12,7 @@ import { getPasswordRequirementChecks, isValidPassword } from '@/lib/validation'
 
 export default function ResetPassword() {
   const navigate = useNavigate()
+  const isAdminInvite = new URLSearchParams(window.location.search).get('source') === 'admin-create-booking'
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -82,7 +83,7 @@ export default function ResetPassword() {
 
     setMessage('Your password has been updated.')
     setLoading(false)
-    window.setTimeout(() => navigate('/login', { replace: true }), 1200)
+    window.setTimeout(() => navigate(isAdminInvite ? '/onboarding' : '/login', { replace: true }), 1200)
   }
 
   return (
@@ -95,13 +96,15 @@ export default function ResetPassword() {
           </Link>
           <div className="inline-flex w-fit items-center gap-2 rounded-full bg-[#ffd923]/70 px-4 py-2 text-xs font-black text-[#071f52]">
             <KeyRound size={15} aria-hidden="true" />
-            New password
+            {isAdminInvite ? 'Account setup' : 'New password'}
           </div>
           <CardTitle className="text-3xl font-black tracking-[-0.04em] text-[#071f52]">
-            Reset your password
+            {isAdminInvite ? 'Set up your password' : 'Reset your password'}
           </CardTitle>
           <CardDescription className="text-base font-medium leading-7 text-[#071f52]/66">
-            Choose a new password for your account.
+            {isAdminInvite
+              ? 'Create a password to access your Katada Van Rentals account.'
+              : 'Choose a new password for your account.'}
           </CardDescription>
         </CardHeader>
 

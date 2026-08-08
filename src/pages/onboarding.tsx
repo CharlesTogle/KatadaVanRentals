@@ -56,8 +56,14 @@ function normalize(value: string | null | undefined) {
 }
 
 function getMobileDigits(value: string) {
-  const digits = value.startsWith(MOBILE_PREFIX) ? value.slice(MOBILE_PREFIX.length) : value
+  const digits = value.replace(/^\+63\s*/, '')
   return digits.replace(/\D/g, '')
+}
+
+function getPersonalFields(values: FormValues) {
+  return getMobileDigits(values.mobile).length === 10
+    ? personalFields.filter((field) => field.key !== 'mobile')
+    : personalFields
 }
 
 function profileValues(profile: NonNullable<ReturnType<typeof useProfile>['data']>): FormValues {
@@ -121,7 +127,7 @@ export default function Onboarding() {
   }
 
   const continuePersonal = () => {
-    if (validateSection(personalFields)) {
+    if (values && validateSection(getPersonalFields(values))) {
       setMismatches([])
       setStep('address')
     }
@@ -244,8 +250,10 @@ function Progress({ stepNumber }: { stepNumber: number }) {
 }
 
 function PersonalStep({ values, mismatches, onChange, onContinue }: { values: FormValues; mismatches: string[]; onChange: (values: FormValues) => void; onContinue: () => void }) {
+  const fields = getPersonalFields(values)
+
   return <FormStep title="Tell us about you" description="Start with the details we will use to identify your account." mismatches={mismatches} onSubmit={onContinue}>
-    <div className="grid gap-4 sm:grid-cols-2">{personalFields.map((field) => <Field key={field.key} field={field} values={values} invalid={mismatches.includes(field.key)} onChange={onChange} wide={field.key === 'mobile'} />)}</div>
+    <div className="grid gap-4 sm:grid-cols-2">{fields.map((field) => <Field key={field.key} field={field} values={values} invalid={mismatches.includes(field.key)} onChange={onChange} wide={field.key === 'mobile'} />)}</div>
   </FormStep>
 }
 
