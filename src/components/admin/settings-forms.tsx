@@ -550,7 +550,7 @@ const channelLabels: Record<PaymentChannel, string> = {
   online_gateway: 'Online Gateway',
 }
 
-const paymentChannels: PaymentChannel[] = ['bank_transfer', 'ewallet', 'online_gateway']
+const paymentChannels: PaymentChannel[] = ['cash', 'bank_transfer', 'ewallet', 'online_gateway']
 
 const emptyPaymentMethod: Omit<PaymentMethod, 'id' | 'created_at' | 'updated_at'> = {
   channel: 'bank_transfer' as PaymentChannel,
@@ -642,7 +642,6 @@ export function SettingsPaymentsForm({ saving, setSaving, showMessage }: Omit<Se
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-lg font-black text-[#071f52]">Payments</h2>
-          <p className="text-xs font-medium text-[#071f52]/58">Bank details shown to users when they upgrade their plans.</p>
         </div>
         <Button type="button" onClick={() => { setEditing({ ...emptyPaymentMethod }); setQrFile(null); setShowForm(true) }} className="bg-[#071f52] text-white hover:bg-[#112458]">
           + Add Method
@@ -732,7 +731,7 @@ export function SettingsPaymentsForm({ saving, setSaving, showMessage }: Omit<Se
               </div>
               <div className="space-y-1.5">
                 <label className={labelClass}>Bank / Provider</label>
-                <input required value={editing.provider || ''} onChange={(e) => setEditing({ ...editing, provider: e.target.value })} className={inputClass} />
+                <input required={editing.channel !== 'cash'} value={editing.provider || ''} onChange={(e) => setEditing({ ...editing, provider: e.target.value })} className={inputClass} />
               </div>
               <div className="space-y-1.5">
                 <label className={labelClass}>Branch</label>
@@ -744,7 +743,7 @@ export function SettingsPaymentsForm({ saving, setSaving, showMessage }: Omit<Se
               </div>
               <div className="space-y-1.5">
                 <label className={labelClass}>Account Number</label>
-                <input required value={editing.account_number || ''} onChange={(e) => setEditing({ ...editing, account_number: e.target.value })} className={inputClass} />
+                <input required={editing.channel !== 'cash'} value={editing.account_number || ''} onChange={(e) => setEditing({ ...editing, account_number: e.target.value })} className={inputClass} />
               </div>
               <div className="space-y-1.5">
                 <label className={labelClass}>Account Name</label>
