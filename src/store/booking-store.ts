@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { normalizePhilippineMobile } from '@/lib/validation'
 import type { RouteQuoteResponse, SelectedLocation, TollPlazaOption, TollRfidBreakdownItem } from '@/types/location'
 
 type Profile = {
@@ -81,7 +82,7 @@ type BookingState = {
 const defaults = {
   mode: 'dropoff' as const,
   returnDifferentLocation: false,
-  profile: { first_name: '', last_name: '', email: '', mobile: '+63 ' },
+  profile: { first_name: '', last_name: '', email: '', mobile: '+63' },
   address: { address: '', city: '', province: '', zip: '', country: 'Philippines' },
   locations: { pickup: '', dropoff: '', destination: '' },
   purpose: '',
@@ -111,7 +112,7 @@ export const useBookingStore = create<BookingState>((set) => ({
 
   setMode: (mode) => set({ mode }),
   setReturnDifferentLocation: (returnDifferentLocation) => set({ returnDifferentLocation }),
-  setProfile: (profile) => set((s) => ({ profile: { ...s.profile, ...profile } })),
+  setProfile: (profile) => set((s) => ({ profile: { ...s.profile, ...profile, ...(profile.mobile ? { mobile: normalizePhilippineMobile(profile.mobile) } : {}) } })),
   setAddress: (address) => set((s) => ({ address: { ...s.address, ...address } })),
   setLocations: (locations) => set((s) => ({
     locations: { ...s.locations, ...locations },

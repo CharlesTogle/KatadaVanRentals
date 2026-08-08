@@ -177,7 +177,13 @@ export default function BookingForm() {
 
   useEffect(() => {
     if (startParam || endParam) {
-      saveBookingDateSelection({ start: startParam, end: endParam })
+      const savedSelection = loadBookingDateSelection()
+      const sameSelection = savedSelection?.start === startParam && savedSelection.end === endParam
+      saveBookingDateSelection({
+        start: startParam,
+        end: endParam,
+        availableVehicleIds: sameSelection ? savedSelection?.availableVehicleIds : [],
+      })
       return
     }
 

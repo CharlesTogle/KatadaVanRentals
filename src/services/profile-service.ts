@@ -4,6 +4,7 @@ import type { Profile } from '@/types/profile'
 import type { AdminCustomerRow, AdminCustomersPage } from '@/types/admin-customer'
 import type { AdminCustomerSearchPage } from '@/types/admin-booking'
 import type { CustomerDocument } from '@/types/document'
+import { normalizePhilippineMobile } from '@/lib/validation'
 
 export async function getProfile(id: string): Promise<Profile> {
   const { data, error } = await supabase.from('profiles').select('*').eq('id', id).single()
@@ -12,7 +13,8 @@ export async function getProfile(id: string): Promise<Profile> {
 }
 
 export async function updateProfile(id: string, data: Partial<Profile>): Promise<void> {
-  const { error } = await supabase.from('profiles').update(data).eq('id', id)
+  const normalizedData = data.mobile ? { ...data, mobile: normalizePhilippineMobile(data.mobile) } : data
+  const { error } = await supabase.from('profiles').update(normalizedData).eq('id', id)
   if (error) throw error
 }
 

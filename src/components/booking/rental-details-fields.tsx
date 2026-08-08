@@ -116,6 +116,7 @@ export function RentalDetailsFields({ vehicle }: RentalDetailsFieldsProps) {
     saveBookingDateSelection({
       start: field === 'start' ? value : nextParams.get('start') || '',
       end: field === 'end' ? value : nextParams.get('end') || '',
+      availableVehicleIds: [],
     })
   }
 

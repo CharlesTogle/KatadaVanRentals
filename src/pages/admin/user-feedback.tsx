@@ -85,12 +85,18 @@ export default function AdminUserFeedback() {
                   <span className="rounded-full bg-[#071f52]/6 px-3 py-1 text-xs font-bold text-[#071f52]">
                     {formatDate(entry.created_at)}
                   </span>
-                  <Link
-                    to={`/admin/bookings/${entry.booking_number}`}
-                    className="rounded-xl bg-[#071f52] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#0b2f7d]"
-                  >
-                    View booking
-                  </Link>
+                  {entry.booking_number ? (
+                    <Link
+                      to={`/admin/bookings/${entry.booking_number}`}
+                      className="rounded-xl bg-[#071f52] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#0b2f7d]"
+                    >
+                      View booking
+                    </Link>
+                  ) : (
+                    <span className="rounded-xl bg-[#071f52]/6 px-4 py-2 text-sm font-bold text-[#071f52]/58">
+                      Booking deleted
+                    </span>
+                  )}
                 </div>
               </div>
 

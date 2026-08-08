@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { CreateVehicleInput, FleetUnavailableDate, UpdateVehicleInput, Vehicle, VehicleUnavailableRange } from '@/types/vehicle'
+import type { CreateVehicleInput, UpdateVehicleInput, Vehicle, VehicleUnavailableRange } from '@/types/vehicle'
 
 function slugify(name: string): string {
   return name
@@ -73,16 +73,13 @@ export async function getVehicleUnavailableRanges(vehicleId: string): Promise<Ve
   return (data || []) as VehicleUnavailableRange[]
 }
 
-export async function getFleetUnavailableDates(): Promise<FleetUnavailableDate[]> {
-  const from = new Date()
-  const to = new Date(from)
-  to.setFullYear(to.getFullYear() + 2)
-  const { data, error } = await supabase.rpc('get_fleet_unavailable_dates', {
-    p_from_date: from.toISOString().slice(0, 10),
-    p_to_date: to.toISOString().slice(0, 10),
+export async function getAvailableVehicleIds(startAt: string, endAt: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc('get_available_vehicle_ids', {
+    p_start_at: startAt,
+    p_end_at: endAt,
   })
   if (error) throw error
-  return (data || []) as FleetUnavailableDate[]
+  return (data || []).map(({ vehicle_id }: { vehicle_id: string }) => vehicle_id)
 }
 
 export async function getAdminVehicles(): Promise<Vehicle[]> {
@@ -119,8 +116,8 @@ export async function deleteVehicle(id: string): Promise<void> {
 export async function uploadVehicleImage(file: File): Promise<string> {
   const ext = file.name.split('.').pop()
   const fileName = `${crypto.randomUUID()}.${ext}`
-  const { data, error } = await supabase.storage.from('vehicles').upload(fileName, file)
+  const { data, error } = await supabase.storage.from('vehicle-images').upload(fileName, file)
   if (error) throw error
-  const { data: urlData } = supabase.storage.from('vehicles').getPublicUrl(data.path)
+  const { data: urlData } = supabase.storage.from('vehicle-images').getPublicUrl(data.path)
   return urlData.publicUrl
 }

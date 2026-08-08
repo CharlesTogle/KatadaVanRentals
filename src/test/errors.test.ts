@@ -27,6 +27,13 @@ describe('showError', () => {
       .toBe('New password should be different from the old password.')
   })
 
+  it('hides Supabase edge-function and customer-account implementation errors', () => {
+    expect(showError(new Error('Edge Function returned a non-2xx status code')))
+      .toBe('Something went wrong. Please try again later.')
+    expect(showError(new Error('Failed to create customer account')))
+      .toBe('We can\'t create an account using that email, please choose another email')
+  })
+
   it('returns generic message for unknown errors', () => {
     const result = showError(new Error('Some unexpected thing'))
     expect(result).toBeTruthy()

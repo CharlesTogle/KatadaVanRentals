@@ -10,6 +10,7 @@ import { toast } from '@/lib/toast'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { CountrySelect } from '@/components/ui/country-select'
+import { getPhilippineMobileDigits, normalizePhilippineMobile } from '@/lib/validation'
 import type { DocumentType } from '@/types/document'
 
 type Step = 'personal' | 'address' | 'self-drive' | 'documents' | 'complete'
@@ -50,19 +51,14 @@ const addressFields: Array<{ key: keyof FormValues; label: string; wide?: boolea
   { key: 'country', label: 'Country' },
 ]
 
-const MOBILE_PREFIX = '+63 '
+const MOBILE_PREFIX = '+63'
 
 function normalize(value: string | null | undefined) {
   return (value || '').trim().replace(/\s+/g, ' ').toLowerCase()
 }
 
-function getMobileDigits(value: string) {
-  const digits = value.replace(/^\+63\s*/, '')
-  return digits.replace(/\D/g, '')
-}
-
 function getPersonalFields(values: FormValues) {
-  return getMobileDigits(values.mobile).length === 10
+  return getPhilippineMobileDigits(values.mobile).length === 10
     ? personalFields.filter((field) => field.key !== 'mobile')
     : personalFields
 }
@@ -72,7 +68,7 @@ function profileValues(profile: NonNullable<ReturnType<typeof useProfile>['data'
   return {
     first_name: profile.first_name || '',
     last_name: profile.last_name || '',
-    mobile: profile.mobile || MOBILE_PREFIX,
+    mobile: profile.mobile ? normalizePhilippineMobile(profile.mobile) : MOBILE_PREFIX,
     address_line_1: profile.address_line_1 || address.address_line_1,
     address_line_2: profile.address_line_2 || address.address_line_2,
     street_address: profile.street_address || address.street_address,
@@ -87,7 +83,7 @@ function profileValues(profile: NonNullable<ReturnType<typeof useProfile>['data'
 function getInvalidFields(values: FormValues, fields: Array<{ key: keyof FormValues; optional?: boolean }>) {
   return fields.reduce<string[]>((mismatches, field) => {
     const invalid = field.key === 'mobile'
-      ? getMobileDigits(values[field.key]).length !== 10
+      ? getPhilippineMobileDigits(values[field.key]).length !== 10
       : !field.optional && !normalize(values[field.key])
     if (invalid) mismatches.push(field.key)
     return mismatches
@@ -143,7 +139,7 @@ export default function Onboarding() {
         data: {
           first_name: values.first_name,
           last_name: values.last_name,
-          mobile: values.mobile,
+          mobile: normalizePhilippineMobile(values.mobile),
           address_line_1: values.address_line_1,
           address_line_2: values.address_line_2,
           street_address: values.street_address,
@@ -270,7 +266,7 @@ function FormStep({ title, description, mismatches, onSubmit, children }: { titl
 }
 
 function Field({ field, values, invalid, onChange, wide, optional }: { field: { key: keyof FormValues; label: string }; values: FormValues; invalid: boolean; onChange: (values: FormValues) => void; wide?: boolean; optional?: boolean }) {
-  return <label className={wide ? 'sm:col-span-2' : ''}><span className="text-xs font-bold text-[#071f52]">{field.label} {optional ? <span className="font-medium text-[#071f52]/38">(optional)</span> : <span className="text-[#e92935]">*</span>}</span>{field.key === 'country' ? <CountrySelect value={values.country} onChange={(country) => onChange({ ...values, country })} required invalid={invalid} className="mt-1.5" /> : <input value={values[field.key]} aria-label={field.label} aria-invalid={invalid} inputMode={field.key === 'mobile' ? 'numeric' : undefined} maxLength={field.key === 'mobile' ? MOBILE_PREFIX.length + 10 : undefined} onChange={(event) => onChange({ ...values, [field.key]: field.key === 'mobile' ? `${MOBILE_PREFIX}${getMobileDigits(event.target.value).slice(0, 10)}` : event.target.value })} className={`mt-1.5 block w-full rounded-xl border bg-[#f7f9ff] px-3 py-2.5 text-sm font-semibold text-[#071f52] outline-none transition-colors focus:bg-white focus:ring-2 ${invalid ? 'border-[#e92935] focus:border-[#e92935] focus:ring-[#e92935]/20' : 'border-[#071f52]/14 focus:border-[#071f52] focus:ring-[#ffd923]/60'}`} />}{invalid && <span className="mt-1 block text-[11px] font-bold text-[#b91c1c]">{field.key === 'mobile' ? 'Enter a complete +63 phone number.' : `${field.label} is required.`}</span>}</label>
+  return <label className={wide ? 'sm:col-span-2' : ''}><span className="text-xs font-bold text-[#071f52]">{field.label} {optional ? <span className="font-medium text-[#071f52]/38">(optional)</span> : <span className="text-[#e92935]">*</span>}</span>{field.key === 'country' ? <CountrySelect value={values.country} onChange={(country) => onChange({ ...values, country })} required invalid={invalid} className="mt-1.5" /> : <input value={values[field.key]} aria-label={field.label} aria-invalid={invalid} inputMode={field.key === 'mobile' ? 'numeric' : undefined} maxLength={field.key === 'mobile' ? MOBILE_PREFIX.length + 10 : undefined} onChange={(event) => onChange({ ...values, [field.key]: field.key === 'mobile' ? `${MOBILE_PREFIX}${getPhilippineMobileDigits(event.target.value)}` : event.target.value })} className={`mt-1.5 block w-full rounded-xl border bg-[#f7f9ff] px-3 py-2.5 text-sm font-semibold text-[#071f52] outline-none transition-colors focus:bg-white focus:ring-2 ${invalid ? 'border-[#e92935] focus:border-[#e92935] focus:ring-[#e92935]/20' : 'border-[#071f52]/14 focus:border-[#071f52] focus:ring-[#ffd923]/60'}`} />}{invalid && <span className="mt-1 block text-[11px] font-bold text-[#b91c1c]">{field.key === 'mobile' ? 'Enter a complete +63 phone number.' : `${field.label} is required.`}</span>}</label>
 }
 
 function ChoiceStep({ onBack, onChoose }: { onBack: () => void; onChoose: (answer: boolean) => void }) {

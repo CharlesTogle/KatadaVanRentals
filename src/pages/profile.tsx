@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { CountrySelect } from '@/components/ui/country-select'
 import { Camera, Phone, Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { isValidPassword } from '@/lib/validation'
+import { getPhilippineMobileDigits, isValidPassword, normalizePhilippineMobile } from '@/lib/validation'
 import { AUTH_MESSAGES } from '@/constants/auth'
 import { composeProfileAddress, parseProfileAddress } from '@/lib/profile-address'
 
@@ -15,7 +15,7 @@ const emptyProfile = {
   first_name: '',
   last_name: '',
   email: '',
-  mobile: '+63 ',
+  mobile: '+63',
   address_line_1: '',
   address_line_2: '',
   street_address: '',
@@ -28,7 +28,7 @@ const emptyProfile = {
   profile_image_path: null as string | null,
 }
 
-const MOBILE_PREFIX = '+63 '
+const MOBILE_PREFIX = '+63'
 
 function isMissingRequiredValue(value: string, field: 'default' | 'mobile' = 'default') {
   const trimmedValue = value.trim()
@@ -36,12 +36,6 @@ function isMissingRequiredValue(value: string, field: 'default' | 'mobile' = 'de
   if (trimmedValue === '') return true
 
   return field === 'mobile' && trimmedValue === '+63'
-}
-
-function getMobileDigits(value: string) {
-  const mobileValue = value.startsWith(MOBILE_PREFIX) ? value.slice(MOBILE_PREFIX.length) : value
-
-  return mobileValue.replace(/\D/g, '')
 }
 
 export default function Profile() {
@@ -69,7 +63,7 @@ export default function Profile() {
       : 'border-[#071f52]/14 focus:border-[#071f52] focus:ring-[#ffd923]/60',
   )
 
-  const mobileDigits = getMobileDigits(profile.mobile)
+  const mobileDigits = getPhilippineMobileDigits(profile.mobile)
 
   const profileFieldErrors = {
     first_name: showProfileValidation && isMissingRequiredValue(profile.first_name) ? 'First name is required.' : '',
@@ -111,7 +105,7 @@ export default function Profile() {
         first_name: profileData.first_name || user?.user_metadata?.full_name?.split(' ')[0] || '',
         last_name: profileData.last_name || user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
         email: profileData.email || user?.email || '',
-        mobile: profileData.mobile || MOBILE_PREFIX,
+        mobile: profileData.mobile ? normalizePhilippineMobile(profileData.mobile) : MOBILE_PREFIX,
         address_line_1: profileData.address_line_1 || parsedAddress.address_line_1,
         address_line_2: profileData.address_line_2 || parsedAddress.address_line_2,
         street_address: profileData.street_address || parsedAddress.street_address,
@@ -172,7 +166,7 @@ export default function Profile() {
         data: {
           first_name: profile.first_name,
           last_name: profile.last_name,
-          mobile: profile.mobile,
+          mobile: normalizePhilippineMobile(profile.mobile),
           address_line_1: profile.address_line_1,
           address_line_2: profile.address_line_2,
           street_address: profile.street_address,
@@ -325,15 +319,15 @@ export default function Profile() {
                   ref={mobileInputRef}
                   value={profile.mobile}
                   onChange={(e) => {
-                    const digits = getMobileDigits(e.target.value)
+                    const digits = getPhilippineMobileDigits(e.target.value)
                     e.target.setCustomValidity('')
-                    setProfile({ ...profile, mobile: `${MOBILE_PREFIX}${digits.slice(0, 10)}` })
+                    setProfile({ ...profile, mobile: `${MOBILE_PREFIX}${digits}` })
                   }}
                   aria-invalid={invalidProfileFields.mobile}
                   required
                   inputMode="numeric"
                   maxLength={MOBILE_PREFIX.length + 10}
-                  placeholder="+63 9171234567"
+                  placeholder="+639171234567"
                   className={cn(
                     getProfileFieldClassName(invalidProfileFields.mobile),
                     'py-2 pl-8 pr-3 placeholder:text-[#071f52]/38 sm:py-2.5 sm:pl-9 sm:pr-4',

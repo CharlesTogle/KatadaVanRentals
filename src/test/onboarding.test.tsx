@@ -74,7 +74,7 @@ describe('Onboarding', () => {
     await user.clear(phone)
     await user.type(phone, '9171234567890')
 
-    expect(phone).toHaveValue('+63 9171234567')
+    expect(phone).toHaveValue('+639171234567')
   })
 
   it('does not ask for a mobile number that was already added by admin', () => {

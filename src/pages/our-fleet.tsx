@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CustomerShellFrame } from '@/components/customer-shell-frame'
 import { LocationSelector } from '@/components/booking/location-selector'
-import { useFleetUnavailableDates, useVehicles } from '@/hooks/use-vehicles'
+import { useAvailableVehicleIds, useVehicles } from '@/hooks/use-vehicles'
 import { AppHeader } from '@/components/app-header'
 import { useAuth } from '@/contexts/useAuth'
 import { useProfile } from '@/hooks/use-profile'
@@ -24,11 +24,6 @@ function mergeDateTimeValue(date: string, time: string) {
   if (!date || !time) return ''
 
   return `${date}T${time}`
-}
-
-function parseLocalDate(value: string) {
-  const [year, month, day] = value.split('-').map(Number)
-  return new Date(year, month - 1, day)
 }
 
 function addHoursToDateTimeValue(value: string, hours: number) {
@@ -85,11 +80,12 @@ export default function OurFleet() {
   const [endDatePart, setEndDatePart] = useState(initialEnd.date)
   const [endTimePart, setEndTimePart] = useState(initialEnd.time)
   const [appliedFiltersRows, setAppliedFiltersRows] = useState<Array<{ label: string; value: string }>>([])
+  const [availableVehicleIds, setAvailableVehicleIds] = useState<string[] | null>(savedSelection?.availableVehicleIds || null)
+  const [availabilityError, setAvailabilityError] = useState('')
 
   const { data: vehicles = [], isLoading } = useVehicles()
-  const { data: fleetUnavailableDates = [] } = useFleetUnavailableDates()
+  const { mutateAsync: findAvailableVehicleIds, isPending: isCheckingAvailability } = useAvailableVehicleIds()
   const inCustomerShell = !!user && !isAdminRole(profile?.role)
-  const disabledFleetDates = fleetUnavailableDates.map(({ unavailable_date }) => parseLocalDate(unavailable_date))
 
   const updateBookingDates = (next: { start?: string; end?: string }) => {
     const selection = {
@@ -97,12 +93,30 @@ export default function OurFleet() {
       end: next.end ?? mergeDateTimeValue(endDatePart, endTimePart),
     }
 
-    saveBookingDateSelection(selection)
+    setAvailableVehicleIds(null)
+    setAvailabilityError('')
+    saveBookingDateSelection({ ...selection, availableVehicleIds: [] })
   }
 
-  const applyFilters = () => {
+  const applyFilters = async () => {
     const nextDropoff = returnToDifferentLocation ? locations.dropoff : locations.pickup
     setLocations({ pickup: locations.pickup, dropoff: nextDropoff })
+
+    const startAt = mergeDateTimeValue(startDatePart, startTimePart)
+    const endAt = mergeDateTimeValue(endDatePart, endTimePart)
+    setAvailabilityError('')
+
+    try {
+      const nextAvailableVehicleIds = startAt && endAt
+        ? await findAvailableVehicleIds({ startAt, endAt })
+        : vehicles.map((vehicle) => vehicle.id)
+      setAvailableVehicleIds(nextAvailableVehicleIds)
+      saveBookingDateSelection({ start: startAt, end: endAt, availableVehicleIds: nextAvailableVehicleIds })
+    } catch {
+      setAvailableVehicleIds([])
+      setAvailabilityError('We could not check vehicle availability. Please try again.')
+      return
+    }
 
     const rows = [
       buildResultRow('Pick up', locations.pickup, startDatePart, startTimePart),
@@ -159,7 +173,6 @@ export default function OurFleet() {
             id="fleet-start-at"
             label="PICK-UP DATE & TIME"
             value={mergeDateTimeValue(startDatePart, startTimePart)}
-            disabledDates={disabledFleetDates}
             placeholder="Select date & time"
             labelClassName={returnToDifferentLocation ? 'text-[10px] font-bold text-[#071f52] sm:text-xs' : 'text-[10px] font-bold text-[#071f52] sm:text-[11px]'}
             triggerClassName={returnToDifferentLocation ? 'min-h-[44px] text-xs text-[#071f52] sm:min-h-[48px] sm:text-sm' : 'min-h-[44px] text-xs text-[#071f52] sm:min-h-[48px] sm:text-sm'}
@@ -183,7 +196,6 @@ export default function OurFleet() {
             id="fleet-end-at"
             label="DROP-OFF DATE & TIME"
             value={mergeDateTimeValue(endDatePart, endTimePart)}
-            disabledDates={disabledFleetDates}
             placeholder="Select date & time"
             labelClassName={returnToDifferentLocation ? 'text-[10px] font-bold text-[#071f52] sm:text-xs' : 'text-[10px] font-bold text-[#071f52] sm:text-[11px]'}
             triggerClassName={returnToDifferentLocation ? 'min-h-[44px] text-xs text-[#071f52] sm:min-h-[48px] sm:text-sm' : 'min-h-[44px] text-xs text-[#071f52] sm:min-h-[48px] sm:text-sm'}
@@ -196,7 +208,7 @@ export default function OurFleet() {
           />
           {!returnToDifferentLocation ? (
             <div className="flex items-end">
-              <Button type="button" onClick={applyFilters} className="h-[44px] w-full gap-1.5 rounded-lg bg-[#e92935] text-xs text-white hover:bg-[#c91f2a] sm:h-[50px] sm:gap-2 sm:rounded-2xl">
+               <Button type="button" onClick={applyFilters} disabled={isCheckingAvailability} className="h-[44px] w-full gap-1.5 rounded-lg bg-[#e92935] text-xs text-white hover:bg-[#c91f2a] sm:h-[50px] sm:gap-2 sm:rounded-2xl">
                 <Search size={14} className="sm:hidden" />
                 <Search size={16} className="hidden sm:block" />
                 Find a Car
@@ -219,7 +231,7 @@ export default function OurFleet() {
         {returnToDifferentLocation ? (
           <div className="mt-3 sm:mt-4">
             <div className="flex items-end">
-              <Button type="button" onClick={applyFilters} className="h-[44px] w-full gap-1.5 rounded-lg bg-[#e92935] text-xs text-white hover:bg-[#c91f2a] sm:h-[50px] sm:gap-2 sm:rounded-2xl">
+               <Button type="button" onClick={applyFilters} disabled={isCheckingAvailability} className="h-[44px] w-full gap-1.5 rounded-lg bg-[#e92935] text-xs text-white hover:bg-[#c91f2a] sm:h-[50px] sm:gap-2 sm:rounded-2xl">
                 <Search size={14} className="sm:hidden" />
                 <Search size={16} className="hidden sm:block" />
                 Find a Car
@@ -245,6 +257,8 @@ export default function OurFleet() {
         </div>
       ) : null}
 
+      {availabilityError ? <p className="mb-4 text-sm font-semibold text-[#b91c1c]">{availabilityError}</p> : null}
+
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-5">
           {[...Array(3)].map((_, i) => (
@@ -260,7 +274,7 @@ export default function OurFleet() {
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-5">
-          {vehicles.map((v) => {
+           {vehicles.filter((vehicle) => availableVehicleIds === null || availableVehicleIds.includes(vehicle.id)).map((v) => {
             const image = v.image_paths?.[0] || '/van-1.jpg'
             return (
               <article

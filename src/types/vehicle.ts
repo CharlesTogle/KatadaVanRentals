@@ -39,10 +39,6 @@ export interface VehicleUnavailableRange {
   end_at: string | null
 }
 
-export interface FleetUnavailableDate {
-  unavailable_date: string
-}
-
 export interface CreateVehicleInput {
   name: string
   slug?: string

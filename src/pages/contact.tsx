@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/useAuth'
 import { useBusinessInfo } from '@/hooks/use-business-info'
 import { useProfile } from '@/hooks/use-profile'
 import { isAdminRole } from '@/lib/rbac'
+import { getPhilippineMobileDigits, normalizePhilippineMobile } from '@/lib/validation'
 
 const sources = [
   'Google Search', 'Google Map', 'Facebook', 'Instagram', 'TikTok',
@@ -33,7 +34,7 @@ export default function Contact() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    submit(form)
+    submit({ ...form, phone: normalizePhilippineMobile(form.phone) })
   }
 
   const inCustomerShell = !!user && !isAdminRole(profile?.role)
@@ -76,8 +77,10 @@ export default function Contact() {
                 <div className="space-y-2">
                   <label htmlFor="phone" className="text-sm font-bold text-[#071f52]">Phone <span className="text-[#e92935]">*</span></label>
                   <input id="phone" type="tel" required value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    placeholder="+63 912 345 6789"
+                    onChange={(e) => setForm({ ...form, phone: `+63${getPhilippineMobileDigits(e.target.value)}` })}
+                    inputMode="numeric"
+                    maxLength={13}
+                    placeholder="+639123456789"
                     className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
                   />
                 </div>

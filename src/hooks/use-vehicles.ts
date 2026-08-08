@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as vehicleService from '@/services/vehicle-service'
 import type { CreateVehicleInput, UpdateVehicleInput } from '@/types/vehicle'
 
@@ -34,11 +34,10 @@ export function useVehicleUnavailableRanges(vehicleId: string | undefined) {
   })
 }
 
-export function useFleetUnavailableDates() {
-  return useQuery({
-    queryKey: ['vehicles', 'unavailable-dates'],
-    queryFn: vehicleService.getFleetUnavailableDates,
-    staleTime: 30_000,
+export function useAvailableVehicleIds() {
+  return useMutation({
+    mutationFn: ({ startAt, endAt }: { startAt: string; endAt: string }) =>
+      vehicleService.getAvailableVehicleIds(startAt, endAt),
   })
 }
 

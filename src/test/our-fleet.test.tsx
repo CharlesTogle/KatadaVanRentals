@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import OurFleet from '@/pages/our-fleet'
 import { LocationsFields } from '@/components/booking/locations-fields'
@@ -8,7 +8,7 @@ import { useBookingStore } from '@/store/booking-store'
 const useAuthMock = vi.fn()
 const useProfileMock = vi.fn()
 const useVehiclesMock = vi.fn()
-const useFleetUnavailableDatesMock = vi.fn()
+const findAvailableVehicleIdsMock = vi.fn()
 
 vi.mock('@/contexts/useAuth', () => ({
   useAuth: () => useAuthMock(),
@@ -20,7 +20,7 @@ vi.mock('@/hooks/use-profile', () => ({
 
 vi.mock('@/hooks/use-vehicles', () => ({
   useVehicles: () => useVehiclesMock(),
-  useFleetUnavailableDates: () => useFleetUnavailableDatesMock(),
+  useAvailableVehicleIds: () => ({ mutateAsync: findAvailableVehicleIdsMock, isPending: false }),
 }))
 
 vi.mock('@/components/customer-shell-frame', () => ({
@@ -36,13 +36,16 @@ describe('OurFleet', () => {
     useAuthMock.mockReset()
     useProfileMock.mockReset()
     useVehiclesMock.mockReset()
-    useFleetUnavailableDatesMock.mockReset()
+    findAvailableVehicleIdsMock.mockReset()
     window.localStorage.clear()
 
     useAuthMock.mockReturnValue({ user: null })
     useProfileMock.mockReturnValue({ data: undefined })
-    useVehiclesMock.mockReturnValue({ data: [], isLoading: false })
-    useFleetUnavailableDatesMock.mockReturnValue({ data: [], isLoading: false, isError: false })
+    useVehiclesMock.mockReturnValue({ data: [
+      { id: 'vehicle-1', slug: 'vehicle-1', name: 'Vehicle 1', image_paths: [], passenger_count: 10, base_price_per_day: 1000 },
+      { id: 'vehicle-2', slug: 'vehicle-2', name: 'Vehicle 2', image_paths: [], passenger_count: 10, base_price_per_day: 1000 },
+    ], isLoading: false })
+    findAvailableVehicleIdsMock.mockResolvedValue(['vehicle-1'])
     useBookingStore.getState().reset()
   })
 
@@ -59,26 +62,26 @@ describe('OurFleet', () => {
     expect(JSON.parse(window.localStorage.getItem('booking-date-selection') || '{}')).toEqual({
       start: '2026-08-01T09:30',
       end: '2026-08-03T17:45',
+      availableVehicleIds: [],
     })
   })
 
-  it('disables fleet dates when every available vehicle is occupied', () => {
-    useFleetUnavailableDatesMock.mockReturnValue({
-      data: [{ unavailable_date: '2026-08-12' }],
-      isLoading: false,
-      isError: false,
-    })
-
+  it('persists and displays only vehicles returned for the selected booking window', async () => {
     render(
       <MemoryRouter>
         <OurFleet />
       </MemoryRouter>,
     )
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Select date & time' })[0])
+    fireEvent.change(screen.getByLabelText(/PICK-UP DATE & TIME/i), { target: { value: '2026-08-12T09:00' } })
+    fireEvent.click(screen.getByRole('button', { name: /Find a Car/i }))
 
-    expect(screen.getAllByRole('button', { name: /August 12th, 2026/i }).every((button) => button.hasAttribute('disabled'))).toBe(true)
-    expect(screen.getAllByRole('button', { name: /August 13th, 2026/i }).some((button) => !button.hasAttribute('disabled'))).toBe(true)
+    expect(findAvailableVehicleIdsMock).toHaveBeenCalledWith({ startAt: '2026-08-12T09:00', endAt: '2026-08-13T09:00' })
+    await waitFor(() => {
+      expect(JSON.parse(window.localStorage.getItem('booking-date-selection') || '{}').availableVehicleIds).toEqual(['vehicle-1'])
+      expect(screen.getByText('Vehicle 1')).toBeInTheDocument()
+      expect(screen.queryByText('Vehicle 2')).not.toBeInTheDocument()
+    })
   })
 
   it('auto-fills drop-off to 24 hours after the pickup date and time', () => {
@@ -94,10 +97,11 @@ describe('OurFleet', () => {
     expect(JSON.parse(window.localStorage.getItem('booking-date-selection') || '{}')).toEqual({
       start: '2026-08-01T09:30',
       end: '2026-08-02T09:30',
+      availableVehicleIds: [],
     })
   })
 
-  it('shows the applied filters text after clicking Find a Car', () => {
+  it('shows the applied filters text after clicking Find a Car', async () => {
     render(
       <MemoryRouter>
         <OurFleet />
@@ -108,11 +112,13 @@ describe('OurFleet', () => {
     fireEvent.change(screen.getByLabelText(/PICK-UP DATE & TIME/i), { target: { value: '2026-08-01T09:30' } })
     fireEvent.click(screen.getByRole('button', { name: /Find a Car/i }))
 
-    expect(screen.getByText(/Showing results for:/)).toBeInTheDocument()
-    expect(screen.getByText('Pick up:')).toBeInTheDocument()
-    expect(screen.getByText('Makati, August 1, 2026 9:30 AM')).toBeInTheDocument()
-    expect(screen.getByText('Drop off:')).toBeInTheDocument()
-    expect(screen.getByText('Makati, August 2, 2026 9:30 AM')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText(/Showing results for:/)).toBeInTheDocument()
+      expect(screen.getByText('Pick up:')).toBeInTheDocument()
+      expect(screen.getByText('Makati, August 1, 2026 9:30 AM')).toBeInTheDocument()
+      expect(screen.getByText('Drop off:')).toBeInTheDocument()
+      expect(screen.getByText('Makati, August 2, 2026 9:30 AM')).toBeInTheDocument()
+    })
   })
 
   it('shows the drop-off field only when returning to a different location is selected', () => {

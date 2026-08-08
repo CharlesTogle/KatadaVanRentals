@@ -10,7 +10,7 @@ describe('useBookingStore', () => {
     const s = useBookingStore.getState()
     expect(s.mode).toBe('dropoff')
     expect(s.profile.first_name).toBe('')
-    expect(s.profile.mobile).toBe('+63 ')
+    expect(s.profile.mobile).toBe('+63')
     expect(s.address.country).toBe('Philippines')
     expect(s.routeSelections.pickup.lat).toBeNull()
     expect(s.routeQuote).toBeNull()

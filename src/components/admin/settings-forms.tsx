@@ -11,6 +11,7 @@ import type { PaymentMethod, PaymentChannel } from '@/types/payment'
 import type { LocationSuggestion, ServiceArea } from '@/types/location'
 import { MapPin } from 'lucide-react'
 import { ServiceAreaMap } from '@/components/admin/service-area-map'
+import { getPhilippineMobileDigits, normalizePhilippineMobile } from '@/lib/validation'
 
 const inputClass = 'block w-full rounded-xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60'
 const labelClass = 'text-xs font-bold text-[#071f52]'
@@ -37,7 +38,7 @@ export function SettingsProfileForm({ user, profile, saving, setSaving, showMess
   const [firstName, setFirstName] = useState(profile?.first_name || '')
   const [lastName, setLastName] = useState(profile?.last_name || '')
   const [email] = useState(user.email || '')
-  const [phone, setPhone] = useState(profile?.mobile || '+63 ')
+  const [phone, setPhone] = useState(profile?.mobile ? normalizePhilippineMobile(profile.mobile) : '+63')
   const [profilePicture, setProfilePicture] = useState<string | null>(profile?.profile_image_path || null)
   const [uploading, setUploading] = useState(false)
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
@@ -48,7 +49,7 @@ export function SettingsProfileForm({ user, profile, saving, setSaving, showMess
     if (profile) {
       setFirstName(profile.first_name || '')
       setLastName(profile.last_name || '')
-      setPhone(profile.mobile || '+63 ')
+      setPhone(profile.mobile ? normalizePhilippineMobile(profile.mobile) : '+63')
       setProfilePicture(profile.profile_image_path || null)
     }
   }, [profile])
@@ -92,7 +93,7 @@ export function SettingsProfileForm({ user, profile, saving, setSaving, showMess
       const { error } = await supabase.from('profiles').update({
         first_name: firstName,
         last_name: lastName,
-        mobile: phone,
+        mobile: normalizePhilippineMobile(phone),
         profile_image_path: profilePicture,
       }).eq('id', user.id)
       if (error) {
@@ -174,12 +175,11 @@ export function SettingsProfileForm({ user, profile, saving, setSaving, showMess
           <input
             value={phone}
             onChange={(e) => {
-              const digits = e.target.value.startsWith('+63 ') ? e.target.value.slice(4).replace(/\D/g, '') : e.target.value.replace(/\D/g, '')
-              setPhone(`+63 ${digits.slice(0, 10)}`)
+              setPhone(`+63${getPhilippineMobileDigits(e.target.value)}`)
             }}
             inputMode="numeric"
-            maxLength={14}
-            placeholder="+63 9171234567"
+            maxLength={13}
+            placeholder="+639171234567"
             className={inputClass}
           />
         </div>
@@ -354,7 +354,7 @@ export function SettingsBusinessForm({ saving, setSaving, showMessage }: Omit<Se
         ...prev,
         business_name: data.business_name || '',
         support_email: data.support_email || '',
-        support_phone: data.support_phone || '',
+        support_phone: data.support_phone ? normalizePhilippineMobile(data.support_phone) : '',
         business_address: data.business_address || '',
         city: data.city || '',
         province: data.province || '',
@@ -397,7 +397,7 @@ export function SettingsBusinessForm({ saving, setSaving, showMessage }: Omit<Se
         id: true,
         business_name: business.business_name,
         support_email: business.support_email,
-        support_phone: business.support_phone,
+        support_phone: normalizePhilippineMobile(business.support_phone),
         business_address: business.business_address,
         city: business.city,
         province: business.province,
@@ -464,12 +464,11 @@ export function SettingsBusinessForm({ saving, setSaving, showMessage }: Omit<Se
             required
             value={business.support_phone}
             onChange={(e) => {
-              const digits = e.target.value.startsWith('+63 ') ? e.target.value.slice(4).replace(/\D/g, '') : e.target.value.replace(/\D/g, '')
-              setBusiness({ ...business, support_phone: `+63 ${digits.slice(0, 10)}` })
+              setBusiness({ ...business, support_phone: `+63${getPhilippineMobileDigits(e.target.value)}` })
             }}
             inputMode="numeric"
-            maxLength={14}
-            placeholder="+63 9171234567"
+            maxLength={13}
+            placeholder="+639171234567"
             className={inputClass}
           />
         </div>

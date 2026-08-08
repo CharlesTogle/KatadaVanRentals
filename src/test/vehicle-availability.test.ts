@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getFleetUnavailableDates, getVehicleUnavailableRanges } from '@/services/vehicle-service'
+import { getAvailableVehicleIds, getVehicleUnavailableRanges } from '@/services/vehicle-service'
 
 const rpc = vi.fn()
 
@@ -36,16 +36,16 @@ describe('getVehicleUnavailableRanges', () => {
     await expect(getVehicleUnavailableRanges('vehicle-1')).rejects.toThrow('availability unavailable')
   })
 
-  it('requests dates when the whole fleet is occupied', async () => {
+  it('requests available vehicle ids for a booking window', async () => {
     rpc.mockResolvedValue({
-      data: [{ unavailable_date: '2026-08-12' }],
+      data: [{ vehicle_id: 'vehicle-1' }],
       error: null,
     })
 
-    await expect(getFleetUnavailableDates()).resolves.toEqual([{ unavailable_date: '2026-08-12' }])
-    expect(rpc).toHaveBeenCalledWith('get_fleet_unavailable_dates', {
-      p_from_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-      p_to_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    await expect(getAvailableVehicleIds('2026-08-12T09:00', '2026-08-13T09:00')).resolves.toEqual(['vehicle-1'])
+    expect(rpc).toHaveBeenCalledWith('get_available_vehicle_ids', {
+      p_start_at: '2026-08-12T09:00',
+      p_end_at: '2026-08-13T09:00',
     })
   })
 })

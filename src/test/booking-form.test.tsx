@@ -466,6 +466,7 @@ describe('BookingForm', () => {
     expect(JSON.parse(window.localStorage.getItem('booking-date-selection') || '{}')).toEqual({
       start: '2026-08-05T09:15',
       end: '2026-08-06T10:30',
+      availableVehicleIds: [],
     })
   })
 

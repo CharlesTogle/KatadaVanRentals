@@ -147,7 +147,7 @@ export interface AdminFeedbackRow {
   feedback: string | null
   display_on_homepage: boolean
   created_at: string
-  booking_number: string
+  booking_number: string | null
   customer_name: string
   customer_email: string
   profile_image_path: string | null
@@ -181,7 +181,7 @@ export async function getAdminFeedback() {
       feedback: row.feedback,
       display_on_homepage: row.display_on_homepage,
       created_at: row.created_at,
-      booking_number: booking?.booking_number || '',
+      booking_number: booking?.booking_number || null,
       customer_name: [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || profile?.email || 'Unknown customer',
       customer_email: profile?.email || '—',
       profile_image_path: profile?.profile_image_path || null,
@@ -303,7 +303,7 @@ export interface BookingInvoiceData {
 const DEFAULT_BUSINESS_SETTINGS = {
   business_name: 'Katada Transportation Services',
   support_email: 'tadsuu@gmail.com',
-  support_phone: '+63 906 496 1248',
+  support_phone: '+639064961248',
   business_address: '11th 12th St., Villamor',
   city: 'Pasay City',
   province: 'Metro Manila',

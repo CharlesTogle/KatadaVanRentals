@@ -1,6 +1,7 @@
 export interface BookingDateSelection {
   start: string
   end: string
+  availableVehicleIds?: string[]
 }
 
 const STORAGE_KEY = 'booking-date-selection'
@@ -16,6 +17,7 @@ export function loadBookingDateSelection(): BookingDateSelection | null {
     return {
       start: typeof parsed.start === 'string' ? parsed.start : '',
       end: typeof parsed.end === 'string' ? parsed.end : '',
+      ...(Array.isArray(parsed.availableVehicleIds) ? { availableVehicleIds: parsed.availableVehicleIds.filter((id): id is string => typeof id === 'string') } : {}),
     }
   } catch {
     return null

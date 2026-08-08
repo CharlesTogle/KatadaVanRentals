@@ -15,6 +15,13 @@ const ALLOWED_ORIGINS = ALLOWED_URLS.split(',').map(s => s.trim()).filter(Boolea
 
 const LIVE_BOOKING_STATUSES = ['for_review', 'awaiting_documents', 'pending_price_approval', 'confirmed', 'on_trip'] as const
 
+function normalizeMobile(value: string): string {
+  let digits = value.replace(/\D/g, '')
+  if (digits.startsWith('63')) digits = digits.slice(2)
+  if (digits.startsWith('0')) digits = digits.slice(1)
+  return `+63${digits.slice(0, 10)}`
+}
+
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? ''
   if (ALLOWED_ORIGINS.length === 0 || !ALLOWED_ORIGINS.includes(origin)) return {}
@@ -53,6 +60,14 @@ function computeDurationDays(startAt: string, endAt?: string | null): number {
   if (!endAt) return 1
   const ms = new Date(endAt).getTime() - new Date(startAt).getTime()
   return Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24)))
+}
+
+async function deleteCreatedCustomer(
+  supabase: { auth: { admin: { deleteUser: (id: string) => Promise<{ error: { message: string } | null }> } } },
+  customerId: string,
+) {
+  const { error } = await supabase.auth.admin.deleteUser(customerId)
+  if (error) log('ERROR', 'Failed to roll back customer creation', { customerId, error: error.message })
 }
 
 serve(async (req) => {
@@ -222,6 +237,10 @@ serve(async (req) => {
     }
   }
 
+  const normalizedNewCustomerMobile = customerMode === 'new' && newCustomer!.mobile
+    ? normalizeMobile(newCustomer!.mobile)
+    : ''
+
   if (customerMode === 'new') {
     const { data: existingProfile } = await supabase.from('profiles').select('id').eq('email', newCustomer!.email).maybeSingle()
     if (existingProfile) {
@@ -232,10 +251,19 @@ serve(async (req) => {
         email_confirm: true,
         user_metadata: { first_name: newCustomer!.firstName, last_name: newCustomer!.lastName, full_name: `${newCustomer!.firstName} ${newCustomer!.lastName}`.trim() },
       })
-      if (createUserError) return json(req, { error: 'Failed to create customer account' }, 500)
+      if (createUserError || !createdUser?.user?.id) {
+        if (createdUser?.user?.id) await deleteCreatedCustomer(supabase, createdUser.user.id)
+        return json(req, { error: 'Failed to create customer account' }, 500)
+      }
       customerId = createdUser.user.id
       newlyCreatedCustomerId = customerId
-      if (newCustomer!.mobile) await supabase.from('profiles').update({ mobile: newCustomer!.mobile }).eq('id', customerId)
+      if (normalizedNewCustomerMobile) {
+        const { error: profileUpdateError } = await supabase.from('profiles').update({ mobile: normalizedNewCustomerMobile }).eq('id', customerId)
+        if (profileUpdateError) {
+          await deleteCreatedCustomer(supabase, customerId)
+          return json(req, { error: 'Failed to create customer account' }, 500)
+        }
+      }
     }
   }
 
@@ -248,7 +276,7 @@ serve(async (req) => {
       booking_number: generateBookingNumber(),
       guest_name: customerMode === 'new' ? `${newCustomer!.firstName} ${newCustomer!.lastName}`.trim() : null,
       guest_email: customerMode === 'new' ? newCustomer!.email : null,
-      guest_mobile: customerMode === 'new' ? newCustomer!.mobile || null : null,
+      guest_mobile: customerMode === 'new' ? normalizedNewCustomerMobile || null : null,
       vehicle_id: vehicleId,
       rental_model: rentalModel,
       booking_mode: bookingMode,
@@ -293,7 +321,7 @@ serve(async (req) => {
   })
 
   if (bookingError) {
-    if (newlyCreatedCustomerId) await supabase.auth.admin.deleteUser(newlyCreatedCustomerId)
+    if (newlyCreatedCustomerId) await deleteCreatedCustomer(supabase, newlyCreatedCustomerId)
     log('ERROR', 'Failed to create booking', { error: bookingError.message })
     return json(req, { error: 'Failed to create booking' }, 500)
   }

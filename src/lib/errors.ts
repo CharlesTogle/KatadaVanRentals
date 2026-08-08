@@ -14,6 +14,9 @@ const postgrestMap: Record<string, string> = {
 }
 
 const authMap: Record<string, string> = {
+  'Failed to create customer account': 'We can\'t create an account using that email, please choose another email',
+  'Can\'t create customer account': 'We can\'t create an account using that email, please choose another email',
+  'Edge Function returned a non-2xx status code': 'Something went wrong. Please try again later.',
   'Invalid login credentials': 'Incorrect email or password. Check your credentials and try again.',
   'User already registered': 'An account with this email already exists. Try logging in instead.',
   'Password should be at least 6 characters': 'Password must be at least 6 characters. Choose a longer password.',

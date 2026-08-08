@@ -89,16 +89,16 @@ describe('Profile', () => {
 
     render(<Profile />)
 
-    const mobileInput = screen.getByPlaceholderText('+63 9171234567')
+    const mobileInput = screen.getByPlaceholderText('+639171234567')
 
     fireEvent.change(mobileInput, { target: { value: '+63 9171234567890' } })
-    expect(mobileInput).toHaveValue('+63 9171234567')
+    expect(mobileInput).toHaveValue('+639171234567')
 
     fireEvent.click(screen.getByRole('button', { name: /save profile/i }))
 
     expect(mutate).toHaveBeenCalledWith(expect.objectContaining({
       id: 'user-1',
-      data: expect.objectContaining({ mobile: '+63 9171234567' }),
+      data: expect.objectContaining({ mobile: '+639171234567' }),
     }), expect.any(Object))
   })
 
