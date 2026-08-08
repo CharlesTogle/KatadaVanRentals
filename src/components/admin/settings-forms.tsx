@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { showError } from '@/lib/errors'
@@ -1008,10 +1009,20 @@ export function SettingsServiceAreaForm({ saving, setSaving, showMessage }: Omit
         </>
       )}
 
-      {showForm && editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => { setEditing(null); setShowForm(false); setAddressInput(''); setSuggestions([]) }}>
-          <form onSubmit={handleSave} className="rounded-xl border border-[#071f52]/10 bg-white p-6 space-y-4 shadow-2xl w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-sm font-bold text-[#071f52]">{editing.id ? 'Edit Service Area' : 'Add Service Area'}</h3>
+      {showForm && editing && createPortal(
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center overflow-y-auto bg-[#071f52]/55 p-4 backdrop-blur-[2px]"
+          onClick={() => { setEditing(null); setShowForm(false); setAddressInput(''); setSuggestions([]) }}
+        >
+          <form
+            onSubmit={handleSave}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="service-area-dialog-title"
+            className="my-auto max-h-[calc(100vh-2rem)] w-full max-w-lg space-y-4 overflow-y-auto rounded-xl border border-[#071f52]/10 bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="service-area-dialog-title" className="text-sm font-bold text-[#071f52]">{editing.id ? 'Edit Service Area' : 'Add Service Area'}</h3>
 
             <div className="space-y-1.5 relative">
               <label className={labelClass}>Address</label>
@@ -1067,7 +1078,8 @@ export function SettingsServiceAreaForm({ saving, setSaving, showMessage }: Omit
               <Button type="button" variant="ghost" onClick={() => { setEditing(null); setShowForm(false); setAddressInput(''); setSuggestions([]) }} className="text-[#071f52]/58">Cancel</Button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
