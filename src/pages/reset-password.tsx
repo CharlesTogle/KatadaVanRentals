@@ -29,7 +29,7 @@ export default function ResetPassword() {
     const errorDescription = searchParams.get('error_description') || hashParams.get('error_description')
 
     if (errorDescription) {
-      setError(decodeURIComponent(errorDescription.replace(/\+/g, ' ')))
+      setError(showError(new Error(errorDescription)))
       setReady(false)
       return
     }

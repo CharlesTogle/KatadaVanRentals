@@ -17,9 +17,13 @@ import { getBookingPriceBreakdown, getMissingSelfDriveDocuments, hasRequiredSelf
 import { loadBookingDateSelection, saveBookingDateSelection } from '@/lib/booking-date-storage'
 import { calculateToll, getNearestTollPlazas, getRouteQuote, suggestLocations } from '@/services/location-service'
 import { supabase } from '@/lib/supabase'
+import { UPLOAD_POLICIES } from '@/config/constants'
+import { uploadFile } from '@/services/upload-service'
 import { queryClient } from '@/lib/query'
 import { useBookingStore } from '@/store/booking-store'
 import { useVatPercent } from '@/hooks/use-vat-percent'
+import { logError, getRequestId } from '@/lib/logger'
+import { toast } from 'sonner'
 
 function getPersistentIdempotencyKeys(storageKey: string) {
   const stored = localStorage.getItem(storageKey)
@@ -229,7 +233,8 @@ export default function BookingForm() {
           if (dropoff) setRouteSelection('dropoff', dropoff)
           if (!pickup && !destination && !dropoff) setRouteLoading(false)
           if (pickup || destination || dropoff) setRouteError('')
-        }).catch(() => {
+        }).catch((error) => {
+          logError('booking', 'Automatic location resolution failed', error, { requestId: getRequestId() })
           if (!cancelled) setRouteLoading(false)
         })
       }, 300)
@@ -258,7 +263,7 @@ export default function BookingForm() {
       }).catch((err) => {
         if (cancelled) return
         setRouteQuote(null)
-        setRouteError(err instanceof Error ? err.message : 'Failed to compute route quote')
+        setRouteError(showError(err))
       }).finally(() => {
         if (!cancelled) setRouteLoading(false)
       })
@@ -514,10 +519,10 @@ export default function BookingForm() {
     let receiptPath: string | null = null
     if (requiresPayment && receiptFile) {
       receiptPath = `${user.id}/${paymentIdempotencyKey}`
-      const { error: uploadError } = await supabase.storage
-        .from('payment-receipts')
-        .upload(receiptPath, receiptFile, { upsert: true })
-      if (uploadError) {
+      try {
+        await uploadFile({ bucket: 'payment-receipts', file: receiptFile, path: receiptPath, policy: UPLOAD_POLICIES.paymentReceipts, upsert: true })
+      } catch (error) {
+        logError('booking', 'Payment receipt upload failed', error, { requestId: getRequestId() })
         setError('Receipt upload failed. Please try again.')
         setSubmitting(false)
         return
@@ -573,6 +578,7 @@ export default function BookingForm() {
       return
     }
 
+    let emailDeliveryFailed = false
     try {
       const customerName = profileQuery.data?.first_name || user.user_metadata?.full_name || 'Customer'
       await supabase.functions.invoke('send-email', {
@@ -603,13 +609,15 @@ export default function BookingForm() {
           }),
         },
       })
-    } catch {
-      // ponytail: booking success matters more than mail delivery here
+    } catch (error) {
+      emailDeliveryFailed = true
+      logError('booking', 'Confirmation email failed', error, { requestId: getRequestId() })
     }
 
     localStorage.removeItem(idempotencyStorageKey)
     queryClient.invalidateQueries({ queryKey: ['customer', 'bookings'] })
     useBookingStore.getState().reset()
+    if (emailDeliveryFailed) toast.warning('Booking received; confirmation email could not be sent.')
     navigate('/bookings')
   }
 

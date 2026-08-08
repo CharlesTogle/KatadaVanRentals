@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Vehicle } from '@/types/vehicle'
 import { VEHICLE_TYPES } from '@/constants/vehicle'
+import { showError } from '@/lib/errors'
 
 const inputClass =
   'block w-full rounded-xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60'
@@ -17,7 +18,7 @@ const PAGE_SIZE = 20
 
 export default function Fleet() {
   const navigate = useNavigate()
-  const { data: vehicles = [], isLoading } = useAdminVehicles()
+  const { data: vehicles = [], isLoading, isError, refetch } = useAdminVehicles()
   const deleteMutation = useDeleteVehicle()
 
   const [search, setSearch] = useState('')
@@ -63,7 +64,7 @@ export default function Fleet() {
       toast.success(`${deleting.name} deleted.`)
       setDeleting(null)
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to delete.')
+      toast.error(showError(err))
     }
   }
 
@@ -108,7 +109,7 @@ export default function Fleet() {
         </select>
       </div>
 
-      {(isLoading || filtered.length > 0) ? (
+      {(isLoading || (!isError && filtered.length > 0)) ? (
         <div className="mt-6 card-overflow">
           <div className="flex items-center justify-between border-b border-[#071f52]/10 bg-white px-5 py-3">
             <p className="text-xs font-semibold text-[#071f52]/48">Show 20 per page</p>
@@ -120,6 +121,11 @@ export default function Fleet() {
       {isLoading ? (
         <div className="mt-3 space-y-3">
           {[...Array(3)].map((_, i) => <div key={i} className="h-16 rounded-xl bg-[#071f52]/6 animate-pulse" />)}
+        </div>
+      ) : isError ? (
+        <div className="mt-8 rounded-2xl border border-[#e92935]/20 bg-[#e92935]/5 p-8 text-center text-sm font-semibold text-[#b91c1c]">
+          <p>Could not load vehicles. Please try again.</p>
+          <button type="button" onClick={() => refetch()} className="mt-3 rounded-xl bg-[#071f52] px-4 py-2 text-xs font-bold text-white">Try again</button>
         </div>
       ) : !filtered.length ? (
         <div className="mt-8 rounded-2xl border border-[#071f52]/10 bg-white p-8 text-center text-sm font-semibold text-[#071f52]/48">

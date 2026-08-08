@@ -14,7 +14,10 @@ serve(async () => {
     { batch_size: 100 },
   )
 
-  if (loadError) return Response.json({ error: loadError.message }, { status: 500 })
+  if (loadError) {
+    console.error('[process-booking-email-outbox] Claim failed', { code: loadError.code ?? 'unknown' })
+    return Response.json({ errorCode: 'OUTBOX_LOAD_FAILED' }, { status: 500 })
+  }
 
   const claimedEmails = queued || []
 
@@ -44,11 +47,12 @@ serve(async () => {
       .update({
         status: 'failed',
         available_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-        last_error: sendError.message,
+        last_error: 'Email delivery failed',
       })
       .in('id', ids)
     if (updateError) {
-      return Response.json({ error: updateError.message }, { status: 500 })
+      console.error('[process-booking-email-outbox] Failed to mark emails failed', { code: updateError.code ?? 'unknown' })
+      return Response.json({ errorCode: 'OUTBOX_UPDATE_FAILED' }, { status: 500 })
     }
     return Response.json({ sent: 0, failed: ids.length })
   }
@@ -59,7 +63,8 @@ serve(async () => {
     .in('id', ids)
 
   if (updateError) {
-    return Response.json({ error: updateError.message }, { status: 500 })
+    console.error('[process-booking-email-outbox] Failed to mark emails sent', { code: updateError.code ?? 'unknown' })
+    return Response.json({ errorCode: 'OUTBOX_UPDATE_FAILED' }, { status: 500 })
   }
 
   return Response.json({ sent: ids.length, failed: 0 })

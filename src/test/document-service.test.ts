@@ -112,10 +112,19 @@ describe('document-service', () => {
     mocks.reqDocDeleteEq.mockResolvedValue({ error: null })
     mocks.storageRemove.mockResolvedValue({ error: null })
 
-    await deleteBookingRequestedDocument('rd-1')
+    await expect(deleteBookingRequestedDocument('rd-1')).resolves.toEqual({ cleanupFailed: false })
 
     expect(mocks.reqDocDeleteEq).toHaveBeenCalledWith('id', 'rd-1')
     expect(mocks.storageRemove).toHaveBeenCalled()
+  })
+
+  it('returns cleanup failure after deleting the document record', async () => {
+    mocks.reqDocSingle.mockResolvedValue({ data: { file_path: 'path/doc.pdf' }, error: null })
+    mocks.reqDocDeleteEq.mockResolvedValue({ error: null })
+    mocks.storageRemove.mockResolvedValue({ error: new Error('cleanup failed') })
+
+    await expect(deleteBookingRequestedDocument('rd-1')).resolves.toEqual({ cleanupFailed: true })
+    expect(mocks.reqDocDeleteEq).toHaveBeenCalledWith('id', 'rd-1')
   })
 
   it('throws if select fails before delete', async () => {

@@ -21,7 +21,7 @@ const statuses = [
 
 export default function MyBookings() {
   const [filter, setFilter] = useState('')
-  const { data: bookings = [], isLoading } = useMyBookings(filter || undefined)
+  const { data: bookings = [], isLoading, isError, refetch } = useMyBookings(filter || undefined)
 
   return (
     <div className="w-full px-3 py-4 sm:px-5 sm:py-6">
@@ -56,6 +56,11 @@ export default function MyBookings() {
       {isLoading ? (
         <div className="mt-4 space-y-2 sm:mt-6 sm:space-y-3">
           {[...Array(4)].map((_, index) => <div key={index} className="h-20 rounded-lg bg-[#071f52]/6 animate-pulse sm:h-24" />)}
+        </div>
+      ) : isError ? (
+        <div className="mt-4 rounded-lg border border-[#e92935]/20 bg-[#e92935]/5 p-8 text-center text-sm font-semibold text-[#b91c1c] sm:mt-6">
+          <p>Could not load your bookings. Please try again.</p>
+          <button type="button" onClick={() => refetch()} className="mt-3 rounded-xl bg-[#071f52] px-4 py-2 text-xs font-bold text-white">Try again</button>
         </div>
       ) : !bookings.length ? (
       <div className="mt-4 rounded-lg border border-[#071f52]/10 bg-white p-8 text-center shadow-[0_4px_16px_rgba(7,31,82,0.04)] sm:mt-6 sm:p-10 sm:shadow-[0_8px_24px_rgba(7,31,82,0.06)]">

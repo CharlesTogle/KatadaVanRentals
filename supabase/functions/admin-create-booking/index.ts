@@ -14,6 +14,7 @@ const ALLOWED_URLS = Deno.env.get('ALLOWED_URLS')?.trim() ?? ''
 const ALLOWED_ORIGINS = ALLOWED_URLS.split(',').map(s => s.trim()).filter(Boolean)
 
 const LIVE_BOOKING_STATUSES = ['for_review', 'awaiting_documents', 'pending_price_approval', 'confirmed', 'on_trip'] as const
+const requestIds = new WeakMap<Request, string>()
 
 function normalizeMobile(value: string): string {
   let digits = value.replace(/\D/g, '')
@@ -33,10 +34,20 @@ function corsHeaders(req: Request): Record<string, string> {
 }
 
 function json(req: Request, body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
+  const requestId = requestIdFor(req)
+  const responseBody = status >= 400 && body && typeof body === 'object' ? { ...body, requestId } : body
+  return new Response(JSON.stringify(responseBody), {
     status,
-    headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders(req), 'Content-Type': 'application/json', 'X-Request-ID': requestId },
   })
+}
+
+function requestIdFor(req: Request) {
+  const existing = requestIds.get(req)
+  if (existing) return existing
+  const requestId = req.headers.get('x-request-id') ?? crypto.randomUUID()
+  requestIds.set(req, requestId)
+  return requestId
 }
 
 function log(level: string, message: string, extra?: Record<string, unknown>) {
@@ -65,15 +76,17 @@ function computeDurationDays(startAt: string, endAt?: string | null): number {
 async function deleteCreatedCustomer(
   supabase: { auth: { admin: { deleteUser: (id: string) => Promise<{ error: { message: string } | null }> } } },
   customerId: string,
+  requestId: string,
 ) {
   const { error } = await supabase.auth.admin.deleteUser(customerId)
-  if (error) log('ERROR', 'Failed to roll back customer creation', { customerId, error: error.message })
+  if (error) log('ERROR', 'Failed to roll back customer creation', { requestId, customerId, errorCode: 'ROLLBACK_FAILED' })
 }
 
 serve(async (req) => {
+  const requestId = requestIdFor(req)
   if (!ALLOWED_URLS) {
     log('ERROR', 'ALLOWED_URLS is not configured')
-    return json(req, { error: 'ALLOWED_URLS is not configured' }, 500)
+    return json(req, { errorCode: 'CONFIGURATION_ERROR' }, 500)
   }
 
   if (req.method === 'OPTIONS') {
@@ -81,7 +94,7 @@ serve(async (req) => {
   }
 
   if (req.method !== 'POST') {
-    return json(req, { error: 'Method not allowed' }, 405)
+    return json(req, { errorCode: 'METHOD_NOT_ALLOWED' }, 405)
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
@@ -89,13 +102,13 @@ serve(async (req) => {
   // Authenticate caller via JWT
   const authHeader = req.headers.get('authorization')
   if (!authHeader) {
-    return json(req, { error: 'Missing authorization' }, 401)
+    return json(req, { errorCode: 'UNAUTHORIZED' }, 401)
   }
 
   const token = authHeader.replace('Bearer ', '')
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) {
-    return json(req, { error: 'Unauthorized' }, 401)
+    return json(req, { errorCode: 'UNAUTHORIZED' }, 401)
   }
 
   // Verify caller is admin/manager/staff
@@ -106,7 +119,7 @@ serve(async (req) => {
     .single()
 
   if (!profile || !['admin', 'manager', 'staff'].includes(profile.role)) {
-    return json(req, { error: 'Not authorized' }, 403)
+    return json(req, { errorCode: 'FORBIDDEN' }, 403)
   }
 
   // Parse body
@@ -114,7 +127,7 @@ serve(async (req) => {
   try {
     body = await req.json()
   } catch {
-    return json(req, { error: 'Invalid request body' }, 400)
+    return json(req, { errorCode: 'INVALID_INPUT' }, 400)
   }
 
   const { customerMode, existingCustomerId, newCustomer, vehicleId, rentalModel, bookingMode, startAt, endAt, pickupLocation, dropoffLocation, destination, purposeOfTravel, notes, pickupLat, pickupLng, dropoffLat, dropoffLng, distanceKm, durationMinutes, fuelEstimateLiters, fuelEstimateAmount, tollEstimateAmount, tollSegments, tollEntryPlaza, tollEntryExpressway, tollExitPlaza, tollExitExpressway, tollVehicleClass, tollRfidBreakdown, selfDriveAddress, inServiceArea, flaggedForManualPricing, bookingIdempotencyKey, paymentIdempotencyKey, paymentMethodId, paymentReference, paymentReceiptPath, paymentChannel } = body as {
@@ -160,25 +173,25 @@ serve(async (req) => {
 
   // Validate
   if (!customerMode || !['existing', 'new'].includes(customerMode)) {
-    return json(req, { error: 'Invalid customer mode' }, 400)
+    return json(req, { errorCode: 'INVALID_INPUT' }, 400)
   }
   if (customerMode === 'existing' && !existingCustomerId) {
-    return json(req, { error: 'Existing customer ID required' }, 400)
+    return json(req, { errorCode: 'INVALID_INPUT' }, 400)
   }
   if (customerMode === 'new' && (!newCustomer?.firstName || !newCustomer?.lastName || !newCustomer?.email)) {
-    return json(req, { error: 'New customer requires first name, last name, and email' }, 400)
+    return json(req, { errorCode: 'INVALID_INPUT' }, 400)
   }
   if (!vehicleId || !rentalModel || !startAt) {
-    return json(req, { error: 'Vehicle, rental model, and start are required' }, 400)
+    return json(req, { errorCode: 'INVALID_INPUT' }, 400)
   }
   if (!['self_drive', 'all_out', 'all_in'].includes(rentalModel)) {
-    return json(req, { error: 'Invalid rental model' }, 400)
+    return json(req, { errorCode: 'INVALID_INPUT' }, 400)
   }
   if (!bookingIdempotencyKey || !paymentIdempotencyKey) {
-    return json(req, { error: 'Booking and payment idempotency keys are required' }, 400)
+    return json(req, { errorCode: 'INVALID_INPUT' }, 400)
   }
   if (!bookingMode || !['dropoff', 'keep'].includes(bookingMode)) {
-    return json(req, { error: 'Invalid booking mode' }, 400)
+    return json(req, { errorCode: 'INVALID_INPUT' }, 400)
   }
 
   const isSelfDrive = rentalModel === 'self_drive'
@@ -202,10 +215,10 @@ serve(async (req) => {
   const normalizedSelfDriveAddress = isSelfDrive ? selfDriveAddress ?? null : null
 
   if ((isSelfDrive || bookingMode === 'keep') && !normalizedEndAt) {
-    return json(req, { error: 'End date is required for this booking' }, 400)
+    return json(req, { errorCode: 'INVALID_INPUT' }, 400)
   }
   if (normalizedEndAt && new Date(normalizedEndAt) <= new Date(startAt)) {
-    return json(req, { error: 'End date must be after start date' }, 400)
+    return json(req, { errorCode: 'INVALID_INPUT' }, 400)
   }
 
   // Check availability before creating a customer account.
@@ -220,7 +233,7 @@ serve(async (req) => {
 
   if (overlapping && overlapping.length > 0) {
     return json(req, {
-      error: 'Vehicle is not available for these dates. It has a conflicting booking.',
+      errorCode: 'VEHICLE_UNAVAILABLE',
       conflictBookingNumber: overlapping[0].booking_number,
     }, 409)
   }
@@ -233,7 +246,7 @@ serve(async (req) => {
     customerId = existingCustomerId!
     const { data: existing } = await supabase.from('profiles').select('id').eq('id', customerId).single()
     if (!existing) {
-      return json(req, { error: 'Customer not found' }, 400)
+      return json(req, { errorCode: 'CUSTOMER_NOT_FOUND' }, 400)
     }
   }
 
@@ -252,16 +265,16 @@ serve(async (req) => {
         user_metadata: { first_name: newCustomer!.firstName, last_name: newCustomer!.lastName, full_name: `${newCustomer!.firstName} ${newCustomer!.lastName}`.trim() },
       })
       if (createUserError || !createdUser?.user?.id) {
-        if (createdUser?.user?.id) await deleteCreatedCustomer(supabase, createdUser.user.id)
-        return json(req, { error: 'Failed to create customer account' }, 500)
+        if (createdUser?.user?.id) await deleteCreatedCustomer(supabase, createdUser.user.id, requestId)
+        return json(req, { errorCode: 'CUSTOMER_CREATE_FAILED' }, 500)
       }
       customerId = createdUser.user.id
       newlyCreatedCustomerId = customerId
       if (normalizedNewCustomerMobile) {
         const { error: profileUpdateError } = await supabase.from('profiles').update({ mobile: normalizedNewCustomerMobile }).eq('id', customerId)
         if (profileUpdateError) {
-          await deleteCreatedCustomer(supabase, customerId)
-          return json(req, { error: 'Failed to create customer account' }, 500)
+          await deleteCreatedCustomer(supabase, customerId, requestId)
+          return json(req, { errorCode: 'CUSTOMER_CREATE_FAILED' }, 500)
         }
       }
     }
@@ -321,9 +334,9 @@ serve(async (req) => {
   })
 
   if (bookingError) {
-    if (newlyCreatedCustomerId) await deleteCreatedCustomer(supabase, newlyCreatedCustomerId)
-    log('ERROR', 'Failed to create booking', { error: bookingError.message })
-    return json(req, { error: 'Failed to create booking' }, 500)
+    if (newlyCreatedCustomerId) await deleteCreatedCustomer(supabase, newlyCreatedCustomerId, requestId)
+    log('ERROR', 'Failed to create booking', { requestId, errorCode: bookingError.code ?? 'BOOKING_CREATE_FAILED' })
+    return json(req, { errorCode: 'BOOKING_CREATE_FAILED' }, 500)
   }
 
   if (newCustomer?.sendInvite && customerId) {

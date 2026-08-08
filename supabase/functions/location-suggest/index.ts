@@ -42,16 +42,16 @@ function buildLabel(name?: string, region?: string, country?: string): string | 
 serve(async (req) => {
   if (!ALLOWED_URLS) {
     console.error('[location-suggest] ALLOWED_URLS not configured')
-    return json(req, { error: 'ALLOWED_URLS is not configured' }, 500)
+    return json(req, { errorCode: 'CONFIGURATION_ERROR' }, 500)
   }
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) })
   if (req.method !== 'POST') {
     console.error('[location-suggest] Invalid method:', req.method)
-    return json(req, { error: 'Method not allowed' }, 405)
+    return json(req, { errorCode: 'METHOD_NOT_ALLOWED' }, 405)
   }
   if (!OPENROUTE_SERVICE_API_KEY) {
     console.error('[location-suggest] OPENROUTE_SERVICE_API_KEY not configured')
-    return json(req, { error: 'OpenRouteService is not configured' }, 500)
+    return json(req, { errorCode: 'CONFIGURATION_ERROR' }, 500)
   }
 
   const body = await req.json().catch(() => null) as { query?: string } | null
@@ -68,14 +68,14 @@ serve(async (req) => {
   const rateLimit = data as unknown as RateLimitResult
 
   if (rateLimitError || !rateLimit) {
-    console.error('[location-suggest] Rate limit check failed', rateLimitError)
-    return json(req, { error: 'Rate limit unavailable' }, 500)
+    console.error('[location-suggest] Rate limit check failed', { code: rateLimitError?.code ?? 'unknown' })
+    return json(req, { errorCode: 'RATE_LIMIT_UNAVAILABLE' }, 500)
   }
 
   if (!rateLimit.allowed) {
     console.error('[location-suggest] Rate limit exceeded, retry after', rateLimit.retry_after_seconds, 's')
     return json(req, {
-      error: 'Too many requests. Please wait before trying again.',
+      errorCode: 'RATE_LIMITED',
       retryAfterSeconds: rateLimit.retry_after_seconds,
     }, 429)
   }
@@ -93,12 +93,12 @@ serve(async (req) => {
     const reason = err instanceof DOMException && err.name === 'TimeoutError'
       ? 'timeout'
       : 'network error'
-    console.error('[location-suggest] Cannot reach OpenRouteService:', reason, 'query:', query)
-    return json(req, { error: `Location lookup failed: ${reason}` }, 504)
+    console.error('[location-suggest] Cannot reach OpenRouteService:', reason)
+    return json(req, { errorCode: 'LOCATION_LOOKUP_FAILED' }, 504)
   }
   if (!response.ok) {
-    console.error('[location-suggest] OpenRouteService returned', response.status, 'for query:', query)
-    return json(req, { error: 'Location lookup failed' }, 502)
+    console.error('[location-suggest] OpenRouteService returned', response.status)
+    return json(req, { errorCode: 'LOCATION_LOOKUP_FAILED' }, 502)
   }
 
   const payload = await response.json()

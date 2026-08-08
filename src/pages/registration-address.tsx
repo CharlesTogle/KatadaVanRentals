@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { MapPin, ArrowLeft } from 'lucide-react'
 import { composeProfileAddress } from '@/lib/profile-address'
+import { showError } from '@/lib/errors'
 
 const countries = [
   'Philippines', 'United States', 'Canada', 'Australia', 'United Kingdom',
@@ -49,7 +50,7 @@ export default function RegistrationAddress() {
       .eq('id', user.id)
 
     if (updateError) {
-      setError(updateError.message)
+      setError(showError(updateError))
       setLoading(false)
       return
     }

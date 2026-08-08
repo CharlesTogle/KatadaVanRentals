@@ -1,4 +1,3 @@
-import type { PostgrestError, AuthError } from '@supabase/supabase-js'
 import { logError, getRequestId } from './logger'
 
 const postgrestMap: Record<string, string> = {
@@ -30,22 +29,53 @@ const authMap: Record<string, string> = {
   'Invalid toll plaza selection': 'We can\'t compute the toll price yet. We\'ll confirm the toll after the trip.',
 }
 
-export function showError(error: PostgrestError | AuthError | Error | null): string {
+const functionMap: Record<string, string> = {
+  INVALID_TOLL_SELECTION: 'We can\'t compute the toll price yet. We\'ll confirm the toll after the trip.',
+  ROUTE_NOT_FOUND: 'No drivable route was found. Choose a more specific nearby road, landmark, or terminal.',
+  ROUTE_CALCULATION_FAILED: 'Route calculation is temporarily unavailable. Please try again.',
+  LOCATION_LOOKUP_FAILED: 'Location search is temporarily unavailable. Try again or enter a more specific address.',
+  RATE_LIMITED: 'Too many requests. Please wait a moment before trying again.',
+  RATE_LIMIT_UNAVAILABLE: 'This service is temporarily unavailable. Please try again later.',
+  CONFIGURATION_ERROR: 'Something went wrong on our end. Please try again later or contact support.',
+  INVALID_INPUT: 'Check the highlighted details and try again.',
+  VEHICLE_NOT_FOUND: 'The selected vehicle is no longer available.',
+  CUSTOMER_HAS_BOOKINGS: 'This customer has bookings and cannot be deleted. Deactivate the account instead.',
+  INVALID_VEHICLE_SETTINGS: 'This vehicle is missing a valid fuel-efficiency setting.',
+  VEHICLE_UNAVAILABLE: 'Vehicle is not available for these dates. Choose different dates or another vehicle.',
+  CUSTOMER_NOT_FOUND: 'The selected customer could not be found.',
+  CUSTOMER_CREATE_FAILED: 'We could not create the customer account. Check the details and try again.',
+  BOOKING_CREATE_FAILED: 'We could not create the booking. Please try again.',
+  EMAIL_DELIVERY_FAILED: 'The booking was received, but the confirmation email could not be sent.',
+}
+
+const unrecoverablePostgrestCodes = new Set(['42P01', '42703'])
+
+export function showError(error: unknown): string {
   if (!error) return ''
 
   const path = typeof window !== 'undefined' ? window.location.pathname : undefined
 
-  if ('code' in error && error.code && error.code === 'P0001' && 'message' in error && error.message) {
-    return error.message
+  if (typeof error === 'object' && error !== null && 'errorCode' in error && typeof error.errorCode === 'string') {
+    const errorCode = error.errorCode
+    if (functionMap[errorCode]) return functionMap[errorCode]
   }
 
-  if ('code' in error && error.code && postgrestMap[error.code]) {
+  if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P0001') {
+    logError('client', 'Database business error', error, { path, requestId: getRequestId() })
+    return 'Something went wrong. Please try again later.'
+  }
+
+  if (typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string' && postgrestMap[error.code]) {
+    if (unrecoverablePostgrestCodes.has(error.code)) {
+      logError('client', 'Unrecoverable database error', error, { path, requestId: getRequestId() })
+    }
     return postgrestMap[error.code]
   }
 
-  if ('message' in error && error.message) {
+  if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string' && error.message) {
+    const message = error.message
     for (const [key, msg] of Object.entries(authMap)) {
-      if (error.message.toLowerCase().includes(key.toLowerCase())) {
+      if (message.toLowerCase().includes(key.toLowerCase())) {
         return msg
       }
     }

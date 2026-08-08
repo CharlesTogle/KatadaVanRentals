@@ -9,6 +9,7 @@ const ALLOWED_ORIGINS = ALLOWED_URLS.split(',').map((s) => s.trim()).filter(Bool
 const DEFAULT_FUEL_PRICE_PER_LITER = 60
 const RATE_LIMIT = 10
 const RATE_WINDOW_SECONDS = 60
+const requestIds = new WeakMap<Request, string>()
 
 interface RateLimitResult {
   allowed: boolean
@@ -26,10 +27,20 @@ function corsHeaders(req: Request): Record<string, string> {
 }
 
 function json(req: Request, body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
+  const requestId = requestIdFor(req)
+  const responseBody = status >= 400 && body && typeof body === 'object' ? { ...body, requestId } : body
+  return new Response(JSON.stringify(responseBody), {
     status,
-    headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders(req), 'Content-Type': 'application/json', 'X-Request-ID': requestId },
   })
+}
+
+function requestIdFor(req: Request) {
+  const existing = requestIds.get(req)
+  if (existing) return existing
+  const requestId = req.headers.get('x-request-id') ?? crypto.randomUUID()
+  requestIds.set(req, requestId)
+  return requestId
 }
 
 function decodePolyline(value: string) {
@@ -84,8 +95,6 @@ async function checkServiceArea(
     .select('lat,lng,radius_km')
     .eq('is_active', true)
 
-  console.error('[route-quote] service_points query result', JSON.stringify(data))
-
   if (!data || data.length === 0) return true
 
   return data.some((sp) => {
@@ -95,26 +104,27 @@ async function checkServiceArea(
 }
 
 serve(async (req) => {
+  const requestId = requestIdFor(req)
   if (!ALLOWED_URLS) {
-    console.error('[route-quote] ALLOWED_URLS is not configured')
-    return json(req, { error: 'ALLOWED_URLS is not configured' }, 500)
+    console.error('[route-quote] ALLOWED_URLS is not configured', { requestId })
+    return json(req, { errorCode: 'CONFIGURATION_ERROR' }, 500)
   }
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) })
-  if (req.method !== 'POST') return json(req, { error: 'Method not allowed' }, 405)
+  if (req.method !== 'POST') return json(req, { errorCode: 'METHOD_NOT_ALLOWED' }, 405)
   if (!OPENROUTE_SERVICE_API_KEY) {
-    console.error('[route-quote] OPENROUTE_SERVICE_API_KEY is not configured')
-    return json(req, { error: 'OpenRouteService is not configured' }, 500)
+    console.error('[route-quote] OPENROUTE_SERVICE_API_KEY is not configured', { requestId })
+    return json(req, { errorCode: 'CONFIGURATION_ERROR' }, 500)
   }
 
   const authHeader = req.headers.get('authorization')
-  if (!authHeader) return json(req, { error: 'Missing authorization' }, 401)
+  if (!authHeader) return json(req, { errorCode: 'UNAUTHORIZED' }, 401)
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
   const token = authHeader.replace('Bearer ', '')
   const { data: { user } } = await supabase.auth.getUser(token)
   if (!user) {
-    console.error('[route-quote] Unauthorized request')
-    return json(req, { error: 'Unauthorized' }, 401)
+    console.error('[route-quote] Unauthorized request', { requestId })
+    return json(req, { errorCode: 'UNAUTHORIZED' }, 401)
   }
 
   const { data, error: rateLimitError } = await supabase
@@ -127,14 +137,14 @@ serve(async (req) => {
   const rateLimit = data as unknown as RateLimitResult
 
   if (rateLimitError || !rateLimit) {
-    console.error('[route-quote] Rate limit check failed', rateLimitError)
-    return json(req, { error: 'Rate limit unavailable' }, 500)
+    console.error('[route-quote] Rate limit check failed', { requestId, errorCode: rateLimitError?.code ?? 'RATE_LIMIT_UNAVAILABLE' })
+    return json(req, { errorCode: 'RATE_LIMIT_UNAVAILABLE' }, 500)
   }
 
   if (!rateLimit.allowed) {
-    console.error('[route-quote] Rate limit exceeded, retry after', rateLimit.retry_after_seconds, 's')
+    console.error('[route-quote] Rate limit exceeded', { requestId, retryAfterSeconds: rateLimit.retry_after_seconds })
     return json(req, {
-      error: 'Too many requests. Please wait before trying again.',
+      errorCode: 'RATE_LIMITED',
       retryAfterSeconds: rateLimit.retry_after_seconds,
     }, 429)
   }
@@ -149,13 +159,14 @@ serve(async (req) => {
 
   if (body?.pickup?.lat == null || body?.pickup?.lng == null || body?.dropoff?.lat == null || body?.dropoff?.lng == null || !body.vehicleId) {
     console.error('[route-quote] Missing required input', {
+      requestId,
       hasPickupLat: body?.pickup?.lat != null,
       hasPickupLng: body?.pickup?.lng != null,
       hasDropoffLat: body?.dropoff?.lat != null,
       hasDropoffLng: body?.dropoff?.lng != null,
       hasVehicleId: !!body?.vehicleId,
     })
-    return json(req, { error: 'Pickup, drop-off, and vehicle are required' }, 400)
+    return json(req, { errorCode: 'INVALID_INPUT', message: 'Pickup, drop-off, and vehicle are required' }, 400)
   }
 
   const [vehicleRes, settingsRes] = await Promise.all([
@@ -164,12 +175,12 @@ serve(async (req) => {
   ])
 
   if (vehicleRes.error) {
-    console.error('[route-quote] Vehicle lookup failed', { vehicleId: body.vehicleId, error: vehicleRes.error.message })
-    return json(req, { error: 'Vehicle not found' }, 400)
+    console.error('[route-quote] Vehicle lookup failed', { requestId, vehicleId: body.vehicleId, errorCode: vehicleRes.error.code ?? 'VEHICLE_NOT_FOUND' })
+    return json(req, { errorCode: 'VEHICLE_NOT_FOUND' }, 400)
   }
 
   if (settingsRes.error) {
-    console.error('[route-quote] Settings lookup failed; using defaults', { error: settingsRes.error.message })
+    console.error('[route-quote] Settings lookup failed; using defaults', { requestId, errorCode: settingsRes.error.code ?? 'SETTINGS_LOOKUP_FAILED' })
   }
 
   const response = await fetch('https://api.openrouteservice.org/v2/directions/driving-car', {
@@ -189,18 +200,15 @@ serve(async (req) => {
   })
 
   if (!response.ok) {
-    const responseBody = await response.text().catch(() => '')
     console.error('[route-quote] OpenRouteService request failed', {
       status: response.status,
-      statusText: response.statusText,
-      pickup: body.pickup,
-      dropoff: body.dropoff,
-      responseBody,
+      requestId,
+      errorCode: response.status === 404 ? 'ROUTE_NOT_FOUND' : 'ROUTE_CALCULATION_FAILED',
     })
     if (response.status === 404) {
-      return json(req, { error: 'No drivable route found between the selected pickup and drop-off. Choose a more specific nearby road, landmark, or terminal.' }, 422)
+      return json(req, { errorCode: 'ROUTE_NOT_FOUND' }, 422)
     }
-    return json(req, { error: 'Route calculation failed' }, 502)
+    return json(req, { errorCode: 'ROUTE_CALCULATION_FAILED' }, 502)
   }
 
   const payload = await response.json()
@@ -219,7 +227,7 @@ serve(async (req) => {
 
   const kmPerLiter = Number(vehicleRes.data?.km_per_liter)
   if (!Number.isFinite(kmPerLiter) || kmPerLiter <= 0) {
-    return json(req, { error: 'This vehicle has no valid fuel-efficiency setting.' }, 422)
+    return json(req, { errorCode: 'INVALID_VEHICLE_SETTINGS' }, 422)
   }
   const fuelPricePerLiter = Number(settingsRes.data?.fuel_price_per_liter || DEFAULT_FUEL_PRICE_PER_LITER)
   const fuelEstimateLiters = body.rentalModel === 'all_in'
@@ -231,8 +239,6 @@ serve(async (req) => {
     lat: body.pickup.lat,
     lng: body.pickup.lng,
   })
-
-  console.error('[route-quote] inServiceArea', inServiceArea, 'pickup', body.pickup, 'dropoff', body.dropoff)
 
   return json(req, {
     distanceKm,

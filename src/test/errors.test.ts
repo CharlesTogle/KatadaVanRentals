@@ -39,4 +39,27 @@ describe('showError', () => {
     expect(result).toBeTruthy()
     expect(result).not.toBe('')
   })
+
+  it('maps safe edge-function error codes without trusting provider text', () => {
+    expect(showError({ errorCode: 'ROUTE_NOT_FOUND', message: 'upstream database detail' }))
+      .toContain('No drivable route')
+    expect(showError({ errorCode: 'INVALID_TOLL_SELECTION', message: 'internal provider detail' }))
+      .toContain('toll price')
+    expect(showError({ errorCode: 'VEHICLE_UNAVAILABLE', message: 'legacy conflict detail' }))
+      .toContain('not available')
+    expect(showError({ errorCode: 'ROUTE_CALCULATION_FAILED' })).toContain('temporarily unavailable')
+    expect(showError({ errorCode: 'LOCATION_LOOKUP_FAILED' })).toContain('Location search')
+    expect(showError({ errorCode: 'RATE_LIMIT_UNAVAILABLE' })).toContain('temporarily unavailable')
+    expect(showError({ errorCode: 'CONFIGURATION_ERROR' })).toContain('contact support')
+  })
+
+  it('does not render arbitrary database-raised messages', () => {
+    expect(showError({ code: 'P0001', message: 'secret schema detail', details: '', hint: '' }))
+      .not.toContain('secret schema detail')
+  })
+
+  it('does not trust booking/customer wording in P0001 messages', () => {
+    expect(showError({ code: 'P0001', message: 'booking/customer relation secret', details: '', hint: '' }))
+      .not.toContain('booking/customer relation secret')
+  })
 })

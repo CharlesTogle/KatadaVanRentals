@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { UPLOAD_POLICIES } from '@/config/constants'
+import { uploadFile } from '@/services/upload-service'
 import { showError } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { getAllPaymentMethods, createPaymentMethod, updatePaymentMethod, deletePaymentMethod } from '@/services/payment-method-service'
@@ -12,6 +14,7 @@ import type { LocationSuggestion, ServiceArea } from '@/types/location'
 import { MapPin } from 'lucide-react'
 import { ServiceAreaMap } from '@/components/admin/service-area-map'
 import { getPhilippineMobileDigits, normalizePhilippineMobile } from '@/lib/validation'
+import { logError, getRequestId } from '@/lib/logger'
 
 const inputClass = 'block w-full rounded-xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60'
 const labelClass = 'text-xs font-bold text-[#071f52]'
@@ -70,14 +73,12 @@ export function SettingsProfileForm({ user, profile, saving, setSaving, showMess
     setUploading(true)
     const ext = file.name.split('.').pop()
     const path = `admin-photos/${user.id}.${ext}`
-    const { error } = await supabase.storage
-      .from('business-assets')
-      .upload(path, file, { upsert: true })
-    if (error) {
-      showMessage(showError(error), 'error')
-    } else {
+    try {
+      await uploadFile({ bucket: 'business-assets', file, path, policy: UPLOAD_POLICIES.businessAssets, upsert: true })
       const { data: { publicUrl } } = supabase.storage.from('business-assets').getPublicUrl(path)
       setProfilePicture(publicUrl)
+    } catch (error) {
+      showMessage(showError(error as Error), 'error')
     }
     setUploading(false)
   }
@@ -147,7 +148,7 @@ export function SettingsProfileForm({ user, profile, saving, setSaving, showMess
                 Remove
               </Button>
             )}
-            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleUploadPhoto} className="hidden" />
+            <input ref={fileInputRef} type="file" accept={UPLOAD_POLICIES.businessAssets.accept} onChange={handleUploadPhoto} className="hidden" />
           </div>
         </div>
 
@@ -373,18 +374,16 @@ export function SettingsBusinessForm({ saving, setSaving, showMessage }: Omit<Se
     setLogoUploading(true)
     const ext = file.name.split('.').pop()
     const path = `business/logo.${ext}`
-    const { error } = await supabase.storage
-      .from('business-assets')
-      .upload(path, file, { upsert: true })
-    if (error) {
-      showMessage(showError(error), 'error')
-    } else {
+    try {
+      await uploadFile({ bucket: 'business-assets', file, path, policy: UPLOAD_POLICIES.businessAssets, upsert: true })
       const { data: { publicUrl } } = supabase.storage.from('business-assets').getPublicUrl(path)
       const url = `${publicUrl}?t=${Date.now()}`
       setBusiness({ ...business, logo_url: url })
       const { error: saveError } = await supabase.from('app_settings').upsert({ id: true, logo_url: url })
       if (saveError) showMessage(showError(saveError), 'error')
       else await queryClient.invalidateQueries({ queryKey: ['app-settings'] })
+    } catch (error) {
+      showMessage(showError(error as Error), 'error')
     }
     setLogoUploading(false)
   }
@@ -445,7 +444,7 @@ export function SettingsBusinessForm({ saving, setSaving, showMessage }: Omit<Se
               Remove
             </Button>
           )}
-          <input ref={logoInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={handleLogoUpload} className="hidden" />
+          <input ref={logoInputRef} type="file" accept={UPLOAD_POLICIES.businessAssets.accept} onChange={handleLogoUpload} className="hidden" />
         </div>
       </div>
 
@@ -575,7 +574,8 @@ export function SettingsPaymentsForm({ saving, setSaving, showMessage }: Omit<Se
   const loadMethods = async () => {
     try {
       setMethods(await getAllPaymentMethods())
-    } catch {
+    } catch (error) {
+      logError('settings', 'Payment methods loading failed', error, { requestId: getRequestId() })
       showMessage('Failed to load payment methods.', 'error')
     } finally {
       setIsLoading(false)
@@ -595,10 +595,7 @@ export function SettingsPaymentsForm({ saving, setSaving, showMessage }: Omit<Se
         const ext = qrFile.name.split('.').pop()
         const storageKey = editing.id ?? crypto.randomUUID()
         const path = `payment-qr/${storageKey}.${ext}`
-        const { error: uploadError } = await supabase.storage
-          .from('business-assets')
-          .upload(path, qrFile, { upsert: true })
-        if (uploadError) throw uploadError
+        await uploadFile({ bucket: 'business-assets', file: qrFile, path, policy: UPLOAD_POLICIES.businessAssets, upsert: true })
         const { data: { publicUrl } } = supabase.storage.from('business-assets').getPublicUrl(path)
         qrPath = `${publicUrl}?t=${Date.now()}`
       }
@@ -762,7 +759,7 @@ export function SettingsPaymentsForm({ saving, setSaving, showMessage }: Omit<Se
                 <div className="flex items-center gap-3">
                   <label className="cursor-pointer rounded-xl bg-[#071f52] px-4 py-2 text-sm font-bold text-white hover:bg-[#112458]">
                     {qrFile ? 'Change File' : editing.qr_image_path ? 'Replace QR' : 'Upload QR'}
-                    <input type="file" accept="image/*" onChange={(e) => setQrFile(e.target.files?.[0] || null)} className="hidden" />
+                    <input type="file" accept={UPLOAD_POLICIES.businessAssets.accept} onChange={(e) => setQrFile(e.target.files?.[0] || null)} className="hidden" />
                   </label>
                   {qrFile ? (
                     <span className="text-xs font-semibold text-[#071f52]">{qrFile.name}</span>

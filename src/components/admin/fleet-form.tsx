@@ -2,9 +2,11 @@ import { type FormEvent, useCallback, useRef, useState } from 'react'
 import { Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { uploadVehicleImage } from '@/services/vehicle-service'
+import { UPLOAD_POLICIES } from '@/config/constants'
 import { loadDraft, saveDraft, clearDraft } from '@/lib/draft-storage'
 import type { CreateVehicleInput, Vehicle } from '@/types/vehicle'
 import { VEHICLE_TYPES } from '@/constants/vehicle'
+import { logError, getRequestId } from '@/lib/logger'
 
 const inputClass =
   'block w-full rounded-xl border border-[#071f52]/14 bg-white px-4 py-2.5 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:ring-2 focus:ring-[#ffd923]/60 outline-none'
@@ -184,7 +186,8 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
       const newImages = [...images, ...urls]
       setImages(newImages)
       setForm((prev) => ({ ...prev, image_paths: newImages }))
-    } catch {
+    } catch (error) {
+      logError('fleet', 'Vehicle image upload failed', error, { requestId: getRequestId() })
       setFormError('Failed to upload image. Try again.')
     } finally {
       setUploadingImage(false)
@@ -467,7 +470,7 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
             </div>
           ))}
           <label className="flex h-20 w-28 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-[#071f52]/14 bg-white text-[#071f52]/38 hover:border-[#071f52]/30 hover:text-[#071f52]/60 transition-colors">
-            <input ref={fileInputRef} type="file" accept="image/*" multiple hidden onChange={handleImageUpload} disabled={uploadingImage} />
+            <input ref={fileInputRef} type="file" accept={UPLOAD_POLICIES.vehicleImages.accept} multiple hidden onChange={handleImageUpload} disabled={uploadingImage} />
             <Upload className="h-5 w-5" />
           </label>
         </div>

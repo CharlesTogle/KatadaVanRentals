@@ -2,6 +2,10 @@ import { useEffect, useMemo } from 'react'
 import { useBookingStore } from '@/store/booking-store'
 import { usePaymentMethods } from '@/hooks/use-payment-methods'
 import { cn } from '@/lib/utils'
+import { getAcceptedMimeTypes, validateFile } from '@/lib/file-upload'
+import { UPLOAD_POLICIES } from '@/config/constants'
+import { toast } from '@/lib/toast'
+import { showError } from '@/lib/errors'
 import { Upload } from 'lucide-react'
 
 const channelLabels: Record<string, string> = {
@@ -27,6 +31,16 @@ export function PaymentFields({ depositAmount, methodRequired = true, receiptReq
     () => paymentMethods.filter((method) => method.channel !== 'cash'),
     [paymentMethods],
   )
+  const handleReceiptChange = (file: File | undefined) => {
+    if (!file) return
+    try {
+      validateFile(file, UPLOAD_POLICIES.paymentReceipts)
+      setReceiptFile(file)
+    } catch (error) {
+      setReceiptFile(null)
+      toast.error(showError(error))
+    }
+  }
 
   const selectedMethod = useMemo(
     () => customerPaymentMethods.find((m) => m.id === payment.method) ?? null,
@@ -143,7 +157,7 @@ export function PaymentFields({ depositAmount, methodRequired = true, receiptReq
           <label className="text-sm font-bold text-[#071f52]">Upload Receipt / Proof of Payment {receiptRequired ? <span className="text-[#e92935]">*</span> : null}</label>
           <label className="cursor-pointer rounded-xl bg-[#071f52] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#112458]">
             Choose File
-            <input type="file" accept="image/*,.pdf" onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} className="hidden" />
+            <input type="file" accept={getAcceptedMimeTypes(UPLOAD_POLICIES.paymentReceipts)} onChange={(e) => handleReceiptChange(e.target.files?.[0])} className="hidden" />
           </label>
         </div>
         <label className={cn(
@@ -154,8 +168,8 @@ export function PaymentFields({ depositAmount, methodRequired = true, receiptReq
         )}>
           <Upload size={28} />
           <span>{receiptFile ? receiptFile.name : 'Click or drag & drop your receipt here'}</span>
-          <span className="text-xs font-medium">JPG, PNG, WEBP, PDF - max 5 MB</span>
-          <input type="file" accept="image/*,.pdf" onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} className="hidden" />
+          <span className="text-xs font-medium">JPG, PNG, WEBP, PDF - max 5 MiB</span>
+          <input type="file" accept={getAcceptedMimeTypes(UPLOAD_POLICIES.paymentReceipts)} onChange={(e) => handleReceiptChange(e.target.files?.[0])} className="hidden" />
         </label>
         {!receiptRequired ? <p className="text-xs font-medium text-[#071f52]/48">Receipt is optional for admin-created bookings.</p> : null}
       </div>

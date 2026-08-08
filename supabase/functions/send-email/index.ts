@@ -48,7 +48,7 @@ function json(req: Request, body: unknown, status = 200) {
 serve(async (req) => {
   if (!ALLOWED_URLS) {
     log('ERROR', 'ALLOWED_URLS is not configured')
-    return json(req, { error: 'ALLOWED_URLS is not configured' }, 500)
+    return json(req, { errorCode: 'CONFIGURATION_ERROR' }, 500)
   }
 
   if (req.method === 'OPTIONS') {
@@ -57,15 +57,15 @@ serve(async (req) => {
 
   if (req.method !== 'POST') {
     log('WARN', 'Method not allowed', { method: req.method })
-    return json(req, { error: 'Method not allowed' }, 405)
+    return json(req, { errorCode: 'METHOD_NOT_ALLOWED' }, 405)
   }
 
   const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
   const now = Date.now()
   const timestamps = (buckets.get(ip) ?? []).filter(t => now - t < RATE_WINDOW)
   if (timestamps.length >= RATE_LIMIT) {
-    log('WARN', 'Rate limit exceeded', { ip })
-    return json(req, { error: 'Too many requests. Please wait before trying again.' }, 429)
+    log('WARN', 'Rate limit exceeded')
+    return json(req, { errorCode: 'RATE_LIMITED' }, 429)
   }
   timestamps.push(now)
   buckets.set(ip, timestamps)
@@ -80,9 +80,9 @@ serve(async (req) => {
   let body: Record<string, unknown>
   try {
     body = await req.json()
-  } catch (err) {
-    log('ERROR', 'Failed to parse request body', { error: String(err) })
-    return json(req, { error: 'Invalid request body' }, 400)
+  } catch {
+    log('ERROR', 'Failed to parse request body')
+    return json(req, { errorCode: 'INVALID_INPUT' }, 400)
   }
 
   const batch = Array.isArray(body.batch) ? body.batch as Record<string, unknown>[] : null
@@ -173,16 +173,14 @@ serve(async (req) => {
   const data = await res.json()
 
   if (res.ok) {
-    log('INFO', 'Email sent', { to: body.to || DEVELOPER_EMAIL, subject: body.subject })
+    log('INFO', 'Email sent')
     return json(req, { success: true })
   }
 
   log('ERROR', 'Resend API error', {
     status: res.status,
-    error: data.message || 'Unknown',
-    to: body.to,
-    subject: body.subject,
+    errorType: typeof data?.name === 'string' ? data.name : 'provider_error',
   })
 
-  return json(req, { error: data.message || 'Failed to send' }, 400)
+  return json(req, { errorCode: 'EMAIL_DELIVERY_FAILED' }, 502)
 })

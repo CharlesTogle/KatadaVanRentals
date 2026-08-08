@@ -6,7 +6,15 @@ import type {
   TollEstimateCandidatesResponse,
   TollEstimateRequest,
   TollEstimateResponse,
+  FunctionErrorResponse,
+  MappedFunctionError,
 } from '@/types/location'
+
+function functionError(data: FunctionErrorResponse | null, fallback: string): MappedFunctionError {
+  const error = new Error(data?.message || data?.error || fallback) as MappedFunctionError
+  error.errorCode = data?.errorCode
+  return error
+}
 
 export async function suggestLocations(query: string): Promise<LocationSuggestion[]> {
   const trimmedQuery = query.trim()
@@ -21,34 +29,34 @@ export async function suggestLocations(query: string): Promise<LocationSuggestio
 }
 
 export async function getRouteQuote(input: RouteQuoteRequest): Promise<RouteQuoteResponse> {
-  const { data, error } = await supabase.functions.invoke<RouteQuoteResponse | { error?: string }>('route-quote', {
+  const { data, error } = await supabase.functions.invoke<RouteQuoteResponse | FunctionErrorResponse>('route-quote', {
     body: input,
   })
 
-  if (error) throw new Error((data as { error?: string } | null)?.error || error.message)
+  if (error) throw functionError(data as FunctionErrorResponse | null, 'Failed to compute route quote')
   if (!data) throw new Error('Failed to compute route quote')
-  if ('error' in data && data.error) throw new Error(data.error)
+  if ('errorCode' in data || 'error' in data) throw functionError(data, 'Failed to compute route quote')
   return data as RouteQuoteResponse
 }
 
 export async function getNearestTollPlazas(input: TollEstimateRequest): Promise<TollEstimateCandidatesResponse> {
-  const { data, error } = await supabase.functions.invoke<TollEstimateCandidatesResponse | { error?: string }>('toll-estimate', {
+  const { data, error } = await supabase.functions.invoke<TollEstimateCandidatesResponse | FunctionErrorResponse>('toll-estimate', {
     body: input,
   })
 
-  if (error) throw new Error((data as { error?: string } | null)?.error || 'Invalid toll plaza selection')
+  if (error) throw functionError(data as FunctionErrorResponse | null, 'Invalid toll plaza selection')
   if (!data) throw new Error('Failed to look up toll plazas')
-  if ('error' in data && data.error) throw new Error(data.error)
+  if ('errorCode' in data || 'error' in data) throw functionError(data, 'Invalid toll plaza selection')
   return data as TollEstimateCandidatesResponse
 }
 
 export async function calculateToll(input: TollEstimateRequest): Promise<TollEstimateResponse> {
-  const { data, error } = await supabase.functions.invoke<TollEstimateResponse | { error?: string }>('toll-estimate', {
+  const { data, error } = await supabase.functions.invoke<TollEstimateResponse | FunctionErrorResponse>('toll-estimate', {
     body: input,
   })
 
-  if (error) throw new Error((data as { error?: string } | null)?.error || 'Invalid toll plaza selection')
+  if (error) throw functionError(data as FunctionErrorResponse | null, 'Invalid toll plaza selection')
   if (!data) throw new Error('Failed to compute toll estimate')
-  if ('error' in data && data.error) throw new Error(data.error)
+  if ('errorCode' in data || 'error' in data) throw functionError(data, 'Invalid toll plaza selection')
   return data as TollEstimateResponse
 }

@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { TOLL_PLAZAS } from '../_shared/toll-plazas.ts'
 
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_URLS') ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+const requestIds = new WeakMap<Request, string>()
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? ''
@@ -14,10 +15,20 @@ function corsHeaders(req: Request): Record<string, string> {
 }
 
 function json(req: Request, body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
+  const requestId = requestIdFor(req)
+  const responseBody = status >= 400 && body && typeof body === 'object' ? { ...body, requestId } : body
+  return new Response(JSON.stringify(responseBody), {
     status,
-    headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders(req), 'Content-Type': 'application/json', 'X-Request-ID': requestId },
   })
+}
+
+function requestIdFor(req: Request) {
+  const existing = requestIds.get(req)
+  if (existing) return existing
+  const requestId = req.headers.get('x-request-id') ?? crypto.randomUUID()
+  requestIds.set(req, requestId)
+  return requestId
 }
 
 function toRadians(value: number) {
@@ -96,7 +107,7 @@ function toSegmentName(segment: Record<string, unknown>) {
   return `${expresswayName}: ${entryPlaza} to ${exitPlaza}`
 }
 
-async function fetchToll(entryPlaza: { name: string }, exitPlaza: { name: string }, vehicleClass: 1 | 2 | 3) {
+async function fetchToll(entryPlaza: { name: string }, exitPlaza: { name: string }, vehicleClass: 1 | 2 | 3, requestId: string) {
   const url = new URL('https://www.expressway.ph/api/toll-calculator')
   url.searchParams.set('origin', entryPlaza.name)
   url.searchParams.set('dest', exitPlaza.name)
@@ -104,13 +115,10 @@ async function fetchToll(entryPlaza: { name: string }, exitPlaza: { name: string
 
   const response = await fetch(url)
   if (response.status === 400) {
-    const bodyText = await response.text()
     console.error('[toll-estimate] External toll API 400', {
-      url: url.toString(),
-      entryName: entryPlaza.name,
-      exitName: exitPlaza.name,
-      vehicleClass,
-      responseBody: bodyText,
+      requestId,
+      errorCode: 'INVALID_TOLL_SELECTION',
+      status: response.status,
     })
     return { error: jsonError('Invalid toll plaza selection', 400) }
   }
@@ -132,8 +140,9 @@ function jsonError(message: string, status: number) {
 }
 
 serve(async (req) => {
+  const requestId = requestIdFor(req)
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) })
-  if (req.method !== 'POST') return json(req, { error: 'Method not allowed' }, 405)
+  if (req.method !== 'POST') return json(req, { errorCode: 'METHOD_NOT_ALLOWED' }, 405)
 
   const body = await req.json().catch(() => null) as {
     pickup?: { lat?: number | null; lng?: number | null }
@@ -150,7 +159,7 @@ serve(async (req) => {
   } | null
 
   if (body?.pickup?.lat == null || body.pickup.lng == null || body.dropoff?.lat == null || body.dropoff.lng == null) {
-    return json(req, { error: 'Pickup and drop-off coordinates are required' }, 400)
+    return json(req, { errorCode: 'INVALID_INPUT', message: 'Pickup and drop-off coordinates are required' }, 400)
   }
 
   if (body.inServiceArea === false) {
@@ -187,6 +196,7 @@ serve(async (req) => {
   const returnExitPlaza = findPlaza(body.returnExitPlaza ?? dropoffNearestPlaza?.id)
   if (!entryPlaza || !exitPlaza || (!!body.returnEntryPlaza && !returnEntryPlaza) || !returnExitPlaza) {
     console.error('[toll-estimate] Invalid plaza selection', {
+      requestId,
       sentEntryPlaza: body.entryPlaza,
       foundEntryPlaza: entryPlaza?.id ?? null,
       sentExitPlaza: body.exitPlaza,
@@ -197,11 +207,12 @@ serve(async (req) => {
       foundReturnExitPlaza: returnExitPlaza?.id ?? null,
       dropoffNearestId: dropoffNearestPlaza?.id ?? null,
     })
-    return json(req, { error: 'Invalid toll plaza selection' }, 400)
+    return json(req, { errorCode: 'INVALID_TOLL_SELECTION' }, 400)
   }
 
   const vehicleClass = body.vehicleClass ?? 1
   console.error('[toll-estimate] Pricing toll', {
+    requestId,
     entryPlaza: entryPlaza.id,
     exitPlaza: exitPlaza.id,
     returnEntryPlaza: returnEntryPlaza?.id ?? null,
@@ -212,10 +223,10 @@ serve(async (req) => {
     hasDestination: body.destination?.lat != null && body.destination.lng != null,
     pickupDropoffDistanceKm: Math.round(distanceKm({ lat: body.pickup.lat, lng: body.pickup.lng }, { lat: body.dropoff.lat, lng: body.dropoff.lng }) * 100) / 100,
   })
-  const outbound = await fetchToll(entryPlaza, exitPlaza, vehicleClass)
-  if (outbound.error) return json(req, { error: outbound.error.message }, outbound.error.status)
-  const inbound = returnEntryPlaza && returnExitPlaza ? await fetchToll(returnEntryPlaza, returnExitPlaza, vehicleClass) : null
-  if (inbound?.error) return json(req, { error: inbound.error.message }, inbound.error.status)
+  const outbound = await fetchToll(entryPlaza, exitPlaza, vehicleClass, requestId)
+  if (outbound.error) return json(req, { errorCode: outbound.error.message === 'Invalid toll plaza selection' ? 'INVALID_TOLL_SELECTION' : 'TOLL_CALCULATION_FAILED' }, outbound.error.status)
+  const inbound = returnEntryPlaza && returnExitPlaza ? await fetchToll(returnEntryPlaza, returnExitPlaza, vehicleClass, requestId) : null
+  if (inbound?.error) return json(req, { errorCode: inbound.error.message === 'Invalid toll plaza selection' ? 'INVALID_TOLL_SELECTION' : 'TOLL_CALCULATION_FAILED' }, inbound.error.status)
   const payloads = [outbound.payload, inbound?.payload].filter(Boolean) as NonNullable<typeof outbound.payload>[]
   const rfidTotals = new Map<string, number>()
   for (const payload of payloads) {

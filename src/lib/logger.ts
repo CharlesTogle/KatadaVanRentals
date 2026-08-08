@@ -1,7 +1,12 @@
+import { sendDiagnosticEvent } from '@/services/logging-service'
+
 type LogLevel = 'INFO' | 'WARN' | 'ERROR' | 'FATAL'
 
 type ErrorPayload = {
+  name: string
   message: string
+  reason: string
+  stack?: string
   code?: string
 }
 
@@ -32,12 +37,6 @@ function env(): string {
   return 'unknown'
 }
 
-function functionsUrl(): string | null {
-  if (typeof import.meta === 'undefined') return null
-  const base = import.meta.env.VITE_SUPABASE_URL as string | undefined
-  return base ? `${base}/functions/v1/log-event` : null
-}
-
 let sessionRequestId = generateId()
 
 export function setRequestId(id: string) {
@@ -53,10 +52,29 @@ export function getRequestId(): string {
 }
 
 function payload(err: unknown): ErrorPayload {
-  return {
-    message: err instanceof Error ? err.message : String(err),
-    code: err && typeof err === 'object' && 'code' in err ? String((err as any).code) : undefined,
+  if (err instanceof Error) {
+    return {
+      name: err.name,
+      message: err.message,
+      reason: err.message || err.name,
+      stack: err.stack,
+    }
   }
+
+  if (err && typeof err === 'object') {
+    const value = err as Record<string, unknown>
+    const message = typeof value.message === 'string' ? value.message : String(err)
+    return {
+      name: typeof value.name === 'string' ? value.name : 'UnknownError',
+      message,
+      reason: typeof value.reason === 'string' ? value.reason : message,
+      stack: typeof value.stack === 'string' ? value.stack : undefined,
+      code: typeof value.code === 'string' ? value.code : undefined,
+    }
+  }
+
+  const reason = String(err)
+  return { name: 'UnknownError', message: reason, reason }
 }
 
 function log(
@@ -82,14 +100,16 @@ function log(
   const output = JSON.stringify(entry)
 
   if (isProduction()) {
-    const url = functionsUrl()
-    if (url) {
-      fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: output,
-      }).catch(() => {})
-    }
+    sendDiagnosticEvent(output, sessionRequestId).catch(() => {
+      console.error(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'ERROR',
+        service: 'client-logger',
+        message: 'Diagnostic event delivery failed',
+        requestId: sessionRequestId,
+        payload: output.slice(0, 2000),
+      }))
+    })
   } else {
     if (level === 'ERROR' || level === 'FATAL') {
       console.error(output)

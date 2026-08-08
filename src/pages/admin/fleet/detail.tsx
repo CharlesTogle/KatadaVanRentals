@@ -6,6 +6,7 @@ import { FleetForm, type FleetFormData, toVehicleInput } from '@/components/admi
 import { Dialog } from '@/components/ui/dialog'
 import { useDeleteVehicle, useUpdateVehicle, useVehicleById } from '@/hooks/use-vehicles'
 import { cn } from '@/lib/utils'
+import { showError } from '@/lib/errors'
 
 const money = (value: number | null | undefined) => `₱${Number(value ?? 0).toLocaleString()}`
 
@@ -25,7 +26,7 @@ export default function FleetDetail() {
       toast.success(`${data.name} updated.`)
       setEditing(false)
     } catch (error: any) {
-      toast.error(error?.message || 'Something went wrong.')
+      toast.error(showError(error))
     }
   }
 
@@ -36,7 +37,7 @@ export default function FleetDetail() {
       toast.success(`${vehicle.name} deleted.`)
       navigate('/admin/fleet', { replace: true })
     } catch (error: any) {
-      toast.error(error?.message || 'Failed to delete.')
+      toast.error(showError(error))
     }
   }
 

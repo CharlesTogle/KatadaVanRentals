@@ -16,9 +16,12 @@ import { showError } from '@/lib/errors'
 import { getBookingPriceBreakdown, normalizeCustomerRentalType, toBookingRentalModel, type CustomerRentalType } from '@/lib/booking-utils'
 import { calculateToll, getNearestTollPlazas, getRouteQuote, suggestLocations } from '@/services/location-service'
 import { supabase } from '@/lib/supabase'
+import { UPLOAD_POLICIES } from '@/config/constants'
+import { uploadFile } from '@/services/upload-service'
 import { useBookingStore } from '@/store/booking-store'
 import type { AdminBookingCreateInput } from '@/types/admin-booking'
 import { useVatPercent } from '@/hooks/use-vat-percent'
+import { logError, getRequestId } from '@/lib/logger'
 
 const ADMIN_BOOKING_IDEMPOTENCY_KEY = 'katada:admin-booking:idempotency'
 const MOBILE_PREFIX = '+63'
@@ -156,7 +159,8 @@ export function BookingCreateForm() {
           if (dropoff) setRouteSelection('dropoff', dropoff)
           if (!pickup && !destination && !dropoff) setRouteLoading(false)
           if (pickup || destination || dropoff) setRouteError('')
-        }).catch(() => {
+        }).catch((error) => {
+          logError('admin-booking', 'Automatic location resolution failed', error, { requestId: getRequestId() })
           if (!cancelled) setRouteLoading(false)
         })
       }, 300)
@@ -185,7 +189,7 @@ export function BookingCreateForm() {
       }).catch((err) => {
         if (cancelled) return
         setRouteQuote(null)
-        setRouteError(err instanceof Error ? err.message : 'Failed to compute route quote')
+        setRouteError(showError(err))
       }).finally(() => {
         if (!cancelled) setRouteLoading(false)
       })
@@ -340,8 +344,7 @@ export function BookingCreateForm() {
   const uploadReceipt = async (paymentIdempotencyKey: string) => {
     if (!receiptFile) return null
     const path = `${user?.id || 'admin'}/${paymentIdempotencyKey}`
-    const { error: uploadError } = await supabase.storage.from('payment-receipts').upload(path, receiptFile, { upsert: true })
-    if (uploadError) throw uploadError
+    await uploadFile({ bucket: 'payment-receipts', file: receiptFile, path, policy: UPLOAD_POLICIES.paymentReceipts, upsert: true })
     return path
   }
 
@@ -413,7 +416,8 @@ export function BookingCreateForm() {
     if (receiptPath) {
       try {
         await uploadReceipt(paymentIdempotencyKey)
-      } catch {
+      } catch (error) {
+        logError('admin-booking', 'Payment receipt upload failed', error, { requestId: getRequestId() })
         setError('Receipt upload failed. Please try again.')
         setSubmitting(false)
         return

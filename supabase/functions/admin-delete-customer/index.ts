@@ -25,13 +25,13 @@ function json(req: Request, body: unknown, status = 200) {
 }
 
 serve(async (req) => {
-  if (!ALLOWED_URLS) return json(req, { error: 'ALLOWED_URLS is not configured' }, 500)
+  if (!ALLOWED_URLS) return json(req, { errorCode: 'CONFIGURATION_ERROR' }, 500)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders(req) })
   }
 
   if (req.method !== 'POST') {
-    return json(req, { error: 'Method not allowed' }, 405)
+    return json(req, { errorCode: 'METHOD_NOT_ALLOWED' }, 405)
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
@@ -39,13 +39,13 @@ serve(async (req) => {
   // Authenticate caller via JWT
   const authHeader = req.headers.get('authorization')
   if (!authHeader) {
-    return json(req, { error: 'Missing authorization' }, 401)
+    return json(req, { errorCode: 'UNAUTHORIZED' }, 401)
   }
 
   const token = authHeader.replace('Bearer ', '')
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) {
-    return json(req, { error: 'Unauthorized' }, 401)
+    return json(req, { errorCode: 'UNAUTHORIZED' }, 401)
   }
 
   // Verify caller is admin
@@ -56,7 +56,7 @@ serve(async (req) => {
     .single()
 
   if (!profile || !['admin', 'manager', 'staff'].includes(profile.role)) {
-    return json(req, { error: 'Not authorized' }, 403)
+    return json(req, { errorCode: 'FORBIDDEN' }, 403)
   }
 
   // Parse body
@@ -64,13 +64,13 @@ serve(async (req) => {
   try {
     body = await req.json()
   } catch {
-    return json(req, { error: 'Invalid request body' }, 400)
+    return json(req, { errorCode: 'INVALID_INPUT' }, 400)
   }
 
   const { customerId } = body as { customerId: string }
 
   if (!customerId) {
-    return json(req, { error: 'customerId is required' }, 400)
+    return json(req, { errorCode: 'INVALID_INPUT', message: 'customerId is required' }, 400)
   }
 
   // Verify target is a customer
@@ -81,7 +81,7 @@ serve(async (req) => {
     .single()
 
   if (!target || target.role !== 'customer') {
-    return json(req, { error: 'Target is not a customer' }, 400)
+    return json(req, { errorCode: 'INVALID_INPUT', message: 'Target is not a customer' }, 400)
   }
 
   // Reject delete when customer has bookings
@@ -91,13 +91,14 @@ serve(async (req) => {
     .eq('customer_id', customerId)
 
   if (count && count > 0) {
-    return json(req, { error: `Cannot delete customer with ${count} booking(s). Deactivate instead.` }, 409)
+    return json(req, { errorCode: 'CUSTOMER_HAS_BOOKINGS', message: `Cannot delete customer with ${count} booking(s). Deactivate instead.` }, 409)
   }
 
   // Delete auth user (profiles row cascades via FK)
   const { error: deleteError } = await supabase.auth.admin.deleteUser(customerId)
   if (deleteError) {
-    return json(req, { error: deleteError.message }, 500)
+    console.error('[admin-delete-customer] Auth user deletion failed', { code: deleteError.code ?? 'unknown' })
+    return json(req, { errorCode: 'DELETE_FAILED' }, 500)
   }
 
   return json(req, { success: true })

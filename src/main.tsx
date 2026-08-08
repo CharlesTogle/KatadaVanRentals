@@ -12,12 +12,14 @@ window.addEventListener('error', (event) => {
   logFatal('client', 'Uncaught error', event.error ?? event.message, {
     path: window.location.pathname,
   })
+  window.dispatchEvent(new Event('app:unhandled-error'))
 })
 
 window.addEventListener('unhandledrejection', (event) => {
   logError('client', 'Unhandled promise rejection', event.reason, {
     path: window.location.pathname,
   })
+  window.dispatchEvent(new Event('app:unhandled-error'))
 })
 
 createRoot(document.getElementById('root')!).render(

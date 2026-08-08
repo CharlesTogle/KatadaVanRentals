@@ -3,6 +3,10 @@ import { useAuth } from '@/contexts/useAuth'
 import { useProfile, useUpdateProfile } from '@/hooks/use-profile'
 import { supabase } from '@/lib/supabase'
 import { showError } from '@/lib/errors'
+import { getAcceptedMimeTypes } from '@/lib/file-upload'
+import { UPLOAD_POLICIES } from '@/config/constants'
+import { uploadFile } from '@/services/upload-service'
+import { toast } from '@/lib/toast'
 import { Button } from '@/components/ui/button'
 import { CountrySelect } from '@/components/ui/country-select'
 import { Camera, Phone, Eye, EyeOff } from 'lucide-react'
@@ -124,19 +128,18 @@ export default function Profile() {
     const file = e.target.files?.[0]
     if (!file || !user) return
     setUploading(true)
-    const ext = file.name.split('.').pop()
-    const path = `profile-photos/${user.id}.${ext}`
-
-    const { error } = await supabase.storage
-      .from('business-assets')
-      .upload(path, file, { upsert: true })
-
-    if (!error) {
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `profile-photos/${user.id}.${ext}`
+      await uploadFile({ bucket: 'business-assets', file, path, policy: UPLOAD_POLICIES.businessAssets, upsert: true })
       const { data: { publicUrl } } = supabase.storage.from('business-assets').getPublicUrl(path)
       setProfile({ ...profile, profile_image_path: publicUrl })
       updateProfile.mutate({ id: user.id, data: { profile_image_path: publicUrl } })
+    } catch (error) {
+      toast.error(showError(error as Error))
+    } finally {
+      setUploading(false)
     }
-    setUploading(false)
   }
 
   const handleSaveProfile = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -188,7 +191,7 @@ export default function Profile() {
           setSaving(false)
         },
         onError: (err) => {
-          setMessage(err instanceof Error ? err.message : 'Profile update failed.')
+          setMessage(showError(err))
           setMessageType('error')
           setMessageScope('profile')
           setSaving(false)
@@ -263,7 +266,7 @@ export default function Profile() {
                 <Camera size={10} className="sm:hidden" />
                 <Camera size={12} className="hidden sm:block" />
               </button>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUploadPhoto} className="hidden" />
+              <input ref={fileInputRef} type="file" accept={getAcceptedMimeTypes(UPLOAD_POLICIES.businessAssets)} onChange={handleUploadPhoto} className="hidden" />
             </div>
             <div>
               <p className="text-sm font-bold text-[#071f52] sm:text-base">{name}</p>

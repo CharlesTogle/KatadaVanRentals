@@ -1,13 +1,27 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { normalizeDiagnosticEvent, parseDiagnosticBody } from './diagnostic.ts'
 
 const ALLOWED_URLS = Deno.env.get('ALLOWED_URLS')?.trim() ?? ''
 const ALLOWED_ORIGINS = ALLOWED_URLS.split(',').map(s => s.trim()).filter(Boolean)
+const requestIds = new WeakMap<Request, string>()
+const rateLimitBuckets = new Map<string, number[]>()
+const RATE_LIMIT = 60
+const RATE_WINDOW_MS = 60_000
 
 function json(req: Request, body: unknown, status = 200) {
+  const requestId = requestIdFor(req)
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders(req), 'Content-Type': 'application/json', 'X-Request-ID': requestId },
   })
+}
+
+function requestIdFor(req: Request) {
+  const existing = requestIds.get(req)
+  if (existing) return existing
+  const requestId = req.headers.get('x-request-id') ?? crypto.randomUUID()
+  requestIds.set(req, requestId)
+  return requestId
 }
 
 function corsHeaders(req: Request): Record<string, string> {
@@ -17,14 +31,15 @@ function corsHeaders(req: Request): Record<string, string> {
   }
   return {
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-request-id',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   }
 }
 
 serve(async (req) => {
+  const requestId = requestIdFor(req)
   if (!ALLOWED_URLS) {
-    return json(req, { error: 'ALLOWED_URLS is not configured' }, 500)
+    return json(req, { errorCode: 'CONFIGURATION_ERROR' }, 500)
   }
 
   if (req.method === 'OPTIONS') {
@@ -32,22 +47,26 @@ serve(async (req) => {
   }
 
   if (req.method !== 'POST') {
-    return json(req, { error: 'Method not allowed' }, 405)
+    return json(req, { errorCode: 'METHOD_NOT_ALLOWED' }, 405)
   }
 
-  const body = await req.json()
+  const clientKey = req.headers.get('cf-connecting-ip')
+    ?? req.headers.get('x-real-ip')
+    ?? (req.headers.get('x-forwarded-for') ?? 'unknown').split(',')[0].trim()
+  const now = Date.now()
+  const timestamps = (rateLimitBuckets.get(clientKey) ?? []).filter((timestamp) => now - timestamp < RATE_WINDOW_MS)
+  if (timestamps.length >= RATE_LIMIT) return json(req, { errorCode: 'RATE_LIMITED' }, 429)
+  timestamps.push(now)
+  rateLimitBuckets.set(clientKey, timestamps)
 
-  console.error(JSON.stringify({
-    timestamp: body.timestamp ?? new Date().toISOString(),
-    level: body.level ?? 'ERROR',
-    environment: body.environment ?? Deno.env.get('VERCEL_ENV') ?? 'production',
-    service: body.service ?? 'unknown',
-    message: body.message ?? '',
-    ...(body.error ? { error: body.error } : {}),
-    ...(body.context ? { context: body.context } : {}),
-  }))
+  let body: Record<string, unknown>
+  try {
+    body = parseDiagnosticBody(await req.text())
+  } catch {
+    return json(req, { errorCode: 'INVALID_INPUT' }, 400)
+  }
 
-  return new Response(JSON.stringify({ ok: true }), {
-    headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-  })
+  console.error(JSON.stringify(normalizeDiagnosticEvent(body, requestId, Deno.env.get('VERCEL_ENV') ?? 'production')))
+
+  return json(req, { ok: true })
 })

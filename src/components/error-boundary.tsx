@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { logFatal, getRequestId } from '@/lib/logger'
 
 interface Props { children: ReactNode }
 interface State { hasError: boolean; error: Error | null }
@@ -14,7 +15,11 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('ErrorBoundary caught:', error, info.componentStack)
+    void info
+    logFatal('client', 'Error boundary caught exception', error, {
+      requestId: getRequestId(),
+      path: window.location.pathname,
+    })
   }
 
   render() {
@@ -24,7 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="max-w-md text-center">
             <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52]">Something went wrong</h1>
             <p className="mt-3 text-sm font-medium text-[#071f52]/58">
-              {this.state.error?.message || 'An unexpected error occurred.'}
+              Something went wrong. Please reload or contact support.
             </p>
             <button
               type="button"

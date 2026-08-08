@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Star, Check } from 'lucide-react'
 import { useAdminFeedback, useSetFeedbackHomepageVisibility } from '@/hooks/use-bookings'
 import { toast } from '@/lib/toast'
+import { showError } from '@/lib/errors'
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString()
@@ -23,7 +24,7 @@ export default function AdminUserFeedback() {
 
   const toggleHomepage = (id: string, displayOnHomepage: boolean) => {
     setHomepageVisibility({ id, displayOnHomepage }, {
-      onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not update homepage display.'),
+        onError: (error) => toast.error(showError(error)),
     })
   }
 

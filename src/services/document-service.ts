@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import type { BookingRequestedDocument, CustomerDocument, DocumentType } from '@/types/document'
+import { logError } from '@/lib/logger'
 
 const CUSTOMER_DOCUMENT_BUCKET = 'customer-documents'
 
@@ -93,7 +94,7 @@ export async function saveBookingRequestedDocument(data: {
   return doc.id
 }
 
-export async function deleteBookingRequestedDocument(docId: string) {
+export async function deleteBookingRequestedDocument(docId: string): Promise<{ cleanupFailed: boolean }> {
   const { data: doc, error: selectError } = await supabase
     .from('booking_requested_documents')
     .select('file_path')
@@ -112,8 +113,13 @@ export async function deleteBookingRequestedDocument(docId: string) {
   if (doc?.file_path) {
     const paths = getCustomerDocumentPathCandidates(doc.file_path)
     const { error: removeError } = await supabase.storage.from(CUSTOMER_DOCUMENT_BUCKET).remove(paths)
-    if (removeError) console.warn('Failed to remove requested-document file:', doc.file_path, removeError)
+    if (removeError) {
+      logError('documents', 'Failed to remove requested-document file', removeError)
+      return { cleanupFailed: true }
+    }
   }
+
+  return { cleanupFailed: false }
 }
 
 export async function getBookingRequestedDocuments(bookingId: string): Promise<BookingRequestedDocument[]> {

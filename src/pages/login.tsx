@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { useAppSettings } from '@/hooks/use-app-settings'
 import { isValidEmail } from '@/lib/validation'
 import { ArrowLeft, Eye, EyeOff, ShieldCheck } from 'lucide-react'
+import { logError, getRequestId } from '@/lib/logger'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -59,11 +60,13 @@ export default function Login() {
 
       // Write last_login_at without making it a sign-in requirement.
       try {
-        await supabase
+        const { error: activityError } = await supabase
           .from('profiles')
           .update({ last_login_at: new Date().toISOString() })
           .eq('id', data.user.id)
-      } catch {
+        if (activityError) logError('auth', 'Failed to persist login activity', activityError, { requestId: getRequestId() })
+      } catch (error) {
+        logError('auth', 'Failed to persist login activity', error, { requestId: getRequestId() })
         // Keep sign-in successful if the activity timestamp cannot be recorded.
       }
 

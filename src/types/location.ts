@@ -6,6 +6,16 @@ export interface LocationSuggestion {
   lng: number
 }
 
+export interface FunctionErrorResponse {
+  errorCode?: string
+  error?: string
+  message?: string
+}
+
+export interface MappedFunctionError extends Error {
+  errorCode?: string
+}
+
 export interface SelectedLocation {
   address: string
   lat: number | null

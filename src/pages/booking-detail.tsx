@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
+import { validateFile } from '@/lib/file-upload'
+import { UPLOAD_POLICIES } from '@/config/constants'
+import { uploadFile } from '@/services/upload-service'
 import { useAcceptOwnPriceAdjustment, useBooking, useCancelOwnBooking } from '@/hooks/use-bookings'
 import { useFileViewer } from '@/hooks/use-file-viewer'
 import { saveBookingRequestedDocument, deleteBookingRequestedDocument, getCustomerDocumentSignedUrl } from '@/services/document-service'
@@ -22,6 +25,7 @@ import {
 } from 'lucide-react'
 import { BOOKING_MESSAGES } from '@/constants/booking'
 import { STATUS_COLORS } from '@/config/constants'
+import { logError } from '@/lib/logger'
 import { getBookingAdjustmentSummary } from '@/lib/booking-adjustment'
 import { getBookingExpiryDeadline, getBookingExpiryMessage } from '@/lib/booking-expiry'
 import { getDisplayBookingNote } from '@/lib/booking-notes'
@@ -63,7 +67,7 @@ export default function BookingDetail() {
   const [adjustmentAction, setAdjustmentAction] = useState<'accept' | 'cancel' | null>(null)
   const { data: appSettings } = useAppSettings()
   const [uploadingTypeId, setUploadingTypeId] = useState<string | null>(null)
-  const [sizeError, setSizeError] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<{ typeId: string; message: string } | null>(null)
   const oldUploadRef = useRef<{ file_path: string; original_filename: string; mime_type: string; size_bytes: number } | null>(null)
   const uploadHandledRef = useRef(false)
   const hasSubmittedFeedback = submitted || Boolean(data?.feedback)
@@ -214,13 +218,14 @@ export default function BookingDetail() {
 
   const doUpload = async (file: File, requestedTypeId: string, oldUpload?: { file_path: string; original_filename: string; mime_type: string; size_bytes: number } | null) => {
     if (!user) return
-    setSizeError(null)
+    setUploadError(null)
     setUploadingTypeId(requestedTypeId)
 
     try {
       const ext = file.name.split('.').pop()
       const path = `${user.id}/requested/${booking.id}/${Date.now()}.${ext}`
 
+      validateFile(file, UPLOAD_POLICIES.customerDocuments)
       const docId = await saveBookingRequestedDocument({
         booking_id: booking.id,
         customer_id: user.id,
@@ -231,9 +236,12 @@ export default function BookingDetail() {
         size_bytes: file.size,
       })
 
-      const { error: uploadError } = await supabase.storage
-        .from('customer-documents')
-        .upload(path, file, { upsert: true })
+      let uploadError: Error | null = null
+      try {
+        await uploadFile({ bucket: 'customer-documents', file, path, policy: UPLOAD_POLICIES.customerDocuments, upsert: true })
+      } catch (error) {
+        uploadError = error as Error
+      }
 
       if (uploadError) {
         if (oldUpload) {
@@ -254,7 +262,10 @@ export default function BookingDetail() {
 
       if (oldUpload) {
         const { error: removeError } = await supabase.storage.from('customer-documents').remove([oldUpload.file_path])
-        if (removeError) console.warn('Failed to remove old requested-document file:', oldUpload.file_path, removeError)
+        if (removeError) {
+          logError('documents', 'Failed to remove old requested-document file', removeError)
+          toast.warning('Replacement saved. The old file cleanup is still pending.')
+        }
       }
 
       toast.success('Document uploaded.')
@@ -268,8 +279,9 @@ export default function BookingDetail() {
 
   const handleDeleteDoc = async (docId: string) => {
     try {
-      await deleteBookingRequestedDocument(docId)
+      const result = await deleteBookingRequestedDocument(docId)
       toast.success('Document removed.')
+      if (result.cleanupFailed) toast.warning('Document record removed. Old file cleanup is still pending.')
       refetchBooking()
     } catch (error) {
       toast.error(showError(error as Error))
@@ -294,11 +306,7 @@ export default function BookingDetail() {
       setUploadingTypeId(null)
       return
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setSizeError(requestedTypeId)
-      setUploadingTypeId(null)
-      return
-    }
+    try { validateFile(file, UPLOAD_POLICIES.customerDocuments) } catch (error) { const message = showError(error as Error); setUploadError({ typeId: requestedTypeId, message }); toast.error(message); setUploadingTypeId(null); return }
     doUpload(file, requestedTypeId, oldUploadRef.current)
   }
 
@@ -307,10 +315,7 @@ export default function BookingDetail() {
     setDragOver(false)
     const file = e.dataTransfer.files?.[0]
     if (!file) return
-    if (file.size > 5 * 1024 * 1024) {
-      setSizeError(requestedTypeId)
-      return
-    }
+    try { validateFile(file, UPLOAD_POLICIES.customerDocuments) } catch (error) { const message = showError(error as Error); setUploadError({ typeId: requestedTypeId, message }); toast.error(message); return }
     doUpload(file, requestedTypeId, null)
   }
 
@@ -635,7 +640,7 @@ export default function BookingDetail() {
                   <input
                     ref={docInputRef}
                     type="file"
-                    accept="image/*,.pdf"
+                    accept={UPLOAD_POLICIES.customerDocuments.accept}
                     onChange={(e) => uploadingTypeId ? handleDocUpload(e, uploadingTypeId) : null}
                     className="hidden"
                     aria-label="Upload requested document"
@@ -694,8 +699,8 @@ export default function BookingDetail() {
                                 ) : null}
                               </div>
                             </div>
-                            {sizeError === type.id ? (
-                                <p className="mt-0.5 text-[9px] font-semibold text-[#e92935] sm:text-[10px]">File must be under 5 MB.</p>
+                            {uploadError?.typeId === type.id ? (
+                                <p className="mt-0.5 text-[9px] font-semibold text-[#e92935] sm:text-[10px]">{uploadError.message}</p>
                             ) : null}
                           </>
                         ) : canEditDocs ? (
@@ -704,7 +709,7 @@ export default function BookingDetail() {
                               onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
                               onDragLeave={() => setDragOver(false)}
                               onDrop={(e) => handleDrop(e, type.id)}
-                              onClick={() => { if (!uploadingTypeId) { uploadHandledRef.current = false; setSizeError(null); oldUploadRef.current = null; setUploadingTypeId(type.id); docInputRef.current?.click() } }}
+                              onClick={() => { if (!uploadingTypeId) { uploadHandledRef.current = false; setUploadError(null); oldUploadRef.current = null; setUploadingTypeId(type.id); docInputRef.current?.click() } }}
                               className={`mt-1.5 cursor-pointer rounded-lg border-2 border-dashed px-3 py-2.5 text-center transition-colors ${
                                 dragOver
                                   ? 'border-[#4f46e5] bg-[#4f46e5]/8'
@@ -723,10 +728,10 @@ export default function BookingDetail() {
                                 </div>
                               )}
                             </div>
-                            {sizeError === type.id ? (
-                                <p className="mt-0.5 text-[9px] font-semibold text-[#e92935] sm:text-[10px]">File must be under 5 MB.</p>
+                            {uploadError?.typeId === type.id ? (
+                                <p className="mt-0.5 text-[9px] font-semibold text-[#e92935] sm:text-[10px]">{uploadError.message}</p>
                             ) : (
-                                <p className="mt-0.5 text-[9px] text-[#4f46e5]/50 sm:text-[10px]">Max 5 MB per file</p>
+                                <p className="mt-0.5 text-[9px] text-[#4f46e5]/50 sm:text-[10px]">Max 5 MiB per file</p>
                             )}
                           </>
                         ) : (

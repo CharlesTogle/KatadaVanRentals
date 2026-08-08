@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { MapPin } from 'lucide-react'
 import { suggestLocations } from '@/services/location-service'
 import type { LocationSuggestion, SelectedLocation } from '@/types/location'
+import { logError } from '@/lib/logger'
 
 interface LocationSelectorProps {
   id: string
@@ -17,6 +18,7 @@ interface LocationSelectorProps {
 export function LocationSelector({ id, label, value, placeholder, required = false, readOnly = false, onChange, onSelect }: LocationSelectorProps) {
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([])
   const [loading, setLoading] = useState(false)
+  const [lookupError, setLookupError] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const selectedAddressRef = useRef('')
@@ -41,24 +43,28 @@ export function LocationSelector({ id, label, value, placeholder, required = fal
     if (!isFocused) {
       setSuggestions([])
       setLoading(false)
+      setLookupError('')
       return
     }
 
     if (readOnly) {
       setSuggestions([])
       setLoading(false)
+      setLookupError('')
       return
     }
 
     if (selectedAddressRef.current && trimmedValue === selectedAddressRef.current) {
       setSuggestions([])
       setLoading(false)
+      setLookupError('')
       return
     }
 
     if (trimmedValue.length < 3) {
       setSuggestions([])
       setLoading(false)
+      setLookupError('')
       return
     }
 
@@ -66,6 +72,7 @@ export function LocationSelector({ id, label, value, placeholder, required = fal
     if (cachedSuggestions) {
       setSuggestions(cachedSuggestions)
       setLoading(false)
+      setLookupError('')
       return
     }
 
@@ -76,8 +83,11 @@ export function LocationSelector({ id, label, value, placeholder, required = fal
         const nextSuggestions = await suggestLocations(trimmedValue)
         cacheRef.current.set(trimmedValue.toLowerCase(), nextSuggestions)
         setSuggestions(nextSuggestions)
-      } catch {
+        setLookupError('')
+      } catch (error) {
+        logError('location-search', 'Location lookup failed', error)
         setSuggestions([])
+        setLookupError('Location search is temporarily unavailable. Try again or enter a more specific address.')
       } finally {
         setLoading(false)
       }
@@ -121,18 +131,21 @@ export function LocationSelector({ id, label, value, placeholder, required = fal
             }
             onChange(nextValue)
             onSelect({ address: nextValue, lat: null, lng: null })
+            setLookupError('')
           }}
           placeholder={placeholder}
           autoComplete="off"
           className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
         />
 
-        {(value.trim().length > 0 && value.trim().length < 3) || loading || (canShowSuggestions && suggestions.length > 0) ? (
+        {(value.trim().length > 0 && value.trim().length < 3) || loading || lookupError || (canShowSuggestions && suggestions.length > 0) ? (
           <div className="absolute z-10 mt-2 w-full overflow-hidden rounded-2xl border border-[#071f52]/10 bg-white shadow-[0_18px_44px_rgba(7,31,82,0.12)]">
             {value.trim().length > 0 && value.trim().length < 3 ? (
               <p className="px-4 py-3 text-sm font-semibold text-[#071f52]/48">Keep Typing...</p>
             ) : loading ? (
               <p className="px-4 py-3 text-sm font-semibold text-[#071f52]/48">Looking up locations...</p>
+            ) : lookupError ? (
+              <p role="alert" className="px-4 py-3 text-sm font-semibold text-[#b91c1c]">{lookupError}</p>
             ) : suggestions.map((suggestion) => (
               <button
                 key={suggestion.id}

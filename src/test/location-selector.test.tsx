@@ -70,4 +70,18 @@ describe('LocationSelector', () => {
 
     expect(screen.getByRole('button', { name: /Pasay, Metro Manila/i })).toBeInTheDocument()
   })
+
+  it('shows bounded feedback when location lookup fails', async () => {
+    suggestLocationsMock.mockRejectedValueOnce(new Error('provider detail'))
+
+    render(<LocationSelectorHarness />)
+    const input = screen.getByLabelText(/Pickup/i)
+
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'Makati' } })
+    await act(() => vi.advanceTimersByTimeAsync(400))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Location search is temporarily unavailable')
+    expect(screen.getByRole('alert')).not.toHaveTextContent('provider detail')
+  })
 })
