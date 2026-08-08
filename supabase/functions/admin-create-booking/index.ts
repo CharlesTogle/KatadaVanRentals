@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { renderBookingConfirmedEmail } from '../_shared/booking-confirmed-email.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -323,18 +324,13 @@ serve(async (req) => {
     .single()
 
   if (customerProfile?.email) {
-    const confirmHtml = `
-      <div style="font-family: 'Plus Jakarta Sans', sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 24px;">
-        <h1 style="font-size: 22px; font-weight: 900; color: #071f52; margin: 0 0 8px;">Booking Confirmed</h1>
-        <p style="font-size: 14px; color: #071f52; opacity: 0.6; margin: 0 0 24px;">Hi ${customerProfile.first_name ?? 'there'}, your booking has been confirmed.</p>
-        <div style="background: #f7f9ff; border-radius: 12px; padding: 20px; margin: 0 0 20px;">
-          <p style="font-size: 13px; color: #071f52; margin: 0 0 4px;"><strong>Booking #:</strong> ${booking.booking_number}</p>
-          <p style="font-size: 13px; color: #071f52; margin: 0 0 4px;"><strong>Dates:</strong> ${new Date(startAt).toLocaleDateString()}${normalizedEndAt ? ` — ${new Date(normalizedEndAt).toLocaleDateString()}` : ''}</p>
-          <p style="font-size: 13px; color: #071f52; margin: 0 0 4px;"><strong>Duration:</strong> ${durationDays} day${durationDays > 1 ? 's' : ''}</p>
-          <p style="font-size: 13px; color: #071f52; margin: 0;"><strong>Total:</strong> ₱${booking.total_amount?.toLocaleString()}.00</p>
-        </div>
-        <p style="font-size: 12px; color: #071f52; opacity: 0.38; margin: 0;">Thank you for choosing ${SENDER_NAME}.</p>
-      </div>`
+    const confirmHtml = renderBookingConfirmedEmail({
+      firstName: customerProfile.first_name ?? 'there',
+      bookingNumber: booking.booking_number,
+      dates: `${new Date(startAt).toLocaleDateString()}${normalizedEndAt ? ` — ${new Date(normalizedEndAt).toLocaleDateString()}` : ''}`,
+      duration: `${durationDays} day${durationDays > 1 ? 's' : ''}`,
+      total: `₱${booking.total_amount?.toLocaleString()}.00`,
+    })
 
     await supabase.functions.invoke('send-email', {
       body: {

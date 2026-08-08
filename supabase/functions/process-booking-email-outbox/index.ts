@@ -26,11 +26,14 @@ serve(async () => {
       idempotencyKey,
       batch: claimedEmails.map((email) => ({
         to: email.recipient_email,
-        template: email.email_type,
-        firstName: email.first_name,
-        bookingNumber: email.booking_number,
-        reason: email.reason,
-      })),
+         template: email.email_type,
+         firstName: email.first_name,
+         bookingNumber: email.booking_number,
+         reason: email.reason,
+         dates: email.dates,
+         duration: email.duration,
+         total: email.total,
+       })),
     },
   })
 

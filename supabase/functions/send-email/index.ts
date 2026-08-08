@@ -1,5 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { renderBookingCanceledEmail } from '../_shared/booking-canceled-email.ts'
+import { renderBookingConfirmedEmail } from '../_shared/booking-confirmed-email.ts'
+import { renderBookingRejectedEmail } from '../_shared/booking-rejected-email.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const DEVELOPER_EMAIL = Deno.env.get('DEVELOPER_EMAIL')!
@@ -91,6 +93,20 @@ serve(async (req) => {
           bookingNumber: String(item.bookingNumber || ''),
           reason: String(item.reason || 'Booking deadline passed.'),
         })
+      : item.template === 'booking_rejected'
+        ? renderBookingRejectedEmail({
+            firstName: String(item.firstName || 'there'),
+            bookingNumber: String(item.bookingNumber || ''),
+            reason: String(item.reason || 'Booking request was not accepted.'),
+          })
+        : item.template === 'booking_confirmed'
+          ? renderBookingConfirmedEmail({
+              firstName: String(item.firstName || 'there'),
+              bookingNumber: String(item.bookingNumber || ''),
+              dates: String(item.dates || 'To be confirmed'),
+              duration: String(item.duration || '1 day'),
+              total: String(item.total || 'PHP 0'),
+            })
       : { subject: String(item.subject || ''), text: String(item.text || ''), html: item.html as string | undefined }
 
     return {
@@ -106,6 +122,30 @@ serve(async (req) => {
       firstName: String(body.firstName || 'there'),
       bookingNumber: String(body.bookingNumber || ''),
       reason: String(body.reason || 'Booking deadline passed.'),
+    })
+    body.subject = email.subject
+    body.text = email.text
+    body.html = email.html
+  }
+
+  if (body.template === 'booking_rejected') {
+    const email = renderBookingRejectedEmail({
+      firstName: String(body.firstName || 'there'),
+      bookingNumber: String(body.bookingNumber || ''),
+      reason: String(body.reason || 'Booking request was not accepted.'),
+    })
+    body.subject = email.subject
+    body.text = email.text
+    body.html = email.html
+  }
+
+  if (body.template === 'booking_confirmed') {
+    const email = renderBookingConfirmedEmail({
+      firstName: String(body.firstName || 'there'),
+      bookingNumber: String(body.bookingNumber || ''),
+      dates: String(body.dates || 'To be confirmed'),
+      duration: String(body.duration || '1 day'),
+      total: String(body.total || 'PHP 0'),
     })
     body.subject = email.subject
     body.text = email.text
