@@ -170,7 +170,7 @@ export default function AdminBookings() {
                        aria-label={`Delete booking ${b.booking_number}`}
                        onClick={() => handleDeleteBooking(b.id, b.booking_number)}
                        disabled={deleteBooking.isPending}
-                       className="rounded-full border border-red-200 bg-white p-2 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+                       className="rounded-full bg-white p-2 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
                      >
                        <Trash2 size={16} />
                      </button>
