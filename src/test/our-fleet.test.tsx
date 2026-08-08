@@ -8,6 +8,7 @@ import { useBookingStore } from '@/store/booking-store'
 const useAuthMock = vi.fn()
 const useProfileMock = vi.fn()
 const useVehiclesMock = vi.fn()
+const useFleetUnavailableDatesMock = vi.fn()
 
 vi.mock('@/contexts/useAuth', () => ({
   useAuth: () => useAuthMock(),
@@ -19,6 +20,7 @@ vi.mock('@/hooks/use-profile', () => ({
 
 vi.mock('@/hooks/use-vehicles', () => ({
   useVehicles: () => useVehiclesMock(),
+  useFleetUnavailableDates: () => useFleetUnavailableDatesMock(),
 }))
 
 vi.mock('@/components/customer-shell-frame', () => ({
@@ -34,11 +36,13 @@ describe('OurFleet', () => {
     useAuthMock.mockReset()
     useProfileMock.mockReset()
     useVehiclesMock.mockReset()
+    useFleetUnavailableDatesMock.mockReset()
     window.localStorage.clear()
 
     useAuthMock.mockReturnValue({ user: null })
     useProfileMock.mockReturnValue({ data: undefined })
     useVehiclesMock.mockReturnValue({ data: [], isLoading: false })
+    useFleetUnavailableDatesMock.mockReturnValue({ data: [], isLoading: false, isError: false })
     useBookingStore.getState().reset()
   })
 
@@ -56,6 +60,25 @@ describe('OurFleet', () => {
       start: '2026-08-01T09:30',
       end: '2026-08-03T17:45',
     })
+  })
+
+  it('disables fleet dates when every available vehicle is occupied', () => {
+    useFleetUnavailableDatesMock.mockReturnValue({
+      data: [{ unavailable_date: '2026-08-12' }],
+      isLoading: false,
+      isError: false,
+    })
+
+    render(
+      <MemoryRouter>
+        <OurFleet />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Select date & time' })[0])
+
+    expect(screen.getAllByRole('button', { name: /August 12th, 2026/i }).every((button) => button.hasAttribute('disabled'))).toBe(true)
+    expect(screen.getAllByRole('button', { name: /August 13th, 2026/i }).some((button) => !button.hasAttribute('disabled'))).toBe(true)
   })
 
   it('auto-fills drop-off to 24 hours after the pickup date and time', () => {

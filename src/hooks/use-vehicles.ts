@@ -34,6 +34,14 @@ export function useVehicleUnavailableRanges(vehicleId: string | undefined) {
   })
 }
 
+export function useFleetUnavailableDates() {
+  return useQuery({
+    queryKey: ['vehicles', 'unavailable-dates'],
+    queryFn: vehicleService.getFleetUnavailableDates,
+    staleTime: 30_000,
+  })
+}
+
 export function useAdminVehicles() {
   return useQuery({
     queryKey: ['admin', 'fleet'],

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CustomerShellFrame } from '@/components/customer-shell-frame'
 import { LocationSelector } from '@/components/booking/location-selector'
-import { useVehicles } from '@/hooks/use-vehicles'
+import { useFleetUnavailableDates, useVehicles } from '@/hooks/use-vehicles'
 import { AppHeader } from '@/components/app-header'
 import { useAuth } from '@/contexts/useAuth'
 import { useProfile } from '@/hooks/use-profile'
@@ -24,6 +24,11 @@ function mergeDateTimeValue(date: string, time: string) {
   if (!date || !time) return ''
 
   return `${date}T${time}`
+}
+
+function parseLocalDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, month - 1, day)
 }
 
 function addHoursToDateTimeValue(value: string, hours: number) {
@@ -82,7 +87,9 @@ export default function OurFleet() {
   const [appliedFiltersRows, setAppliedFiltersRows] = useState<Array<{ label: string; value: string }>>([])
 
   const { data: vehicles = [], isLoading } = useVehicles()
+  const { data: fleetUnavailableDates = [] } = useFleetUnavailableDates()
   const inCustomerShell = !!user && !isAdminRole(profile?.role)
+  const disabledFleetDates = fleetUnavailableDates.map(({ unavailable_date }) => parseLocalDate(unavailable_date))
 
   const updateBookingDates = (next: { start?: string; end?: string }) => {
     const selection = {
@@ -152,6 +159,7 @@ export default function OurFleet() {
             id="fleet-start-at"
             label="PICK-UP DATE & TIME"
             value={mergeDateTimeValue(startDatePart, startTimePart)}
+            disabledDates={disabledFleetDates}
             placeholder="Select date & time"
             labelClassName={returnToDifferentLocation ? 'text-[10px] font-bold text-[#071f52] sm:text-xs' : 'text-[10px] font-bold text-[#071f52] sm:text-[11px]'}
             triggerClassName={returnToDifferentLocation ? 'min-h-[44px] text-xs text-[#071f52] sm:min-h-[48px] sm:text-sm' : 'min-h-[44px] text-xs text-[#071f52] sm:min-h-[48px] sm:text-sm'}
@@ -175,6 +183,7 @@ export default function OurFleet() {
             id="fleet-end-at"
             label="DROP-OFF DATE & TIME"
             value={mergeDateTimeValue(endDatePart, endTimePart)}
+            disabledDates={disabledFleetDates}
             placeholder="Select date & time"
             labelClassName={returnToDifferentLocation ? 'text-[10px] font-bold text-[#071f52] sm:text-xs' : 'text-[10px] font-bold text-[#071f52] sm:text-[11px]'}
             triggerClassName={returnToDifferentLocation ? 'min-h-[44px] text-xs text-[#071f52] sm:min-h-[48px] sm:text-sm' : 'min-h-[44px] text-xs text-[#071f52] sm:min-h-[48px] sm:text-sm'}
