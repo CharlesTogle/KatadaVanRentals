@@ -34,6 +34,11 @@ export interface Vehicle {
   updated_at: string
 }
 
+export interface VehicleUnavailableRange {
+  start_at: string
+  end_at: string | null
+}
+
 export interface Brand {
   id: string
   name: string

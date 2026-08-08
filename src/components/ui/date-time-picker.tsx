@@ -21,6 +21,7 @@ interface DateTimePickerProps {
   triggerClassName?: string
   disabled?: boolean
   minDateTime?: Date
+  disabledDates?: Date[]
 }
 
 function parseDateTimeValue(value: string) {
@@ -65,6 +66,7 @@ export function DateTimePicker({
   triggerClassName,
   disabled = false,
   minDateTime,
+  disabledDates = [],
 }: DateTimePickerProps) {
   const selectedDate = useMemo(() => parseDateTimeValue(value), [value])
   const timeParts = useMemo(() => {
@@ -82,6 +84,14 @@ export function DateTimePicker({
   }, [selectedDate])
 
   const displayValue = selectedDate ? format(selectedDate, "MMM d, yyyy 'at' h:mm aa") : placeholder
+  const disabledDay = (date: Date) => (
+    (minDateTime ? date < minDateTime : false)
+    || disabledDates.some((disabledDate) => (
+      date.getFullYear() === disabledDate.getFullYear()
+      && date.getMonth() === disabledDate.getMonth()
+      && date.getDate() === disabledDate.getDate()
+    ))
+  )
 
   const updateValue = (nextDate: Date) => {
     onChange(formatDateTimeValue(nextDate))
@@ -163,7 +173,7 @@ export function DateTimePicker({
                 onSelect={handleDateSelect}
                 showOutsideDays
                 fixedWeeks
-                disabled={minDateTime ? { before: minDateTime } : undefined}
+                disabled={disabledDay}
                 className="p-3"
               />
             </div>

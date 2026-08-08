@@ -25,6 +25,15 @@ export function useVehicleById(id: string | undefined) {
   })
 }
 
+export function useVehicleUnavailableRanges(vehicleId: string | undefined) {
+  return useQuery({
+    queryKey: ['vehicle', vehicleId, 'unavailable-ranges'],
+    queryFn: () => vehicleService.getVehicleUnavailableRanges(vehicleId!),
+    enabled: !!vehicleId,
+    staleTime: 30_000,
+  })
+}
+
 export function useAdminVehicles() {
   return useQuery({
     queryKey: ['admin', 'fleet'],

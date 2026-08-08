@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Brand, CreateVehicleInput, UpdateVehicleInput, Vehicle, VehicleType } from '@/types/vehicle'
+import type { Brand, CreateVehicleInput, UpdateVehicleInput, Vehicle, VehicleType, VehicleUnavailableRange } from '@/types/vehicle'
 
 function slugify(name: string): string {
   return name
@@ -58,6 +58,19 @@ export async function getVehicleById(id: string): Promise<Vehicle> {
   const { data, error } = await supabase.from('vehicles').select('*').eq('id', id).single()
   if (error) throw error
   return data as Vehicle
+}
+
+export async function getVehicleUnavailableRanges(vehicleId: string): Promise<VehicleUnavailableRange[]> {
+  const from = new Date()
+  const to = new Date(from)
+  to.setFullYear(to.getFullYear() + 2)
+  const { data, error } = await supabase.rpc('get_vehicle_unavailable_ranges', {
+    p_vehicle_id: vehicleId,
+    p_from_at: from.toISOString(),
+    p_to_at: to.toISOString(),
+  })
+  if (error) throw error
+  return (data || []) as VehicleUnavailableRange[]
 }
 
 export async function getAdminVehicles(): Promise<Vehicle[]> {

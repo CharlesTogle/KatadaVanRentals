@@ -27,19 +27,6 @@ vi.mock('@/contexts/useAuth', () => ({
   }),
 }))
 
-vi.mock('@/hooks/use-vehicles', () => ({
-  useVehicleById: () => ({
-    data: {
-      id: 'vehicle-1',
-       name: 'Toyota Commuter',
-       base_price_per_day: 4500,
-       peso_per_km: 4500,
-       driver_rate_per_day: 800,
-    },
-    isLoading: false,
-  }),
-}))
-
 vi.mock('@/hooks/use-profile', () => ({
   useProfile: () => ({
     data: mockProfile,
@@ -66,9 +53,24 @@ const defaultProfile = {
 let mockProfile = defaultProfile
 
 const useCustomerDocuments = vi.fn()
+const useVehicleUnavailableRanges = vi.fn()
 
 vi.mock('@/hooks/use-documents', () => ({
   useCustomerDocuments: (...args: unknown[]) => useCustomerDocuments(...args),
+}))
+
+vi.mock('@/hooks/use-vehicles', () => ({
+  useVehicleById: () => ({
+    data: {
+      id: 'vehicle-1',
+       name: 'Toyota Commuter',
+       base_price_per_day: 4500,
+       peso_per_km: 4500,
+       driver_rate_per_day: 800,
+    },
+    isLoading: false,
+  }),
+  useVehicleUnavailableRanges: (...args: unknown[]) => useVehicleUnavailableRanges(...args),
 }))
 
 vi.mock('@/hooks/use-payment-methods', () => ({
@@ -118,6 +120,7 @@ function fillPaymentProof() {
 describe('BookingForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useVehicleUnavailableRanges.mockReturnValue({ data: [], isLoading: false, isError: false })
     useBookingStore.getState().reset()
     mockProfile = defaultProfile
     window.localStorage.clear()
@@ -471,5 +474,21 @@ describe('BookingForm', () => {
       start: '2026-08-05T09:15',
       end: '2026-08-06T10:30',
     })
+  })
+
+  it('disables dates occupied by the selected vehicle', () => {
+    useVehicleUnavailableRanges.mockReturnValue({
+      data: [{ start_at: '2026-08-12T08:00:00.000Z', end_at: '2026-08-14T08:00:00.000Z' }],
+      isLoading: false,
+      isError: false,
+    })
+
+    renderBookingForm('/dashboard/book/vehicle-1?type=self-drive')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Select date & time' })[0])
+
+    expect(screen.getAllByRole('button', { name: /August 12th, 2026/i }).every((button) => button.hasAttribute('disabled'))).toBe(true)
+    expect(screen.getAllByRole('button', { name: /August 13th, 2026/i }).every((button) => button.hasAttribute('disabled'))).toBe(true)
+    expect(screen.getAllByRole('button', { name: /August 14th, 2026/i }).every((button) => button.hasAttribute('disabled'))).toBe(true)
+    expect(screen.getAllByRole('button', { name: /August 15th, 2026/i }).some((button) => !button.hasAttribute('disabled'))).toBe(true)
   })
 })

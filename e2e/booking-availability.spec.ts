@@ -8,6 +8,63 @@ const email = process.env.TEST_EMAIL
 const password = process.env.TEST_PASSWORD
 
 test.describe('Booking availability API', () => {
+  test('returns active overlapping booking ranges', async () => {
+    test.skip(
+      !supabaseUrl || !anonKey || !serviceRoleKey || !email || !password,
+      'Set VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, E2E_SUPABASE_SERVICE_ROLE_KEY, TEST_EMAIL, and TEST_PASSWORD',
+    )
+
+    const customer = createClient(supabaseUrl!, anonKey!, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+    const admin = createClient(supabaseUrl!, serviceRoleKey!, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+
+    const { error: signInError } = await customer.auth.signInWithPassword({ email: email!, password: password! })
+    expect(signInError).toBeNull()
+
+    const startAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    startAt.setMinutes(0, 0, 0)
+    const endAt = new Date(startAt.getTime() + 2 * 24 * 60 * 60 * 1000)
+    const bookingNumber = `E2E-RANGES-${Date.now()}`
+    let bookingId: string | undefined
+
+    const { data: vehicles, error: vehicleError } = await admin
+      .from('vehicles')
+      .select('id')
+      .eq('is_available', true)
+    expect(vehicleError).toBeNull()
+    expect(vehicles).not.toHaveLength(0)
+
+    try {
+      const { data: booking, error: bookingError } = await customer.rpc('create_booking', {
+        p_booking_number: bookingNumber,
+        p_vehicle_id: vehicles![0].id,
+        p_rental_model: 'all_out',
+        p_start_at: startAt.toISOString(),
+        p_end_at: endAt.toISOString(),
+        p_duration_days: 2,
+        p_idempotency_key: crypto.randomUUID(),
+      })
+      expect(bookingError).toBeNull()
+      bookingId = booking?.id
+
+      const { data: ranges, error: rangesError } = await customer.rpc('get_vehicle_unavailable_ranges', {
+        p_vehicle_id: vehicles![0].id,
+        p_from_at: startAt.toISOString(),
+        p_to_at: endAt.toISOString(),
+      })
+      expect(rangesError).toBeNull()
+      expect(ranges).toEqual([{ start_at: startAt.toISOString(), end_at: endAt.toISOString() }])
+    } finally {
+      if (bookingId) {
+        const { error } = await admin.from('bookings').delete().eq('id', bookingId)
+        expect(error).toBeNull()
+      }
+    }
+  })
+
   test('allows only one of two concurrent overlapping bookings', async () => {
     test.skip(
       !supabaseUrl || !anonKey || !serviceRoleKey || !email || !password,

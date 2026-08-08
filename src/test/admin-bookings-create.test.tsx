@@ -43,6 +43,7 @@ vi.mock('@/hooks/use-admin-booking', () => ({
 }))
 
 vi.mock('@/hooks/use-vehicles', () => ({
+  useVehicleUnavailableRanges: () => ({ data: [], isLoading: false, isError: false }),
   useAdminVehicles: () => ({
     data: [
       { id: 'vehicle-1', name: 'Toyota Commuter', plate_number: 'ABC123', base_price_per_day: 3500, driver_rate_per_day: 1500, passenger_count: 12, transmission: 'Manual', image_paths: [], is_available: true },

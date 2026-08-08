@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { saveBookingDateSelection } from '@/lib/booking-date-storage'
 import { normalizeCustomerRentalType, type CustomerRentalType } from '@/lib/booking-utils'
 import { useBookingStore } from '@/store/booking-store'
 import { cn } from '@/lib/utils'
+import { useVehicleUnavailableRanges } from '@/hooks/use-vehicles'
+import type { VehicleUnavailableRange } from '@/types/vehicle'
 
 function formatDateTimeInput(value: string) {
   if (!value) return ''
@@ -31,7 +33,25 @@ function mergeDateTimeValue(date: string, time: string) {
   return `${date}T${time}`
 }
 
+function getUnavailableDays(ranges: VehicleUnavailableRange[], horizon: Date) {
+  const days: Date[] = []
+
+  for (const range of ranges) {
+    const day = new Date(range.start_at)
+    const end = range.end_at ? new Date(range.end_at) : new Date(horizon)
+    day.setHours(0, 0, 0, 0)
+    end.setHours(0, 0, 0, 0)
+
+    for (; day <= end; day.setDate(day.getDate() + 1)) {
+      days.push(new Date(day))
+    }
+  }
+
+  return days
+}
+
 export function RentalDetailsFields() {
+  const { vehicleId } = useParams<{ vehicleId: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const rentalType = normalizeCustomerRentalType(searchParams.get('type'))
   const startParam = searchParams.get('start') || ''
@@ -40,6 +60,7 @@ export function RentalDetailsFields() {
   const initialEnd = splitDateTimeValue(endParam)
   const mode = useBookingStore((s) => s.mode)
   const setMode = useBookingStore((s) => s.setMode)
+  const { data: unavailableRanges = [], isLoading: isAvailabilityLoading, isError: isAvailabilityError } = useVehicleUnavailableRanges(vehicleId)
   const [startDatePart, setStartDatePart] = useState(initialStart.date)
   const [startTimePart, setStartTimePart] = useState(initialStart.time)
   const [endDatePart, setEndDatePart] = useState(initialEnd.date)
@@ -117,6 +138,11 @@ export function RentalDetailsFields() {
     pickup.setHours(0, 0, 0, 0)
     return pickup
   }, [minPickup, startParam])
+  const unavailableDays = useMemo(() => {
+    const horizon = new Date()
+    horizon.setFullYear(horizon.getFullYear() + 2)
+    return getUnavailableDays(unavailableRanges, horizon)
+  }, [unavailableRanges])
 
   const withDriver = rentalType !== 'self-drive'
 
@@ -209,7 +235,8 @@ export function RentalDetailsFields() {
           id="booking-start-at"
           label="Pick-up Date & Time"
           required
-          minDateTime={minPickup}
+           minDateTime={minPickup}
+           disabledDates={unavailableDays}
           value={mergeDateTimeValue(startDatePart, startTimePart)}
           placeholder="Select date & time"
           onChange={(value) => {
@@ -225,7 +252,8 @@ export function RentalDetailsFields() {
             id="booking-end-at"
             label="Return Date & Time"
             required
-            minDateTime={minReturn}
+             minDateTime={minReturn}
+             disabledDates={unavailableDays}
             value={mergeDateTimeValue(endDatePart, endTimePart)}
             placeholder="Select date & time"
             onChange={(value) => {
@@ -239,7 +267,9 @@ export function RentalDetailsFields() {
         )}
       </div>
 
-      <p className="text-sm font-semibold text-[#16a34a]">Available for selected dates</p>
+      <p className={cn('text-sm font-semibold', isAvailabilityLoading || isAvailabilityError ? 'text-[#52627d]' : 'text-[#16a34a]')}>
+        {isAvailabilityLoading ? 'Checking vehicle availability...' : isAvailabilityError ? 'Availability will be confirmed when you submit.' : 'Available for selected dates'}
+      </p>
     </>
   )
 }
