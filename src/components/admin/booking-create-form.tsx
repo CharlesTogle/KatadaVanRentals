@@ -569,7 +569,7 @@ export function BookingCreateForm() {
           </div>
         </div>
 
-        <div className="h-full">
+        <div className="lg:self-stretch">
           <div className="lg:sticky lg:top-6">
             <PriceSummary
               rentalType={rentalType as CustomerRentalType}
