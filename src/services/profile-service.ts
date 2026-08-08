@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { hasRequiredSelfDriveDocuments } from '@/lib/booking-utils'
 import type { Profile } from '@/types/profile'
-import type { AdminCustomerRow } from '@/types/admin-customer'
+import type { AdminCustomerRow, AdminCustomersPage } from '@/types/admin-customer'
 import type { AdminCustomerSearchPage } from '@/types/admin-booking'
 import type { CustomerDocument } from '@/types/document'
 
@@ -16,10 +16,18 @@ export async function updateProfile(id: string, data: Partial<Profile>): Promise
   if (error) throw error
 }
 
-export async function searchAdminCustomers(search?: string): Promise<AdminCustomerRow[]> {
-  const { data, error } = await supabase.rpc('search_admin_customers', { search_query: search || null })
+export async function searchAdminCustomers(params: { search?: string; page: number; pageSize: number }): Promise<AdminCustomersPage> {
+  const { data, error } = await supabase.rpc('search_admin_customers', {
+    search_query: params.search || null,
+    page_number: Math.max(params.page, 1),
+    page_size: params.pageSize,
+  })
   if (error) throw error
-  return (data || []) as AdminCustomerRow[]
+  const rows = (data || []) as (AdminCustomerRow & { total_count: number })[]
+  return {
+    items: rows.map(({ total_count: _totalCount, ...row }) => row),
+    total: rows[0]?.total_count || 0,
+  }
 }
 
 export async function paginateAdminCustomers(params: { query?: string; offset: number; limit: number }): Promise<AdminCustomerSearchPage> {

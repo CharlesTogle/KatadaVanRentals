@@ -14,4 +14,9 @@ export interface AdminCustomerRow {
   total_spend: number
 }
 
+export interface AdminCustomersPage {
+  items: AdminCustomerRow[]
+  total: number
+}
+
 export type AdminCustomerAccountAction = 'view_profile' | 'deactivate' | 'reactivate' | 'delete'

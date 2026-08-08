@@ -76,7 +76,7 @@ describe('Admin Customers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('confirm', vi.fn(() => true))
-    useAdminCustomers.mockReturnValue({ data: mockCustomers, isLoading: false })
+    useAdminCustomers.mockReturnValue({ data: { items: mockCustomers, total: mockCustomers.length }, isLoading: false })
     deactivateCustomer.mockResolvedValue(undefined)
     reactivateCustomer.mockResolvedValue(undefined)
     deleteCustomer.mockResolvedValue(undefined)

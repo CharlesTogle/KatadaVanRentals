@@ -20,9 +20,9 @@ export function useUpdateProfile() {
   })
 }
 
-export function useAdminCustomers(search?: string) {
+export function useAdminCustomers(search: string | undefined, page: number, pageSize: number) {
   return useQuery({
-    queryKey: ['admin', 'customers', search],
-    queryFn: () => profileService.searchAdminCustomers(search),
+    queryKey: ['admin', 'customers', search, page, pageSize],
+    queryFn: () => profileService.searchAdminCustomers({ search, page, pageSize }),
   })
 }

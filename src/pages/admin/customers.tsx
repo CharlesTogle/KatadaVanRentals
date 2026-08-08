@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAdminCustomers } from '@/hooks/use-profile'
@@ -6,7 +6,7 @@ import { deactivateCustomer, reactivateCustomer, deleteCustomer } from '@/servic
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
 import { cn } from '@/lib/utils'
-import { Search, Download, MoreHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, Download, MoreHorizontal } from 'lucide-react'
 import type { AdminCustomerRow } from '@/types/admin-customer'
 
 function formatCurrency(amount: number) {
@@ -52,13 +52,25 @@ function exportCsv(rows: AdminCustomerRow[]) {
   URL.revokeObjectURL(url)
 }
 
+const PAGE_SIZE = 20
+
 export default function Customers() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [page, setPage] = useState(1)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const queryClient = useQueryClient()
 
-  const { data: customers = [], isLoading } = useAdminCustomers(search || undefined)
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search), 300)
+    return () => window.clearTimeout(timeout)
+  }, [search])
+
+  const { data, isLoading } = useAdminCustomers(debouncedSearch || undefined, page, PAGE_SIZE)
+  const customers = data?.items || []
+  const totalPages = Math.max(1, Math.ceil((data?.total || 0) / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
 
   const handleDeactivate = async (customer: AdminCustomerRow) => {
     setOpenMenuId(null)
@@ -111,7 +123,10 @@ export default function Customers() {
             <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#071f52]/38" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
               placeholder="Search customers..."
               aria-label="Search customers"
               className="w-full sm:w-52 rounded-xl border border-[#071f52]/14 bg-white py-2 pl-9 pr-4 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 focus:border-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
@@ -130,6 +145,34 @@ export default function Customers() {
         </div>
       ) : (
         <div className="mt-6 admin-table-wrap">
+          <div className="flex items-center justify-between border-b border-[#071f52]/10 bg-white px-5 py-3">
+            <p className="text-xs font-semibold text-[#071f52]/48">Show 20 per page</p>
+            {totalPages > 1 ? (
+              <div className="flex items-center gap-3">
+                <p className="text-xs font-semibold text-[#071f52]/48">Page {currentPage} of {totalPages}</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    aria-label="Previous page"
+                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Next page"
+                    onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                    disabled={currentPage === totalPages}
+                    className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
           <table className="text-left">
             <thead>
               <tr className="border-b border-[#071f52]/10 bg-[#f7f9ff]">
