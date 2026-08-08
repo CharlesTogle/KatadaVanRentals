@@ -1,16 +1,42 @@
 alter table public.vehicles
-  add column brand text,
-  add column vehicle_type text;
+  add column if not exists brand text,
+  add column if not exists vehicle_type text;
 
-update public.vehicles v
-set brand = b.name
-from public.brands b
-where v.brand_id = b.id;
+do $$
+begin
+  if to_regclass('public.brands') is not null
+     and exists (
+       select 1
+       from information_schema.columns
+       where table_schema = 'public'
+         and table_name = 'vehicles'
+         and column_name = 'brand_id'
+     ) then
+    execute 'update public.vehicles v
+      set brand = b.name
+      from public.brands b
+      where v.brand_id = b.id';
+  end if;
+end;
+$$;
 
-update public.vehicles v
-set vehicle_type = vt.name
-from public.vehicle_types vt
-where v.vehicle_type_id = vt.id;
+do $$
+begin
+  if to_regclass('public.vehicle_types') is not null
+     and exists (
+       select 1
+       from information_schema.columns
+       where table_schema = 'public'
+         and table_name = 'vehicles'
+         and column_name = 'vehicle_type_id'
+     ) then
+    execute 'update public.vehicles v
+      set vehicle_type = vt.name
+      from public.vehicle_types vt
+      where v.vehicle_type_id = vt.id';
+  end if;
+end;
+$$;
 
 update public.vehicles
 set vehicle_type = 'Others'
