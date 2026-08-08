@@ -21,6 +21,7 @@ import type { AdminBookingCreateInput } from '@/types/admin-booking'
 import { useVatPercent } from '@/hooks/use-vat-percent'
 
 const ADMIN_BOOKING_IDEMPOTENCY_KEY = 'katada:admin-booking:idempotency'
+const MOBILE_PREFIX = '+63'
 
 function getAdminBookingIdempotencyKeys() {
   const stored = localStorage.getItem(ADMIN_BOOKING_IDEMPOTENCY_KEY)
@@ -352,6 +353,13 @@ export function BookingCreateForm() {
     if (customer.mode === 'new') {
       if (!customer.newCustomer.firstName.trim() || !customer.newCustomer.lastName.trim() || !customer.newCustomer.email.trim()) {
         setError('First name, last name, and email are required for a new customer.')
+        return
+      }
+      const mobileDigits = customer.newCustomer.mobile.startsWith(MOBILE_PREFIX)
+        ? customer.newCustomer.mobile.slice(MOBILE_PREFIX.length)
+        : customer.newCustomer.mobile
+      if (mobileDigits && !/^\d{10}$/.test(mobileDigits)) {
+        setError('Enter a complete 10-digit mobile number after the +63 prefix.')
         return
       }
     }

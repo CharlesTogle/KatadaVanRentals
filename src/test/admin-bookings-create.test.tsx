@@ -116,6 +116,19 @@ describe('AdminBookingsCreate', () => {
     expect(screen.getByPlaceholderText(/first name/i)).toBeInTheDocument()
   })
 
+  it('limits new customer mobile input to 10 digits after the +63 prefix', () => {
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: /new customer/i }))
+    const mobileInput = screen.getByPlaceholderText('9171234567')
+
+    fireEvent.change(mobileInput, { target: { value: '917123456789' } })
+
+    expect(screen.getByText('+63')).toBeInTheDocument()
+    expect(mobileInput).toHaveValue('9171234567')
+    expect(mobileInput).toHaveAttribute('minlength', '10')
+    expect(mobileInput).toHaveAttribute('maxlength', '10')
+  })
+
   it('shows vehicle options in rental details', () => {
     renderPage()
     expect(screen.getByRole('option', { name: 'Toyota Commuter (ABC123)' })).toBeInTheDocument()

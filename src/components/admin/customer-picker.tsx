@@ -32,6 +32,14 @@ const defaultNewCustomer: NewCustomerData = {
   sendInvite: true,
 }
 
+const MOBILE_PREFIX = '+63'
+const MOBILE_DIGIT_LIMIT = 10
+
+function getMobileDigits(value: string) {
+  const withoutPrefix = value.startsWith(MOBILE_PREFIX) ? value.slice(MOBILE_PREFIX.length) : value
+  return withoutPrefix.replace(/\D/g, '').slice(0, MOBILE_DIGIT_LIMIT)
+}
+
 const inputClass = 'w-full rounded-xl border border-[#071f52]/14 bg-white py-2 px-3 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 focus:border-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60'
 const labelClass = 'text-xs font-bold text-[#071f52]/58 mb-1 block'
 
@@ -134,13 +142,21 @@ export function CustomerPicker({ value, onChange }: CustomerPickerProps) {
             />
           </div>
           <div className="col-span-2">
-            <label className={labelClass}>Mobile</label>
-            <input
-              value={value.newCustomer.mobile}
-              onChange={(e) => onChange({ ...value, newCustomer: { ...value.newCustomer, mobile: e.target.value } })}
-              className={inputClass}
-              placeholder="+63 9xx xxx xxxx"
-            />
+            <label htmlFor="admin-new-customer-mobile" className={labelClass}>Mobile</label>
+            <div className="flex items-center rounded-xl border border-[#071f52]/14 bg-white focus-within:border-[#071f52] focus-within:ring-2 focus-within:ring-[#ffd923]/60">
+              <span className="pl-3 text-sm font-semibold text-[#071f52]">{MOBILE_PREFIX}</span>
+              <input
+                id="admin-new-customer-mobile"
+                value={getMobileDigits(value.newCustomer.mobile)}
+                onChange={(e) => onChange({ ...value, newCustomer: { ...value.newCustomer, mobile: `${MOBILE_PREFIX}${getMobileDigits(e.target.value)}` } })}
+                className="w-full rounded-xl rounded-l-none border-0 bg-transparent py-2 pl-1 pr-3 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 outline-none focus:border-0 focus:ring-0"
+                inputMode="numeric"
+                minLength={MOBILE_DIGIT_LIMIT}
+                maxLength={MOBILE_DIGIT_LIMIT}
+                pattern="[0-9]{10}"
+                placeholder="9171234567"
+              />
+            </div>
           </div>
           <div className="col-span-2">
             <label className="flex items-center gap-2 text-sm font-semibold text-[#071f52]">
