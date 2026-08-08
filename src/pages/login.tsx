@@ -57,11 +57,15 @@ export default function Login() {
         return
       }
 
-      // Write last_login_at (best-effort, non-blocking)
-      supabase
-        .from('profiles')
-        .update({ last_login_at: new Date().toISOString() })
-        .eq('id', data.user.id)
+      // Write last_login_at without making it a sign-in requirement.
+      try {
+        await supabase
+          .from('profiles')
+          .update({ last_login_at: new Date().toISOString() })
+          .eq('id', data.user.id)
+      } catch {
+        // Keep sign-in successful if the activity timestamp cannot be recorded.
+      }
 
       const isAdmin = profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'staff'
       navigate(searchParams.get('redirect') || (isAdmin ? '/admin' : '/dashboard'), { replace: true })
