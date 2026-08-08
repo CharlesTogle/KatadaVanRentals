@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, Trash2 } from 'lucide-react'
 import {
   useAdminVehicles,
   useDeleteVehicle,
@@ -13,6 +13,7 @@ import { VEHICLE_TYPES } from '@/constants/vehicle'
 
 const inputClass =
   'block w-full rounded-xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60'
+const PAGE_SIZE = 20
 
 export default function Fleet() {
   const navigate = useNavigate()
@@ -23,6 +24,7 @@ export default function Fleet() {
   const [typeFilter, setTypeFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [rentalFilter, setRentalFilter] = useState('')
+  const [page, setPage] = useState(1)
 
   const [deleting, setDeleting] = useState<Vehicle | null>(null)
 
@@ -49,6 +51,10 @@ export default function Fleet() {
       return true
     })
   }, [vehicles, search, typeFilter, statusFilter, rentalFilter])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const pageVehicles = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   const handleDelete = async () => {
     if (!deleting) return
@@ -80,14 +86,14 @@ export default function Fleet() {
             className={cn(inputClass, 'pl-9 w-full')}
             placeholder="Search vehicles..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+             onChange={(e) => { setSearch(e.target.value); setPage(1) }}
           />
         </div>
-         <select className={cn(inputClass, 'w-[calc(50%-0.375rem)] sm:w-auto')} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+          <select className={cn(inputClass, 'w-[calc(50%-0.375rem)] sm:w-auto')} value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setPage(1) }}>
            <option value="">All Types</option>
            {VEHICLE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
         </select>
-        <select className={cn(inputClass, 'w-[calc(50%-0.375rem)] sm:w-auto')} value={rentalFilter} onChange={(e) => setRentalFilter(e.target.value)}>
+         <select className={cn(inputClass, 'w-[calc(50%-0.375rem)] sm:w-auto')} value={rentalFilter} onChange={(e) => { setRentalFilter(e.target.value); setPage(1) }}>
           <option value="">All Rental Options</option>
           <option value="self_drive">Self-Drive</option>
           <option value="all_out">All Out</option>
@@ -95,15 +101,24 @@ export default function Fleet() {
           <option value="with_driver">With Driver</option>
           <option value="pickup">Pickup &amp; Drop-off</option>
         </select>
-        <select className={cn(inputClass, 'w-[calc(50%-0.375rem)] sm:w-auto')} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <select className={cn(inputClass, 'w-[calc(50%-0.375rem)] sm:w-auto')} value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}>
           <option value="">All Statuses</option>
           <option value="available">Available</option>
           <option value="unavailable">Not Available</option>
         </select>
       </div>
 
+      {(isLoading || filtered.length > 0) ? (
+        <div className="mt-6 card-overflow">
+          <div className="flex items-center justify-between border-b border-[#071f52]/10 bg-white px-5 py-3">
+            <p className="text-xs font-semibold text-[#071f52]/48">Show 20 per page</p>
+            <FleetPagination page={currentPage} totalPages={totalPages} setPage={setPage} disabled={isLoading} />
+          </div>
+        </div>
+      ) : null}
+
       {isLoading ? (
-        <div className="mt-6 space-y-3">
+        <div className="mt-3 space-y-3">
           {[...Array(3)].map((_, i) => <div key={i} className="h-16 rounded-xl bg-[#071f52]/6 animate-pulse" />)}
         </div>
       ) : !filtered.length ? (
@@ -111,7 +126,7 @@ export default function Fleet() {
           {vehicles.length ? 'No vehicles match your filters.' : 'No vehicles listed yet.'}
         </div>
       ) : (
-        <div className="mt-6 card-overflow overflow-x-auto">
+        <div className="-mt-1 card-overflow overflow-x-auto">
           <table className="min-w-[900px] w-full text-left">
             <thead>
               <tr className="border-b border-[#071f52]/10 bg-[#f7f9ff]">
@@ -127,7 +142,7 @@ export default function Fleet() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#071f52]/6">
-              {filtered.map((v: Vehicle) => {
+              {pageVehicles.map((v: Vehicle) => {
                 return (
                 <tr
                   key={v.id}
@@ -229,6 +244,46 @@ export default function Fleet() {
           </div>
         )}
       </Dialog>
+    </div>
+  )
+}
+
+function FleetPagination({
+  page,
+  totalPages,
+  setPage,
+  disabled = false,
+}: {
+  page: number
+  totalPages: number
+  setPage: React.Dispatch<React.SetStateAction<number>>
+  disabled?: boolean
+}) {
+  if (totalPages <= 1) return null
+
+  return (
+    <div className="flex items-center justify-end gap-3">
+      <p className="text-xs font-semibold text-[#071f52]/48">Page {page} of {totalPages}</p>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label="Previous page"
+          onClick={() => setPage((current) => Math.max(1, current - 1))}
+          disabled={disabled || page === 1}
+          className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <button
+          type="button"
+          aria-label="Next page"
+          onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+          disabled={disabled || page === totalPages}
+          className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
     </div>
   )
 }
