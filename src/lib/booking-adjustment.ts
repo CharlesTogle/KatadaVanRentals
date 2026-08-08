@@ -40,19 +40,16 @@ export function getBookingAdjustmentSummary(
   const extensionDays = extensions
     .filter((extension) => !extension.payment_id)
     .reduce((sum, extension) => sum + getExtensionDays(extension.previous_end_at, extension.new_end_at), 0)
-  const fallbackAdjustmentAmount = booking.total_amount - baseTotal - extensionTotal
   const latestAdjustmentEvent = [...statusEvents]
     .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime())
     .find((event) => event.note && PRICE_ADJUSTMENT_NOTE_RE.test(event.note))
-
-  if (!latestAdjustmentEvent?.note && Math.abs(fallbackAdjustmentAmount) <= 0.009 && Math.abs(extensionAmount) <= 0.009) return null
 
   const match = latestAdjustmentEvent?.note?.match(PRICE_ADJUSTMENT_NOTE_RE)
   const parsedAdjustedTotal = match ? Number(match[1].replace(/,/g, '')) : NaN
   const hasEventAdjustedTotal = Number.isFinite(parsedAdjustedTotal)
   const normalizedAdjustmentAmount = hasEventAdjustedTotal
     ? parsedAdjustedTotal - baseTotal
-    : fallbackAdjustmentAmount
+    : 0
   const currentTotal = hasEventAdjustedTotal
     ? parsedAdjustedTotal + extensionTotal
     : booking.total_amount

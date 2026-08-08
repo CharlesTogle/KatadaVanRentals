@@ -558,7 +558,7 @@ describe('BookingDetail', () => {
     vi.useRealTimers()
   })
 
-  it('renders the pending price approval card even without a matching status event note', async () => {
+  it('does not render a pending price approval card without a matching status event note', async () => {
     useBooking.mockReturnValue({
       data: {
         booking: {
@@ -612,9 +612,9 @@ describe('BookingDetail', () => {
     renderDetail()
 
     expect(screen.getAllByText('Pending price approval').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Old Remaining Balance').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Price Adjustment').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('New Remaining Balance').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Old Remaining Balance')).not.toBeInTheDocument()
+    expect(screen.queryByText('Price Adjustment')).not.toBeInTheDocument()
+    expect(screen.queryByText('New Remaining Balance')).not.toBeInTheDocument()
   })
 
   it('shows requested-documents card with admin note when status is awaiting_documents', async () => {

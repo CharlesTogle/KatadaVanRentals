@@ -2,6 +2,20 @@ import { describe, expect, it } from 'vitest'
 import { getBookingAdjustmentSummary } from '@/lib/booking-adjustment'
 
 describe('getBookingAdjustmentSummary', () => {
+  it('does not turn an unexplained pricing-component gap into a price adjustment', () => {
+    expect(getBookingAdjustmentSummary(
+      {
+        total_amount: 15370,
+        remaining_amount: 14841,
+        price_line_items: [
+          { label: 'Base', detail: '7.20km × ₱700.00', amount: 5040 },
+          { label: 'Car Wash', detail: 'Vehicle fee', amount: 250 },
+        ],
+      },
+      [],
+    )).toBeNull()
+  })
+
   it('uses the latest adjustment event even when the booking total still shows the base total', () => {
     const summary = getBookingAdjustmentSummary(
       {
