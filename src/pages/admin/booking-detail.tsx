@@ -1213,6 +1213,7 @@ function formatCurrency(value: number) {
 
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString('en-PH', {
+    timeZone: 'Asia/Manila',
     month: 'short',
     day: 'numeric',
     year: 'numeric',

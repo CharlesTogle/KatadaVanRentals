@@ -9,9 +9,16 @@ export function useBooking(id: string | undefined) {
   })
 }
 
-export function useAdminBookings(params: { status?: string; search?: string; page: number; pageSize: number }) {
+export function useAdminBookings(params: {
+  status?: string
+  search?: string
+  page: number
+  pageSize: number
+  sortField?: bookingService.AdminBookingSortField
+  sortDirection?: bookingService.AdminBookingSortDirection
+}) {
   return useQuery({
-    queryKey: ['admin', 'bookings', params.status, params.search, params.page, params.pageSize],
+    queryKey: ['admin', 'bookings', params.status, params.search, params.page, params.pageSize, params.sortField, params.sortDirection],
     queryFn: () => bookingService.getAdminBookings(params),
     placeholderData: keepPreviousData,
   })

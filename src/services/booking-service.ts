@@ -96,9 +96,21 @@ export interface AdminBookingsPage {
   total: number
 }
 
-export async function getAdminBookings(params: { status?: string; search?: string; page: number; pageSize: number }): Promise<AdminBookingsPage> {
+export type AdminBookingSortField = 'created_at' | 'start_at' | 'end_at'
+export type AdminBookingSortDirection = 'asc' | 'desc'
+
+export async function getAdminBookings(params: {
+  status?: string
+  search?: string
+  page: number
+  pageSize: number
+  sortField?: AdminBookingSortField
+  sortDirection?: AdminBookingSortDirection
+}): Promise<AdminBookingsPage> {
   const search = params.search?.trim().replace(/[%,()]/g, '')
   const offset = (Math.max(params.page, 1) - 1) * params.pageSize
+  const sortField = params.sortField || 'created_at'
+  const sortDirection = params.sortDirection || 'desc'
 
   let matchingIds: string[] | null = null
 
@@ -129,7 +141,7 @@ export async function getAdminBookings(params: { status?: string; search?: strin
   let query = supabase
     .from('bookings')
     .select('*, profiles!customer_id(first_name,last_name,email), vehicles!vehicle_id(name,plate_number)', { count: 'exact' })
-    .order('created_at', { ascending: false })
+    .order(sortField, { ascending: sortDirection === 'asc' })
     .range(offset, offset + params.pageSize - 1)
 
   if (params.status) query = query.eq('status', params.status)

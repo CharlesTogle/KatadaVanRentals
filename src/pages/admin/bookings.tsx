@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAdminBookings, useDeleteBooking } from '@/hooks/use-bookings'
+import type { AdminBookingSortDirection, AdminBookingSortField } from '@/services/booking-service'
 import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
@@ -9,6 +10,12 @@ import { ChevronLeft, ChevronRight, Search, Trash2 } from 'lucide-react'
 import { STATUS_COLORS } from '@/config/constants'
 
 const PAGE_SIZE = 20
+
+const sortFields: Array<{ value: AdminBookingSortField; label: string }> = [
+  { value: 'created_at', label: 'Created At' },
+  { value: 'start_at', label: 'Start Date' },
+  { value: 'end_at', label: 'End Date' },
+]
 
 const statuses = [
   { value: '', label: 'All' },
@@ -27,8 +34,17 @@ export default function AdminBookings() {
   const [status, setStatus] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [sortField, setSortField] = useState<AdminBookingSortField>('created_at')
+  const [sortDirection, setSortDirection] = useState<AdminBookingSortDirection>('desc')
 
-  const { data, isLoading, isFetching } = useAdminBookings({ status: status || undefined, search: search || undefined, page, pageSize: PAGE_SIZE })
+  const { data, isLoading, isFetching } = useAdminBookings({
+    status: status || undefined,
+    search: search || undefined,
+    page,
+    pageSize: PAGE_SIZE,
+    sortField,
+    sortDirection,
+  })
   const deleteBooking = useDeleteBooking()
   const bookings = data?.items || []
   const totalPages = Math.max(1, Math.ceil((data?.total || 0) / PAGE_SIZE))
@@ -93,6 +109,37 @@ export default function AdminBookings() {
             {s.label}
           </button>
         ))}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2 text-sm font-semibold text-[#071f52]">
+        <label htmlFor="booking-sort-field">Sort by</label>
+        <select
+          id="booking-sort-field"
+          aria-label="Sort bookings by"
+          value={sortField}
+          onChange={(event) => {
+            setSortField(event.target.value as AdminBookingSortField)
+            setPage(1)
+          }}
+          className="rounded-xl border border-[#071f52]/14 bg-white px-3 py-2 text-sm font-semibold focus:border-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+        >
+          {sortFields.map((field) => <option key={field.value} value={field.value}>{field.label}</option>)}
+        </select>
+        <select
+          aria-label="Sort direction"
+          value={sortDirection}
+          onChange={(event) => {
+            setSortDirection(event.target.value as AdminBookingSortDirection)
+            setPage(1)
+          }}
+          className="rounded-xl border border-[#071f52]/14 bg-white px-3 py-2 text-sm font-semibold focus:border-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+        >
+          <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
+        </select>
+        <span className="text-xs font-medium text-[#071f52]/48" aria-live="polite">
+          Sorted by {sortFields.find((field) => field.value === sortField)?.label} ({sortDirection === 'asc' ? 'Ascending' : 'Descending'})
+        </span>
       </div>
 
       {(loading || bookings.length > 0) ? (

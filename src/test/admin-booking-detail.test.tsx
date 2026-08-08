@@ -125,6 +125,7 @@ describe('AdminBookingDetail', () => {
       expect(screen.getAllByText('CR-260723-ABCD').length).toBeGreaterThanOrEqual(1)
     })
 
+    expect(screen.getByText('Jul 23, 2026, 6:00 PM')).toBeInTheDocument()
     expect(consoleError.mock.calls.some((call) => call.some((value) => String(value).includes('Rendered more hooks than during the previous render')))).toBe(false)
     consoleError.mockRestore()
   })

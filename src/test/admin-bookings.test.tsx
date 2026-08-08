@@ -95,6 +95,21 @@ describe('AdminBookings', () => {
     expect(screen.getByRole('link', { name: 'Create booking' })).toHaveAttribute('href', '/admin/bookings/create')
   })
 
+  it('passes the selected sort and resets pagination when sorting changes', () => {
+    render(
+      <MemoryRouter>
+        <AdminBookings />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Sorted by Created At (Descending)')).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort bookings by' }), { target: { value: 'start_at' } })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort direction' }), { target: { value: 'asc' } })
+
+    expect(screen.getByText('Sorted by Start Date (Ascending)')).toBeInTheDocument()
+    expect(useAdminBookings).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, sortField: 'start_at', sortDirection: 'asc' }))
+  })
+
   it('shows 20 bookings per page and navigates between pages', () => {
     const bookings = Array.from({ length: 21 }, (_, index) => ({
       id: `booking-${index}`,
