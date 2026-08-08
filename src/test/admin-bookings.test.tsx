@@ -116,6 +116,7 @@ describe('AdminBookings', () => {
     )
 
     expect(screen.getAllByRole('link', { name: /CR-260723-/ })).toHaveLength(20)
+    expect(screen.getByText('Show 20 per page')).toBeInTheDocument()
     expect(screen.getByText('Page 1 of 2')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }))

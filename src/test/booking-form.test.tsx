@@ -211,6 +211,10 @@ describe('BookingForm', () => {
 
     renderBookingForm('/dashboard/book/vehicle-1?type=all-in&start=2026-08-05T08:00:00.000Z&end=2026-08-06T08:00:00.000Z')
 
+    expect(screen.getByRole('button', { name: /Just a Drop Off/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Keep the Car/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /All In/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /All Out/i })).toBeInTheDocument()
     expect(screen.getByText(/Fare \(0km × ₱4,500\)/)).toBeInTheDocument()
     expect(screen.queryByText(/Base \(1d × ₱4,500\)/)).not.toBeInTheDocument()
     expect(screen.getByLabelText(/Pickup Location/i)).toBeInTheDocument()
@@ -220,6 +224,7 @@ describe('BookingForm', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Keep the Car/i }))
 
+    expect(screen.getByRole('button', { name: /All In/i })).toHaveClass('bg-[#071f52]')
     expect(screen.getByText(/Base \(1d × ₱4,500\)/)).toBeInTheDocument()
     expect(screen.getByLabelText(/Destination/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/Purpose of Travel/i)).toBeInTheDocument()

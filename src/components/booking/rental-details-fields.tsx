@@ -134,12 +134,8 @@ export function RentalDetailsFields({ vehicle }: RentalDetailsFieldsProps) {
   }, [searchParams, setSearchParams, supportsAllIn, supportsAllOut, supportsSelfDrive])
 
   const setDriverMode = useCallback((nextMode: 'dropoff' | 'keep') => {
-    const nextType = nextMode === 'dropoff' ? 'all-in' : 'all-out'
-    if (nextMode === 'dropoff' && !supportsAllIn) return
-    if (nextMode === 'keep' && !supportsAllOut) return
     setMode(nextMode)
-    setRentalType(nextType)
-  }, [setMode, setRentalType, supportsAllIn, supportsAllOut])
+  }, [setMode])
 
   const setRentalCategory = (category: 'self-drive' | 'with-driver') => {
     if (category === 'self-drive') {
@@ -147,7 +143,7 @@ export function RentalDetailsFields({ vehicle }: RentalDetailsFieldsProps) {
       return
     }
 
-    setDriverMode(mode)
+    setRentalType(supportsAllIn ? 'all-in' : 'all-out')
   }
 
   useEffect(() => {
@@ -156,19 +152,9 @@ export function RentalDetailsFields({ vehicle }: RentalDetailsFieldsProps) {
       return
     }
 
-    if (rentalType === 'all-in' && !supportsAllIn) {
-      setDriverMode('keep')
-      return
-    }
-
-    if (rentalType === 'all-out' && !supportsAllOut) {
-      setDriverMode('dropoff')
-      return
-    }
-
-    if (rentalType === 'all-in' && mode !== 'dropoff') setMode('dropoff')
-    if (rentalType === 'all-out' && mode !== 'keep') setMode('keep')
-  }, [mode, rentalType, setDriverMode, setMode, supportsAllIn, supportsAllOut, supportsSelfDrive])
+    if (rentalType === 'all-in' && !supportsAllIn) setRentalType('all-out')
+    if (rentalType === 'all-out' && !supportsAllOut) setRentalType('all-in')
+  }, [rentalType, setDriverMode, setRentalType, supportsAllIn, supportsAllOut, supportsSelfDrive])
 
   const minPickup = useMemo(() => {
     const tomorrow = new Date()
@@ -227,7 +213,7 @@ export function RentalDetailsFields({ vehicle }: RentalDetailsFieldsProps) {
           <div className="space-y-2">
             <label className="text-sm font-bold text-[#071f52]">Trip Type <span className="text-[#e92935]">*</span></label>
             <div className="grid gap-3 sm:grid-cols-2">
-              {(['dropoff', 'keep'] as const).filter((m) => m === 'dropoff' ? supportsAllIn : supportsAllOut).map((m) => (
+              {(['dropoff', 'keep'] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -242,6 +228,35 @@ export function RentalDetailsFields({ vehicle }: RentalDetailsFieldsProps) {
                   <span className="text-lg font-black tracking-[-0.02em]">{m === 'dropoff' ? 'Just a Drop Off' : 'Keep the Car'}</span>
                   <span className={cn('text-sm font-medium', mode === m ? 'text-white/78' : 'text-[#071f52]/52')}>
                     {m === 'dropoff' ? 'One-way · charged by distance' : 'Round/return · charged per day'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-[#071f52]">Package <span className="text-[#e92935]">*</span></label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {([
+                { type: 'all-in', title: 'All In', subtitle: 'Fuel and toll estimate included', supported: supportsAllIn },
+                { type: 'all-out', title: 'All Out', subtitle: 'Fuel and toll paid separately', supported: supportsAllOut },
+              ] as const).map((option) => (
+                <button
+                  key={option.type}
+                  type="button"
+                  onClick={() => setRentalType(option.type)}
+                  disabled={!option.supported}
+                  className={cn(
+                    'flex min-h-[76px] flex-col items-start justify-center rounded-2xl border px-5 py-4 text-left transition-all',
+                    'disabled:cursor-not-allowed disabled:opacity-45',
+                    rentalType === option.type
+                      ? 'border-[#071f52] bg-[#071f52] text-white shadow-[0_10px_24px_rgba(7,31,82,0.18)]'
+                      : 'border-[#071f52]/14 bg-white text-[#071f52]',
+                  )}
+                >
+                  <span className="text-lg font-black tracking-[-0.02em]">{option.title}</span>
+                  <span className={cn('text-sm font-medium', rentalType === option.type ? 'text-white/78' : 'text-[#071f52]/52')}>
+                    {option.subtitle}
                   </span>
                 </button>
               ))}
