@@ -502,7 +502,7 @@ export function BookingCreateForm() {
                   <div className="min-w-0">
                     <p className="text-xl sm:text-2xl font-black tracking-[-0.03em] text-[#071f52]">{selectedVehicle.name}</p>
                     <p className="mt-1 text-sm sm:text-base font-medium text-[#071f52]/52">
-                      {selectedVehicle.brand_id || 'Toyota'} · {selectedVehicle.transmission || 'Manual'} · {selectedVehicle.passenger_count} seats
+                      {selectedVehicle.brand || 'Toyota'} · {selectedVehicle.transmission || 'Manual'} · {selectedVehicle.passenger_count} seats
                     </p>
                   </div>
                 </div>
@@ -511,7 +511,7 @@ export function BookingCreateForm() {
           </BookingSection>
 
           <BookingSection title="3. RENTAL DETAILS">
-            <RentalDetailsFields />
+            <RentalDetailsFields vehicle={selectedVehicle} />
             {rentalType === 'self-drive' ? (
               <div className="mt-6 space-y-4">
                 <div className="space-y-1.5">

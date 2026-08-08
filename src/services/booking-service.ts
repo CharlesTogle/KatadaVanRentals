@@ -214,13 +214,12 @@ export async function getHomepageTestimonials(): Promise<HomepageTestimonial[]> 
 }
 
 export async function getAdminDashboardData() {
-  const [bRes, pRes, vRes, vtRes] = await Promise.all([
+  const [bRes, pRes, vRes] = await Promise.all([
     supabase.from('bookings').select('id,status,total_amount,created_at,vehicle_id,profiles!customer_id(first_name,last_name),vehicles!vehicle_id(name)', { count: 'exact' }),
     supabase.from('profiles').select('id,created_at'),
-    supabase.from('vehicles').select('id,name,vehicle_type_id,is_available'),
-    supabase.from('vehicle_types').select('id,name'),
+    supabase.from('vehicles').select('id,name,vehicle_type,is_available'),
   ])
-  return { bRes, pRes, vRes, vtRes }
+  return { bRes, pRes, vRes }
 }
 
 export async function cancelOwnBooking(id: string, reason: string) {

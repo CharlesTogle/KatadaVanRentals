@@ -9,6 +9,7 @@ import Customers from '@/pages/admin/customers'
 import CustomerDetail from '@/pages/admin/customer-detail'
 import Fleet from '@/pages/admin/fleet'
 import FleetNew from '@/pages/admin/fleet/new'
+import FleetDetail from '@/pages/admin/fleet/detail'
 import AdminUserFeedback from '@/pages/admin/user-feedback'
 import AdminSettings from '@/pages/admin/settings'
 import RevenueReport from '@/pages/admin/revenue-report'
@@ -31,6 +32,7 @@ export const adminRoutes = (
     <Route path="feedback" element={<AdminUserFeedback />} />
     <Route path="fleet" element={<Fleet />} />
     <Route path="fleet/new" element={<FleetNew />} />
+    <Route path="fleet/:vehicleId" element={<FleetDetail />} />
     <Route path="settings" element={<AdminSettings />} />
     <Route path="reports/revenue" element={<RevenueReport />} />
     <Route path="reports/utilization" element={<UtilizationReport />} />

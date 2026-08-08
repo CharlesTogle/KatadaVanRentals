@@ -23,8 +23,7 @@ import { useState } from 'react'
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Filler, Title, Tooltip, Legend)
 
 type BookingRow = { id: string; status: string; total_amount: number; created_at: string; vehicle_id: string | null; profiles: { first_name: string; last_name: string } | null; vehicles: { name: string } | null }
-type VehicleRow = { id: string; name: string; vehicle_type_id: string | null; is_available: boolean }
-type VehicleTypeRow = { id: string; name: string }
+type VehicleRow = { id: string; name: string; vehicle_type: string | null; is_available: boolean }
 
 const MONTH_FORMATTER = new Intl.DateTimeFormat('en-PH', { month: 'short' })
 const CURRENCY_FORMATTER = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 })
@@ -205,7 +204,6 @@ export default function Dashboard() {
   const data = raw ? (() => {
     const bookings = (raw.bRes.data || []) as unknown as BookingRow[]
     const vehicles = (raw.vRes.data || []) as VehicleRow[]
-    const vehicleTypes = (raw.vtRes.data || []) as VehicleTypeRow[]
 
     const now = new Date()
     const weekAgo = new Date(now.getTime() - 7 * 86400000)
@@ -235,7 +233,7 @@ export default function Dashboard() {
 
     const typeCounts = new Map<string, number>()
     for (const v of vehicles) {
-      const typeName = vehicleTypes.find((t) => t.id === v.vehicle_type_id)?.name || 'Other'
+      const typeName = v.vehicle_type || 'Others'
       typeCounts.set(typeName, (typeCounts.get(typeName) || 0) + 1)
     }
     const vehicleTypeSeries = [...typeCounts.entries()]
@@ -280,7 +278,6 @@ export default function Dashboard() {
       totalStatus,
       yearlyBookings,
       vehicleTypeSeries,
-      vehicleTypes,
       filteredBookings,
       revenueByVehicle,
       dailyBookings,

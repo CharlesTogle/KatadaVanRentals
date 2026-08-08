@@ -3,16 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { MoreVertical, Pencil, Search, Trash2 } from 'lucide-react'
 import {
   useAdminVehicles,
-  useBrands,
   useDeleteVehicle,
   useUpdateVehicle,
-  useVehicleTypes,
 } from '@/hooks/use-vehicles'
 import { Dialog } from '@/components/ui/dialog'
 import { FleetForm, type FleetFormData, toVehicleInput } from '@/components/admin/fleet-form'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Vehicle } from '@/types/vehicle'
+import { VEHICLE_TYPES } from '@/constants/vehicle'
 
 const inputClass =
   'block w-full rounded-xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-2.5 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60'
@@ -20,13 +19,10 @@ const inputClass =
 export default function Fleet() {
   const navigate = useNavigate()
   const { data: vehicles = [], isLoading } = useAdminVehicles()
-  const { data: brands = [] } = useBrands()
-  const { data: vehicleTypes = [] } = useVehicleTypes()
   const updateMutation = useUpdateVehicle()
   const deleteMutation = useDeleteVehicle()
 
   const [search, setSearch] = useState('')
-  const [brandFilter, setBrandFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [rentalFilter, setRentalFilter] = useState('')
@@ -47,8 +43,7 @@ export default function Fleet() {
     return vehicles.filter((v: Vehicle) => {
       const q = search.toLowerCase()
       if (q && !v.name.toLowerCase().includes(q) && !v.plate_number.toLowerCase().includes(q)) return false
-      if (brandFilter && v.brand_id !== brandFilter) return false
-      if (typeFilter && v.vehicle_type_id !== typeFilter) return false
+      if (typeFilter && v.vehicle_type !== typeFilter) return false
       if (statusFilter === 'available' && !v.is_available) return false
       if (statusFilter === 'unavailable' && v.is_available) return false
       if (rentalFilter === 'self_drive' && !v.supports_self_drive) return false
@@ -58,7 +53,7 @@ export default function Fleet() {
       if (rentalFilter === 'pickup' && !v.supports_pickup_dropoff) return false
       return true
     })
-  }, [vehicles, search, brandFilter, typeFilter, statusFilter, rentalFilter])
+  }, [vehicles, search, typeFilter, statusFilter, rentalFilter])
 
   const handleEdit = async (vehicle: Vehicle, data: FleetFormData) => {
     try {
@@ -103,13 +98,9 @@ export default function Fleet() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <select className={cn(inputClass, 'w-[calc(50%-0.375rem)] sm:w-auto')} value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}>
-          <option value="">All Brands</option>
-          {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-        </select>
-        <select className={cn(inputClass, 'w-[calc(50%-0.375rem)] sm:w-auto')} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-          <option value="">All Types</option>
-          {vehicleTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+         <select className={cn(inputClass, 'w-[calc(50%-0.375rem)] sm:w-auto')} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+           <option value="">All Types</option>
+           {VEHICLE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
         </select>
         <select className={cn(inputClass, 'w-[calc(50%-0.375rem)] sm:w-auto')} value={rentalFilter} onChange={(e) => setRentalFilter(e.target.value)}>
           <option value="">All Rental Options</option>
@@ -155,7 +146,19 @@ export default function Fleet() {
                 const openUp = index >= filtered.length - 2
 
                 return (
-                <tr key={v.id} className="hover:bg-[#f7f9ff] transition-colors">
+                <tr
+                  key={v.id}
+                  className="cursor-pointer hover:bg-[#f7f9ff] transition-colors"
+                  onClick={() => navigate(`/admin/fleet/${v.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      navigate(`/admin/fleet/${v.id}`)
+                    }
+                  }}
+                  tabIndex={0}
+                  aria-label={`View details for ${v.name}`}
+                >
                   <td className="px-5 py-3">
                     <img
                       src={v.image_paths?.[0] || '/van-1.jpg'}
@@ -172,7 +175,7 @@ export default function Fleet() {
                   </td>
                   <td className="px-5 py-3">
                     <span className="text-sm text-[#071f52]/64">
-                      {vehicleTypes.find((t) => t.id === v.vehicle_type_id)?.name || '—'}
+                       {v.vehicle_type || '—'}
                     </span>
                   </td>
                   <td className="px-5 py-3">
@@ -195,8 +198,13 @@ export default function Fleet() {
                       {v.is_available ? 'Available' : 'Unavailable'}
                     </span>
                   </td>
-                  <td className="px-5 py-3 relative">
+                  <td
+                    className="relative px-5 py-3"
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
                     <button
+                      type="button"
                       className="rounded-lg p-1.5 text-[#071f52]/38 hover:bg-[#071f52]/6 hover:text-[#071f52] transition-colors"
                       onClick={() => setOpenMenuId(openMenuId === v.id ? null : v.id)}
                     >
@@ -206,16 +214,18 @@ export default function Fleet() {
                       <>
                         <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
                         <div className={cn(
-                          'absolute right-0 z-20 w-36 rounded-xl border border-[#071f52]/10 bg-white py-1 shadow-lg',
+                           'absolute right-0 z-20 w-44 rounded-xl border border-[#071f52]/10 bg-white py-1 shadow-lg',
                           openUp ? 'bottom-10' : 'top-10',
                         )}>
                           <button
+                            type="button"
                             className="flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold text-[#071f52] hover:bg-[#f7f9ff]"
                             onClick={() => { setEditing(v); setOpenMenuId(null) }}
                           >
                             <Pencil className="h-3.5 w-3.5" /> Edit
                           </button>
                           <button
+                            type="button"
                             className="flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
                             onClick={() => { setDeleting(v); setOpenMenuId(null) }}
                           >

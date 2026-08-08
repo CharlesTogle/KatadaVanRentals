@@ -672,7 +672,7 @@ export default function BookingForm() {
             </div>
 
               <BookingSection title="1. RENTAL DETAILS">
-                <RentalDetailsFields />
+                  <RentalDetailsFields vehicle={bookingVehicle} />
               </BookingSection>
 
               <BookingSection title="2. LOCATIONS">

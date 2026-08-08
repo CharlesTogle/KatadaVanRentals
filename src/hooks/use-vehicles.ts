@@ -41,21 +41,6 @@ export function useAdminVehicles() {
   })
 }
 
-export function useBrands() {
-  return useQuery({
-    queryKey: ['brands'],
-    queryFn: vehicleService.getBrands,
-    staleTime: Infinity,
-  })
-}
-
-export function useVehicleTypes() {
-  return useQuery({
-    queryKey: ['vehicleTypes'],
-    queryFn: vehicleService.getVehicleTypes,
-    staleTime: Infinity,
-  })
-}
 
 export function useCreateVehicle() {
   const queryClient = useQueryClient()

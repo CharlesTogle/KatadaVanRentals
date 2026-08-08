@@ -4,8 +4,8 @@ export interface Vehicle {
   slug: string
   plate_number: string
   year: number | null
-  brand_id: string | null
-  vehicle_type_id: string | null
+  brand: string | null
+  vehicle_type: string | null
   description: string | null
   passenger_count: number
   bag_count: number
@@ -39,25 +39,13 @@ export interface VehicleUnavailableRange {
   end_at: string | null
 }
 
-export interface Brand {
-  id: string
-  name: string
-  created_at: string
-}
-
-export interface VehicleType {
-  id: string
-  name: string
-  created_at: string
-}
-
 export interface CreateVehicleInput {
   name: string
   slug?: string
   plate_number: string
   year?: number | null
-  brand_id?: string | null
-  vehicle_type_id?: string | null
+  brand?: string | null
+  vehicle_type?: string | null
   description?: string | null
   passenger_count: number
   bag_count: number

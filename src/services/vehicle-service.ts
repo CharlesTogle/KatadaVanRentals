@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Brand, CreateVehicleInput, UpdateVehicleInput, Vehicle, VehicleType, VehicleUnavailableRange } from '@/types/vehicle'
+import type { CreateVehicleInput, UpdateVehicleInput, Vehicle, VehicleUnavailableRange } from '@/types/vehicle'
 
 function slugify(name: string): string {
   return name
@@ -14,8 +14,8 @@ function vehiclePayload(input: CreateVehicleInput) {
     slug: input.slug ? slugify(input.slug) : slugify(input.name),
     plate_number: input.plate_number,
     year: input.year || null,
-    brand_id: input.brand_id || null,
-    vehicle_type_id: input.vehicle_type_id || null,
+    brand: input.brand || null,
+    vehicle_type: input.vehicle_type || null,
     description: input.description || null,
     passenger_count: input.passenger_count,
     bag_count: input.bag_count,
@@ -111,14 +111,4 @@ export async function uploadVehicleImage(file: File): Promise<string> {
   if (error) throw error
   const { data: urlData } = supabase.storage.from('vehicles').getPublicUrl(data.path)
   return urlData.publicUrl
-}
-
-export async function getBrands(): Promise<Brand[]> {
-  const { data } = await supabase.from('brands').select('*').order('name')
-  return (data || []) as Brand[]
-}
-
-export async function getVehicleTypes(): Promise<VehicleType[]> {
-  const { data } = await supabase.from('vehicle_types').select('*').order('name')
-  return (data || []) as VehicleType[]
 }

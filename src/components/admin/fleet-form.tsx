@@ -1,10 +1,10 @@
 import { type FormEvent, useCallback, useRef, useState } from 'react'
 import { Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useBrands, useVehicleTypes } from '@/hooks/use-vehicles'
 import { uploadVehicleImage } from '@/services/vehicle-service'
 import { loadDraft, saveDraft, clearDraft } from '@/lib/draft-storage'
 import type { CreateVehicleInput, Vehicle } from '@/types/vehicle'
+import { VEHICLE_TYPES } from '@/constants/vehicle'
 
 const inputClass =
   'block w-full rounded-xl border border-[#071f52]/14 bg-white px-4 py-2.5 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:ring-2 focus:ring-[#ffd923]/60 outline-none'
@@ -15,8 +15,8 @@ export interface FleetFormData {
   name: string
   plate_number: string
   year: string
-  brand_id: string
-  vehicle_type_id: string
+  brand: string
+  vehicle_type: string
   description: string
   passenger_count: string
   bag_count: string
@@ -48,8 +48,8 @@ export function toVehicleInput(data: FleetFormData): CreateVehicleInput {
     name: data.name.trim(),
     plate_number: data.plate_number.trim(),
     year: optionalNumber(data.year),
-    brand_id: data.brand_id || null,
-    vehicle_type_id: data.vehicle_type_id || null,
+    brand: data.brand.trim() || null,
+    vehicle_type: data.vehicle_type || null,
     description: data.description.trim() || null,
     passenger_count: Number(data.passenger_count),
     bag_count: Number(data.bag_count || '0'),
@@ -79,8 +79,8 @@ const DEFAULT_FORM: FleetFormData = {
   name: '',
   plate_number: '',
   year: '',
-  brand_id: '',
-  vehicle_type_id: '',
+  brand: '',
+  vehicle_type: '',
   description: '',
   passenger_count: '',
   bag_count: '0',
@@ -114,8 +114,6 @@ interface FleetFormProps {
 }
 
 export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey }: FleetFormProps) {
-  const { data: brands = [] } = useBrands()
-  const { data: vehicleTypes = [] } = useVehicleTypes()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [formError, setFormError] = useState('')
@@ -126,8 +124,8 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
         name: vehicle.name,
         plate_number: vehicle.plate_number,
         year: vehicle.year ? String(vehicle.year) : '',
-        brand_id: vehicle.brand_id || '',
-        vehicle_type_id: vehicle.vehicle_type_id || '',
+        brand: vehicle.brand || '',
+        vehicle_type: vehicle.vehicle_type || '',
         description: vehicle.description || '',
         passenger_count: String(vehicle.passenger_count),
         bag_count: String(vehicle.bag_count),
@@ -267,36 +265,56 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
           </div>
           <div>
             <label className={labelClass}>Brand</label>
-            <select className={inputClass} value={form.brand_id} onChange={(e) => set('brand_id', e.target.value)}>
-              <option value="">Select brand</option>
-              {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
+            <input className={inputClass} value={form.brand} onChange={(e) => set('brand', e.target.value)} placeholder="e.g. Toyota" />
           </div>
           <div>
             <label className={labelClass}>Vehicle Type</label>
-            <select className={inputClass} value={form.vehicle_type_id} onChange={(e) => set('vehicle_type_id', e.target.value)}>
+            <select className={inputClass} value={form.vehicle_type} onChange={(e) => set('vehicle_type', e.target.value)}>
               <option value="">Select type</option>
-              {vehicleTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              {VEHICLE_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
             </select>
           </div>
           <div className="col-span-2">
-            <label className={labelClass}>Rental Option</label>
-            <div className="mt-1.5 flex flex-wrap gap-6">
-              {[
-                { key: 'supports_all_in' as const, label: 'All In (Full Service)' },
-                { key: 'supports_all_out' as const, label: 'All Out (Van + Driver)' },
-                { key: 'supports_self_drive' as const, label: 'Self Drive' },
-              ].map(({ key, label }) => (
-                <label key={key} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form[key]}
-                    onChange={(e) => set(key, e.target.checked)}
-                    className="h-4 w-4 rounded border-[#071f52]/20 text-[#071f52] accent-[#071f52]"
-                  />
-                  <span className="text-sm font-semibold text-[#071f52]">{label}</span>
-                </label>
-              ))}
+            <span className={labelClass}>Rental Option</span>
+            <div className="mt-2 space-y-3 text-sm font-semibold text-[#071f52]">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={form.supports_self_drive}
+                  onChange={(e) => set('supports_self_drive', e.target.checked)}
+                  className="h-4 w-4 rounded border-[#071f52]/20 text-[#071f52] accent-[#071f52]"
+                />
+                Self Drive
+              </label>
+              <div>
+                <p>With Driver</p>
+                <div className="ml-6 mt-2 space-y-3 border-l border-[#071f52]/10 pl-4">
+                  <div>
+                    <p>Just a Drop Off</p>
+                    <label className="ml-6 mt-2 flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={form.supports_all_in}
+                        onChange={(e) => set('supports_all_in', e.target.checked)}
+                        className="h-4 w-4 rounded border-[#071f52]/20 text-[#071f52] accent-[#071f52]"
+                      />
+                      All In
+                    </label>
+                  </div>
+                  <div>
+                    <p>Keep the Car</p>
+                    <label className="ml-6 mt-2 flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={form.supports_all_out}
+                        onChange={(e) => set('supports_all_out', e.target.checked)}
+                        className="h-4 w-4 rounded border-[#071f52]/20 text-[#071f52] accent-[#071f52]"
+                      />
+                      All Out
+                    </label>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div>
@@ -464,6 +482,7 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
           {isProcessing ? 'Saving...' : vehicle ? 'Update Vehicle' : 'Add Vehicle'}
         </Button>
       </div>
+
     </form>
   )
 }
