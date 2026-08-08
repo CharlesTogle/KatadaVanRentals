@@ -54,15 +54,14 @@ describe('AdminBookings', () => {
     deleteMutateAsync.mockResolvedValue(undefined)
   })
 
-  it('opens the kebab menu and deletes a booking', async () => {
+  it('opens confirmation and deletes a booking without navigating', async () => {
     render(
       <MemoryRouter>
         <AdminBookings />
       </MemoryRouter>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open actions for CR-260723-ABCD' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete booking CR-260723-ABCD' }))
 
     await waitFor(() => {
       expect(deleteMutateAsync).toHaveBeenCalledWith({ id: 'booking-1' })
@@ -84,33 +83,6 @@ describe('AdminBookings', () => {
     fireEvent.click(screen.getByText('Alex Customer'))
 
     expect(screen.getByTestId('location')).toHaveTextContent('/admin/bookings/CR-260723-ABCD')
-  })
-
-  it('opens the kebab menu with a view details link to the detail page', () => {
-    render(
-      <MemoryRouter>
-        <AdminBookings />
-      </MemoryRouter>,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'Open actions for CR-260723-ABCD' }))
-
-    const link = screen.getByRole('link', { name: 'View Details' })
-    expect(link).toHaveAttribute('href', '/admin/bookings/CR-260723-ABCD')
-  })
-
-  it('opens the last row action menu upward', () => {
-    render(
-      <MemoryRouter>
-        <AdminBookings />
-      </MemoryRouter>,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'Open actions for CR-260723-IJKL' }))
-
-    const menu = screen.getByRole('link', { name: 'View Details' }).parentElement
-    expect(menu).toHaveClass('bottom-11')
-    expect(menu).not.toHaveClass('top-11')
   })
 
   it('renders create booking CTA linking to the create page', () => {

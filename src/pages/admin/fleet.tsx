@@ -1,13 +1,11 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MoreVertical, Pencil, Search, Trash2 } from 'lucide-react'
+import { Search, Trash2 } from 'lucide-react'
 import {
   useAdminVehicles,
   useDeleteVehicle,
-  useUpdateVehicle,
 } from '@/hooks/use-vehicles'
 import { Dialog } from '@/components/ui/dialog'
-import { FleetForm, type FleetFormData, toVehicleInput } from '@/components/admin/fleet-form'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Vehicle } from '@/types/vehicle'
@@ -19,7 +17,6 @@ const inputClass =
 export default function Fleet() {
   const navigate = useNavigate()
   const { data: vehicles = [], isLoading } = useAdminVehicles()
-  const updateMutation = useUpdateVehicle()
   const deleteMutation = useDeleteVehicle()
 
   const [search, setSearch] = useState('')
@@ -27,9 +24,7 @@ export default function Fleet() {
   const [statusFilter, setStatusFilter] = useState('')
   const [rentalFilter, setRentalFilter] = useState('')
 
-  const [editing, setEditing] = useState<Vehicle | null>(null)
   const [deleting, setDeleting] = useState<Vehicle | null>(null)
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   const rentalLabel = (v: Vehicle) => {
     const parts: string[] = []
@@ -54,16 +49,6 @@ export default function Fleet() {
       return true
     })
   }, [vehicles, search, typeFilter, statusFilter, rentalFilter])
-
-  const handleEdit = async (vehicle: Vehicle, data: FleetFormData) => {
-    try {
-      await updateMutation.mutateAsync({ id: vehicle.id, data: toVehicleInput(data) })
-      toast.success(`${data.name} updated.`)
-      setEditing(null)
-    } catch (err: any) {
-      toast.error(err?.message || 'Something went wrong.')
-    }
-  }
 
   const handleDelete = async () => {
     if (!deleting) return
@@ -142,9 +127,7 @@ export default function Fleet() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#071f52]/6">
-              {filtered.map((v: Vehicle, index) => {
-                const openUp = index >= filtered.length - 2
-
+              {filtered.map((v: Vehicle) => {
                 return (
                 <tr
                   key={v.id}
@@ -203,37 +186,16 @@ export default function Fleet() {
                     onClick={(event) => event.stopPropagation()}
                     onKeyDown={(event) => event.stopPropagation()}
                   >
-                    <button
-                      type="button"
-                      className="rounded-lg p-1.5 text-[#071f52]/38 hover:bg-[#071f52]/6 hover:text-[#071f52] transition-colors"
-                      onClick={() => setOpenMenuId(openMenuId === v.id ? null : v.id)}
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
-                    {openMenuId === v.id && (
-                      <>
-                        <div className="fixed inset-0 z-10" onClick={() => setOpenMenuId(null)} />
-                        <div className={cn(
-                           'absolute right-0 z-20 w-44 rounded-xl border border-[#071f52]/10 bg-white py-1 shadow-lg',
-                          openUp ? 'bottom-10' : 'top-10',
-                        )}>
-                          <button
-                            type="button"
-                            className="flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold text-[#071f52] hover:bg-[#f7f9ff]"
-                            onClick={() => { setEditing(v); setOpenMenuId(null) }}
-                          >
-                            <Pencil className="h-3.5 w-3.5" /> Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="flex w-full items-center gap-2 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
-                            onClick={() => { setDeleting(v); setOpenMenuId(null) }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" /> Delete
-                          </button>
-                        </div>
-                      </>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        aria-label={`Delete ${v.name}`}
+                        className="rounded-lg p-1.5 text-red-600 hover:bg-red-50 transition-colors"
+                        onClick={() => setDeleting(v)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
                 )
@@ -242,17 +204,6 @@ export default function Fleet() {
           </table>
         </div>
       )}
-
-      <Dialog open={!!editing} onClose={() => setEditing(null)} title="Edit Vehicle">
-        {editing && (
-          <FleetForm
-            vehicle={editing}
-            onSubmit={(data) => handleEdit(editing, data)}
-            onCancel={() => setEditing(null)}
-            isProcessing={updateMutation.isPending}
-          />
-        )}
-      </Dialog>
 
       <Dialog open={!!deleting} onClose={() => setDeleting(null)} title="Delete Vehicle">
         {deleting && (

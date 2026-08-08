@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
 import { formatBookingStatus } from '@/lib/booking-utils'
-import { ChevronLeft, ChevronRight, MoreHorizontal, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, Trash2 } from 'lucide-react'
 import { STATUS_COLORS } from '@/config/constants'
 
 const PAGE_SIZE = 20
@@ -27,7 +27,6 @@ export default function AdminBookings() {
   const [status, setStatus] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   const { data, isLoading } = useAdminBookings({ status: status || undefined, search: search || undefined, page, pageSize: PAGE_SIZE })
   const deleteBooking = useDeleteBooking()
@@ -37,8 +36,6 @@ export default function AdminBookings() {
 
   const handleDeleteBooking = async (bookingId: string, bookingNumber: string) => {
     const confirmed = window.confirm(`Delete booking ${bookingNumber}? This cannot be undone.`)
-    setOpenMenuId(null)
-
     if (!confirmed) return
 
     try {
@@ -121,9 +118,7 @@ export default function AdminBookings() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#071f52]/6">
-              {bookings.map((b: any, index: number) => {
-                const openUp = index >= bookings.length - 2
-
+              {bookings.map((b: any) => {
                 return (
                 <tr
                   key={b.id}
@@ -169,42 +164,17 @@ export default function AdminBookings() {
                       {formatBookingStatus(b.status)}
                     </span>
                   </td>
-                  <td className="px-5 py-3">
-                    <div className="relative flex justify-start">
-                      <button
-                        type="button"
-                        aria-label={`Open actions for ${b.booking_number}`}
-                        aria-expanded={openMenuId === b.id}
-                        onClick={() => setOpenMenuId((current) => current === b.id ? null : b.id)}
-                        className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8"
-                      >
-                        <MoreHorizontal size={16} />
-                      </button>
-
-                      {openMenuId === b.id ? (
-                        <div className={cn(
-                          'absolute right-0 z-10 min-w-40 rounded-2xl border border-[#071f52]/10 bg-white p-1.5 shadow-xl',
-                          openUp ? 'bottom-11' : 'top-11',
-                        )}>
-                          <Link
-                            to={`/admin/bookings/${b.booking_number}`}
-                            onClick={() => setOpenMenuId(null)}
-                            className="block rounded-xl px-3 py-2 text-sm font-semibold text-[#071f52] transition-colors hover:bg-[#f7f9ff]"
-                          >
-                            View Details
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteBooking(b.id, b.booking_number)}
-                            disabled={deleteBooking.isPending}
-                            className="block w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-[#e92935] transition-colors hover:bg-[#fff4f4] disabled:opacity-50"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
-                  </td>
+                   <td className="px-5 py-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                     <button
+                       type="button"
+                       aria-label={`Delete booking ${b.booking_number}`}
+                       onClick={() => handleDeleteBooking(b.id, b.booking_number)}
+                       disabled={deleteBooking.isPending}
+                       className="rounded-full border border-red-200 bg-white p-2 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+                     >
+                       <Trash2 size={16} />
+                     </button>
+                   </td>
                 </tr>
                 )
               })}
