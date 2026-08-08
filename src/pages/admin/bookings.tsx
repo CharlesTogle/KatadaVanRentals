@@ -28,11 +28,12 @@ export default function AdminBookings() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
 
-  const { data, isLoading } = useAdminBookings({ status: status || undefined, search: search || undefined, page, pageSize: PAGE_SIZE })
+  const { data, isLoading, isFetching } = useAdminBookings({ status: status || undefined, search: search || undefined, page, pageSize: PAGE_SIZE })
   const deleteBooking = useDeleteBooking()
   const bookings = data?.items || []
   const totalPages = Math.max(1, Math.ceil((data?.total || 0) / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
+  const loading = isLoading || isFetching
 
   const handleDeleteBooking = async (bookingId: string, bookingNumber: string) => {
     const confirmed = window.confirm(`Delete booking ${bookingNumber}? This cannot be undone.`)
@@ -94,8 +95,17 @@ export default function AdminBookings() {
         ))}
       </div>
 
-      {isLoading ? (
-        <div className="mt-6 space-y-3">
+      {(loading || bookings.length > 0) ? (
+        <div className="mt-6 card-overflow">
+          <div className="flex items-center justify-between border-b border-[#071f52]/10 bg-white px-5 py-3">
+            <p className="text-xs font-semibold text-[#071f52]/48">Show 20 per page</p>
+            <PaginationControls page={currentPage} totalPages={totalPages} setPage={setPage} disabled={loading} />
+          </div>
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className="mt-3 space-y-3">
           {[...Array(5)].map((_, i) => <div key={i} className="h-16 rounded-xl bg-[#071f52]/6 animate-pulse" />)}
         </div>
       ) : !bookings.length ? (
@@ -103,37 +113,7 @@ export default function AdminBookings() {
           No bookings found.
         </div>
       ) : (
-        <div className="mt-6 card-overflow">
-          <div className="flex items-center justify-between border-b border-[#071f52]/10 bg-white px-5 py-3">
-            <p className="text-xs font-semibold text-[#071f52]/48">Show 20 per page</p>
-            {totalPages > 1 ? (
-              <div className="flex items-center gap-3">
-                <p className="text-xs font-semibold text-[#071f52]/48">
-                  Page {currentPage} of {totalPages}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    aria-label="Previous page"
-                    onClick={() => setPage((current) => Math.max(1, current - 1))}
-                    disabled={currentPage === 1}
-                    className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Next page"
-                    onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                    disabled={currentPage === totalPages}
-                    className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
+        <div className="-mt-1 card-overflow">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-[#071f52]/10 bg-[#f7f9ff]">
@@ -212,6 +192,46 @@ export default function AdminBookings() {
           </table>
         </div>
       )}
+    </div>
+  )
+}
+
+function PaginationControls({
+  page,
+  totalPages,
+  setPage,
+  disabled = false,
+}: {
+  page: number
+  totalPages: number
+  setPage: React.Dispatch<React.SetStateAction<number>>
+  disabled?: boolean
+}) {
+  if (totalPages <= 1) return null
+
+  return (
+    <div className="mt-3 flex items-center justify-end gap-3">
+      <p className="text-xs font-semibold text-[#071f52]/48">Page {page} of {totalPages}</p>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label="Previous page"
+          onClick={() => setPage((current) => Math.max(1, current - 1))}
+          disabled={disabled || page === 1}
+          className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <button
+          type="button"
+          aria-label="Next page"
+          onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+          disabled={disabled || page === totalPages}
+          className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
     </div>
   )
 }

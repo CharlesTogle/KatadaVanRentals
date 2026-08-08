@@ -124,4 +124,21 @@ describe('AdminBookings', () => {
     expect(screen.getAllByRole('link', { name: /CR-260723-/ })).toHaveLength(1)
     expect(screen.getByText('Page 2 of 2')).toBeInTheDocument()
   })
+
+  it('keeps pagination outside the loading skeleton', () => {
+    useAdminBookings.mockReturnValue({
+      data: { items: [], total: 21 },
+      isLoading: true,
+    })
+
+    render(
+      <MemoryRouter>
+        <AdminBookings />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Page 1 of 2')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Next page' })).toBeInTheDocument()
+    expect(document.querySelectorAll('.animate-pulse')).toHaveLength(5)
+  })
 })

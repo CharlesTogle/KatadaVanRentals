@@ -135,15 +135,7 @@ export default function Customers() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="mt-6 space-y-3">
-          {[...Array(5)].map((_, i) => <div key={i} className="h-16 rounded-xl bg-[#071f52]/6 animate-pulse" />)}
-        </div>
-      ) : !customers.length ? (
-        <div className="mt-8 rounded-2xl border border-[#071f52]/10 bg-white p-8 text-center text-sm font-semibold text-[#071f52]/48">
-          No customers found.
-        </div>
-      ) : (
+      {(isLoading || customers.length > 0) ? (
         <div className="mt-6 admin-table-wrap">
           <div className="flex items-center justify-between border-b border-[#071f52]/10 bg-white px-5 py-3">
             <p className="text-xs font-semibold text-[#071f52]/48">Show 20 per page</p>
@@ -155,7 +147,7 @@ export default function Customers() {
                     type="button"
                     aria-label="Previous page"
                     onClick={() => setPage((current) => Math.max(1, current - 1))}
-                    disabled={currentPage === 1}
+                    disabled={isLoading || currentPage === 1}
                     className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
                   >
                     <ChevronLeft size={16} />
@@ -164,7 +156,7 @@ export default function Customers() {
                     type="button"
                     aria-label="Next page"
                     onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                    disabled={currentPage === totalPages}
+                    disabled={isLoading || currentPage === totalPages}
                     className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
                   >
                     <ChevronRight size={16} />
@@ -173,6 +165,19 @@ export default function Customers() {
               </div>
             ) : null}
           </div>
+        </div>
+      ) : null}
+
+      {isLoading ? (
+        <div className="mt-3 space-y-3">
+          {[...Array(5)].map((_, i) => <div key={i} className="h-16 rounded-xl bg-[#071f52]/6 animate-pulse" />)}
+        </div>
+      ) : !customers.length ? (
+        <div className="mt-8 rounded-2xl border border-[#071f52]/10 bg-white p-8 text-center text-sm font-semibold text-[#071f52]/48">
+          No customers found.
+        </div>
+      ) : (
+        <div className="-mt-1 admin-table-wrap">
           <table className="text-left">
             <thead>
               <tr className="border-b border-[#071f52]/10 bg-[#f7f9ff]">

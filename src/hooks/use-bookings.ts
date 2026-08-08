@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as bookingService from '@/services/booking-service'
 
 export function useBooking(id: string | undefined) {
@@ -13,6 +13,7 @@ export function useAdminBookings(params: { status?: string; search?: string; pag
   return useQuery({
     queryKey: ['admin', 'bookings', params.status, params.search, params.page, params.pageSize],
     queryFn: () => bookingService.getAdminBookings(params),
+    placeholderData: keepPreviousData,
   })
 }
 
