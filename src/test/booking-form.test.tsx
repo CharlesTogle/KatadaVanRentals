@@ -234,7 +234,7 @@ describe('BookingForm', () => {
     expect(screen.getByRole('button', { name: 'Submit Booking' })).toBeDisabled()
   })
 
-  it('submits a booking and sends a confirmation email when documents are complete', async () => {
+  it('submits a self-drive booking without address fields when documents are complete', async () => {
     useCustomerDocuments.mockReturnValue({
       data: [
         { document_type: 'driver_license', status: 'submitted', file_path: 'driver' },
@@ -257,11 +257,7 @@ describe('BookingForm', () => {
 
     renderBookingForm('/dashboard/book/vehicle-1?type=self-drive&start=2030-08-05T08:00:00.000Z&end=2030-08-06T08:00:00.000Z')
 
-    await waitFor(() => {
-      expect(screen.getByLabelText(/Address Line 1/i)).toHaveValue('Unit 3A')
-    })
-
-    fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: 'Booking-only address' } })
+    expect(screen.queryByLabelText(/Address Line 1/i)).not.toBeInTheDocument()
 
     fillPaymentProof()
 
@@ -271,16 +267,8 @@ describe('BookingForm', () => {
       expect(rpc).toHaveBeenCalledWith('create_booking_with_payment', expect.objectContaining({
         p_vehicle_id: 'vehicle-1',
         p_rental_model: 'self_drive',
-        p_self_drive_address: expect.objectContaining({
-          addressLine1: 'Booking-only address',
-          streetAddress: 'Taft Avenue',
-          barangay: 'Barangay 76',
-          city: 'Quezon City',
-          province: 'Metro Manila',
-          zipCode: '1100',
-          country: 'Philippines',
-        }),
       }))
+      expect(rpc.mock.calls[0][1]).not.toHaveProperty('p_self_drive_address')
     })
 
     expect(functionsInvoke).toHaveBeenCalledWith('send-email', {

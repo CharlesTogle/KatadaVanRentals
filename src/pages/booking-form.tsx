@@ -121,56 +121,6 @@ function isMissingProfileField(value: string | null | undefined, field: 'mobile'
   return field === 'mobile' && trimmedValue === '+63'
 }
 
-type SelfDriveAddress = {
-  addressLine1: string
-  addressLine2: string
-  streetAddress: string
-  barangay: string
-  city: string
-  province: string
-  zipCode: string
-  country: string
-}
-
-const emptySelfDriveAddress: SelfDriveAddress = {
-  addressLine1: '',
-  addressLine2: '',
-  streetAddress: '',
-  barangay: '',
-  city: '',
-  province: '',
-  zipCode: '',
-  country: 'Philippines',
-}
-
-function getProfileAddress(profile: ReturnType<typeof useProfile>['data']): SelfDriveAddress {
-  if (!profile) return emptySelfDriveAddress
-
-  return {
-    addressLine1: profile.address_line_1 || '',
-    addressLine2: profile.address_line_2 || '',
-    streetAddress: profile.street_address || '',
-    barangay: profile.barangay || '',
-    city: profile.city || '',
-    province: profile.province || '',
-    zipCode: profile.zip_code || '',
-    country: profile.country || 'Philippines',
-  }
-}
-
-function formatSelfDriveAddress(address: SelfDriveAddress) {
-  return [
-    address.addressLine1,
-    address.addressLine2,
-    address.streetAddress,
-    address.barangay,
-    address.city,
-    address.province,
-    address.zipCode,
-    address.country,
-  ].map((part) => part.trim()).filter(Boolean).join(', ')
-}
-
 export default function BookingForm() {
   const { vehicleId } = useParams<{ vehicleId: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -204,8 +154,6 @@ export default function BookingForm() {
   const [routeError, setRouteError] = useState('')
   const [tollLoading, setTollLoading] = useState(false)
   const [tollError, setTollError] = useState('')
-  const [completeAddress, setCompleteAddress] = useState<SelfDriveAddress>(emptySelfDriveAddress)
-  const [completeAddressEdited, setCompleteAddressEdited] = useState(false)
   const idempotencyStorageKey = `katada:booking:${user?.id || 'guest'}:${vehicleId || ''}:${startParam}:${endParam}:${rentalType}:${mode}`
   const [idempotencyKeys] = useState(() => getPersistentIdempotencyKeys(idempotencyStorageKey))
 
@@ -226,11 +174,6 @@ export default function BookingForm() {
     isMissingProfileField(profileQuery.data?.mobile, 'mobile') && 'Mobile number',
   ].filter(Boolean) as string[]
   const profileBlocked = missingProfileFields.length > 0
-
-  useEffect(() => {
-    if (rentalType !== 'self-drive' || completeAddressEdited) return
-    setCompleteAddress(getProfileAddress(profileQuery.data))
-  }, [completeAddressEdited, profileQuery.data, rentalType])
 
   useEffect(() => {
     if (startParam || endParam) {
@@ -492,11 +435,10 @@ export default function BookingForm() {
   const needsTollEstimate = rentalType === 'all-in' && routeQuote?.inServiceArea !== false && !tollQuoteReady
   const selectedPaymentMethod = paymentMethodsQuery.data?.find((method) => method.id === payment.method)
 
-  const selfDriveAddressIncomplete = rentalType === 'self-drive' && !formatSelfDriveAddress(completeAddress)
   const routeIncomplete = needsRouteQuote && (routeSelections.pickup.lat == null || (rentalType === 'all-in' && mode === 'keep' && routeSelections.destination.lat == null) || routeSelections.dropoff.lat == null || !routeQuote)
   const paymentIncomplete = requiresPayment && (!payment.method || !payment.reference.trim() || !receiptFile)
   const isWithDriverDropoff = rentalType !== 'self-drive' && mode === 'dropoff'
-  const formIncomplete = !startParam || (!endParam && !isWithDriverDropoff) || profileBlocked || selfDriveBlocked || documentsQuery.isLoading || (requiresPayment && paymentMethodsQuery.isLoading) || selfDriveAddressIncomplete || routeIncomplete || needsTollEstimate || tollLoading || paymentIncomplete
+  const formIncomplete = !startParam || (!endParam && !isWithDriverDropoff) || profileBlocked || selfDriveBlocked || documentsQuery.isLoading || (requiresPayment && paymentMethodsQuery.isLoading) || routeIncomplete || needsTollEstimate || tollLoading || paymentIncomplete
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -528,13 +470,6 @@ export default function BookingForm() {
 
     if (selfDriveBlocked) {
       setError('Self Drive requires your driver\'s license, valid ID, and proof of billing before submission.')
-      return
-    }
-
-    const bookingAddress = formatSelfDriveAddress(completeAddress)
-
-    if (rentalType === 'self-drive' && !bookingAddress) {
-      setError('Please enter your complete address for this self-drive booking.')
       return
     }
 
@@ -570,8 +505,6 @@ export default function BookingForm() {
     const idempotencyKey = idempotencyKeys.booking
     const paymentIdempotencyKey = idempotencyKeys.payment
     const bookingNotes = notes || null
-    const selfDriveAddress = rentalType === 'self-drive' ? completeAddress : null
-
     let receiptPath: string | null = null
     if (requiresPayment && receiptFile) {
       receiptPath = `${user.id}/${paymentIdempotencyKey}`
@@ -617,7 +550,6 @@ export default function BookingForm() {
         p_toll_exit_expressway: routeQuote?.tollExitExpressway ?? null,
         p_toll_vehicle_class: routeQuote?.tollVehicleClass ?? tollSelections.vehicleClass,
         p_toll_rfid_breakdown: routeQuote?.tollRfidBreakdown ?? [],
-        p_self_drive_address: selfDriveAddress,
         p_in_service_area: routeQuote?.inServiceArea ?? true,
         p_flagged_for_manual_pricing: routeQuote?.inServiceArea === false,
         p_payment_method_id: requiresPayment ? payment.method : null,
@@ -741,51 +673,6 @@ export default function BookingForm() {
 
               <BookingSection title="1. RENTAL DETAILS">
                 <RentalDetailsFields />
-                {rentalType === 'self-drive' ? (
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label htmlFor="booking-address-line-1" className="text-sm font-bold text-[#071f52]">Address Line 1 <span className="text-[#e92935]">*</span></label>
-                      <input id="booking-address-line-1" required value={completeAddress.addressLine1} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, addressLine1: e.target.value }) }} placeholder="Unit / House No. / Building" className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label htmlFor="booking-address-line-2" className="text-sm font-bold text-[#071f52]">Address Line 2</label>
-                      <input id="booking-address-line-2" value={completeAddress.addressLine2} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, addressLine2: e.target.value }) }} placeholder="Subdivision / Building Wing / Landmark" className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60" />
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <label htmlFor="booking-street-address" className="text-sm font-bold text-[#071f52]">Street Address <span className="text-[#e92935]">*</span></label>
-                        <input id="booking-street-address" required value={completeAddress.streetAddress} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, streetAddress: e.target.value }) }} placeholder="Street name" className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label htmlFor="booking-barangay" className="text-sm font-bold text-[#071f52]">Barangay <span className="text-[#e92935]">*</span></label>
-                        <input id="booking-barangay" required value={completeAddress.barangay} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, barangay: e.target.value }) }} placeholder="Barangay" className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60" />
-                      </div>
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <label htmlFor="booking-city" className="text-sm font-bold text-[#071f52]">City <span className="text-[#e92935]">*</span></label>
-                        <input id="booking-city" required value={completeAddress.city} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, city: e.target.value }) }} placeholder="Pasay City" className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label htmlFor="booking-province" className="text-sm font-bold text-[#071f52]">Province <span className="text-[#e92935]">*</span></label>
-                        <input id="booking-province" required value={completeAddress.province} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, province: e.target.value }) }} placeholder="Metro Manila" className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60" />
-                      </div>
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <label htmlFor="booking-zip-code" className="text-sm font-bold text-[#071f52]">ZIP Code <span className="text-[#e92935]">*</span></label>
-                        <input id="booking-zip-code" required value={completeAddress.zipCode} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, zipCode: e.target.value }) }} placeholder="1309" className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label htmlFor="booking-country" className="text-sm font-bold text-[#071f52]">Country <span className="text-[#e92935]">*</span></label>
-                        <select id="booking-country" required value={completeAddress.country} onChange={(e) => { setCompleteAddressEdited(true); setCompleteAddress({ ...completeAddress, country: e.target.value }) }} className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60">
-                          <option value="Philippines">Philippines</option>
-                        </select>
-                      </div>
-                    </div>
-                    <p className="text-xs font-medium text-[#071f52]/48">Autofilled from your account address. Editing this only affects this booking.</p>
-                  </div>
-                ) : null}
               </BookingSection>
 
               <BookingSection title="2. LOCATIONS">
@@ -846,7 +733,7 @@ export default function BookingForm() {
               submitting={submitting}
               disabled={formIncomplete}
               flaggedForManualPricing={routeQuote?.inServiceArea === false}
-              disabledMessage={profileBlocked ? 'Complete your profile to enable booking.' : selfDriveBlocked ? 'Complete your profile documents to enable booking.' : (!startParam || !endParam) ? 'Pick-up and drop-off dates are required.' : selfDriveAddressIncomplete ? 'Enter your complete address for this self-drive booking.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : paymentIncomplete ? 'Complete payment details to enable booking.' : undefined))}
+               disabledMessage={profileBlocked ? 'Complete your profile to enable booking.' : selfDriveBlocked ? 'Complete your profile documents to enable booking.' : (!startParam || !endParam) ? 'Pick-up and drop-off dates are required.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : paymentIncomplete ? 'Complete payment details to enable booking.' : undefined))}
               error={error}
             />
           </div>
