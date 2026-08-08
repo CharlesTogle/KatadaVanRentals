@@ -23,17 +23,21 @@ export function PaymentFields({ depositAmount, methodRequired = true, receiptReq
   const receiptFile = useBookingStore((s) => s.receiptFile)
   const setReceiptFile = useBookingStore((s) => s.setReceiptFile)
   const { data: paymentMethods = [] } = usePaymentMethods()
+  const customerPaymentMethods = useMemo(
+    () => paymentMethods.filter((method) => method.channel !== 'cash'),
+    [paymentMethods],
+  )
 
   const selectedMethod = useMemo(
-    () => paymentMethods.find((m) => m.id === payment.method) ?? null,
-    [payment.method, paymentMethods],
+    () => customerPaymentMethods.find((m) => m.id === payment.method) ?? null,
+    [customerPaymentMethods, payment.method],
   )
 
   useEffect(() => {
-    if (autoSelectMethod && paymentMethods.length && !payment.method) {
-      setPayment({ method: paymentMethods[0].id })
+    if (autoSelectMethod && customerPaymentMethods.length && !customerPaymentMethods.some((method) => method.id === payment.method)) {
+      setPayment({ method: customerPaymentMethods[0].id })
     }
-  }, [autoSelectMethod, payment.method, paymentMethods, setPayment])
+  }, [autoSelectMethod, customerPaymentMethods, payment.method, setPayment])
 
   useEffect(() => {
     if (payment.amount !== String(depositAmount)) {
@@ -42,7 +46,7 @@ export function PaymentFields({ depositAmount, methodRequired = true, receiptReq
   }, [depositAmount, payment.amount, setPayment])
 
   const methodLabel = (pmId: string) => {
-    const pm = paymentMethods.find(m => m.id === pmId)
+    const pm = customerPaymentMethods.find(m => m.id === pmId)
     if (!pm) return ''
     const channel = channelLabels[pm.channel] || pm.channel
     return `${pm.provider}${pm.account_number ? ` (${pm.account_number})` : ''} · ${channel}`
@@ -55,8 +59,8 @@ export function PaymentFields({ depositAmount, methodRequired = true, receiptReq
         <select value={payment.method} onChange={(e) => setPayment({ ...payment, method: e.target.value })}
           className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
         >
-          {!paymentMethods.length || !autoSelectMethod ? <option value="">- Select payment method -</option> : null}
-          {paymentMethods.map((pm) => (
+          {!customerPaymentMethods.length || !autoSelectMethod ? <option value="">- Select payment method -</option> : null}
+          {customerPaymentMethods.map((pm) => (
             <option key={pm.id} value={pm.id}>{methodLabel(pm.id)}</option>
           ))}
         </select>
