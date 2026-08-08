@@ -13,6 +13,7 @@ describe('booking confirmed email', () => {
 
     expect(email.subject).toBe('Booking Confirmed — CR-260806-ABCD')
     expect(email.text).toContain('CR-260806-ABCD')
-    expect(email.html).toContain('READY TO ROLL')
+    expect(email.html).toContain('Booking confirmed')
+    expect(email.html).not.toContain('border-radius')
   })
 })

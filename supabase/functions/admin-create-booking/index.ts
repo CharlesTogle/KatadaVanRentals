@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { renderBookingConfirmedEmail } from '../_shared/booking-confirmed-email.ts'
+import { escapeHtml, renderEmailLayout } from '../_shared/email-layout.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -310,7 +311,14 @@ serve(async (req) => {
         body: {
           to: newCustomer!.email,
           subject: `Set your ${SENDER_NAME} password`,
-          html: `<div style="font-family: 'Plus Jakarta Sans', sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 24px;"><h1 style="font-size: 22px; font-weight: 900; color: #071f52; margin: 0 0 8px;">Welcome to ${SENDER_NAME}</h1><p style="font-size: 14px; color: #071f52; margin: 0 0 16px;">Set your password to access your account:</p><a href="${inviteUrl}" style="display: inline-block; background: #071f52; color: white; padding: 12px 28px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 14px;">Set your password</a></div>`,
+          html: renderEmailLayout({
+            preheader: `Set your ${SENDER_NAME} password to access your account.`,
+            label: 'Account setup',
+            title: `Welcome to ${escapeHtml(SENDER_NAME)}.`,
+            intro: 'Your account is ready. Set a password to sign in and manage your van rental.',
+            content: `<a href="${escapeHtml(inviteUrl)}" style="display:inline-block; padding:14px 22px; background:#e92935; color:#ffffff; text-decoration:none; font-size:13px; font-weight:800; letter-spacing:.4px;">Set your password&nbsp; →</a>`,
+            footer: 'This link is for your account only. If you were not expecting this message, you can ignore it.',
+          }),
         },
       })
     }
