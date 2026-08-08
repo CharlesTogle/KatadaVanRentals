@@ -104,6 +104,36 @@ export default function AdminBookings() {
         </div>
       ) : (
         <div className="mt-6 card-overflow">
+          <div className="flex items-center justify-between border-b border-[#071f52]/10 bg-white px-5 py-3">
+            <p className="text-xs font-semibold text-[#071f52]/48">Show 20 per page</p>
+            {totalPages > 1 ? (
+              <div className="flex items-center gap-3">
+                <p className="text-xs font-semibold text-[#071f52]/48">
+                  Page {currentPage} of {totalPages}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    aria-label="Previous page"
+                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Next page"
+                    onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                    disabled={currentPage === totalPages}
+                    className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-[#071f52]/10 bg-[#f7f9ff]">
@@ -180,33 +210,6 @@ export default function AdminBookings() {
               })}
             </tbody>
           </table>
-          {totalPages > 1 ? (
-            <div className="flex items-center justify-between border-t border-[#071f52]/10 bg-white px-5 py-3">
-              <p className="text-xs font-semibold text-[#071f52]/48">
-                Page {currentPage} of {totalPages}
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-label="Previous page"
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
-                  disabled={currentPage === 1}
-                  className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Next page"
-                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                  disabled={currentPage === totalPages}
-                  className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          ) : null}
         </div>
       )}
     </div>
