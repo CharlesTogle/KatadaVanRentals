@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Customers from '@/pages/admin/customers'
 
@@ -41,6 +41,10 @@ const deactivateCustomer = vi.fn()
 const reactivateCustomer = vi.fn()
 const deleteCustomer = vi.fn()
 const invalidateQueries = vi.fn()
+
+function LocationDisplay() {
+  return <span data-testid="location">{useLocation().pathname}</span>
+}
 
 vi.mock('@/hooks/use-profile', () => ({
   useAdminCustomers: (...args: unknown[]) => useAdminCustomers(...args),
@@ -124,6 +128,19 @@ describe('Admin Customers', () => {
     )
 
     expect(screen.getByRole('button', { name: /Export CSV/ })).toBeInTheDocument()
+  })
+
+  it('navigates to customer details when a row is clicked', () => {
+    render(
+      <MemoryRouter>
+        <Customers />
+        <LocationDisplay />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('row', { name: 'View customer Alex Santos' }))
+
+    expect(screen.getByTestId('location')).toHaveTextContent('/admin/customers/cust-1')
   })
 
   it('opens kebab menu and shows View Profile link', () => {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAdminCustomers } from '@/hooks/use-profile'
 import { deactivateCustomer, reactivateCustomer, deleteCustomer } from '@/services/profile-service'
@@ -53,6 +53,7 @@ function exportCsv(rows: AdminCustomerRow[]) {
 }
 
 export default function Customers() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const queryClient = useQueryClient()
@@ -147,7 +148,19 @@ export default function Customers() {
                 const openUp = index >= customers.length - 2
 
                 return (
-                <tr key={c.id} className="hover:bg-[#f7f9ff] transition-colors">
+                <tr
+                  key={c.id}
+                  tabIndex={0}
+                  aria-label={`View customer ${c.first_name} ${c.last_name}`}
+                  onClick={() => navigate(`/admin/customers/${c.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      navigate(`/admin/customers/${c.id}`)
+                    }
+                  }}
+                  className="cursor-pointer hover:bg-[#f7f9ff] transition-colors focus:bg-[#f7f9ff] focus:outline-none"
+                >
                   <td className="px-5 py-3">
                     <div>
                       <p className="text-sm font-bold text-[#071f52]">{c.first_name} {c.last_name}</p>
@@ -172,7 +185,7 @@ export default function Customers() {
                   <td className="px-5 py-3">
                     <span className="text-sm text-[#071f52]/64">{formatDate(c.last_login_at)}</span>
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-3" onClick={(event) => event.stopPropagation()}>
                     <div className="flex items-center gap-3">
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${c.is_active ? 'bg-[#16a34a]/10 text-[#16a34a]' : 'bg-[#e92935]/10 text-[#c91f2a]'}`}>
                         {c.is_active ? 'Active' : 'Inactive'}
