@@ -4,16 +4,12 @@ import { useProfile, useUpdateProfile } from '@/hooks/use-profile'
 import { supabase } from '@/lib/supabase'
 import { showError } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
+import { CountrySelect } from '@/components/ui/country-select'
 import { Camera, Phone, Eye, EyeOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { isValidPassword } from '@/lib/validation'
 import { AUTH_MESSAGES } from '@/constants/auth'
 import { composeProfileAddress, parseProfileAddress } from '@/lib/profile-address'
-
-const countries = [
-  'Philippines', 'United States', 'Canada', 'Australia', 'United Kingdom',
-  'Singapore', 'Japan', 'South Korea', 'Hong Kong', 'Other',
-]
 
 const emptyProfile = {
   first_name: '',
@@ -439,15 +435,12 @@ export default function Profile() {
               </div>
               <div className="space-y-1 sm:space-y-1.5">
                 <label className="text-[10px] font-bold text-[#071f52] sm:text-xs">Country <span className="text-[#e92935]">*</span></label>
-                <select
+                <CountrySelect
                   value={profile.country}
-                  onChange={(e) => setProfile({ ...profile, country: e.target.value })}
-                  aria-invalid={invalidProfileFields.country}
+                  onChange={(country) => setProfile({ ...profile, country })}
                   required
-                  className={getProfileFieldClassName(invalidProfileFields.country)}
-                >
-                  {countries.map((c) => (<option key={c}>{c}</option>))}
-                </select>
+                  invalid={invalidProfileFields.country}
+                />
                 {profileFieldErrors.country ? <p className="text-[10px] font-bold text-[#b91c1c] sm:text-xs">{profileFieldErrors.country}</p> : null}
               </div>
             </div>

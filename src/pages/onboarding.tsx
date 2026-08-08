@@ -9,6 +9,7 @@ import { showError } from '@/lib/errors'
 import { toast } from '@/lib/toast'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
+import { CountrySelect } from '@/components/ui/country-select'
 import type { DocumentType } from '@/types/document'
 
 type Step = 'personal' | 'address' | 'self-drive' | 'documents' | 'complete'
@@ -269,7 +270,7 @@ function FormStep({ title, description, mismatches, onSubmit, children }: { titl
 }
 
 function Field({ field, values, invalid, onChange, wide, optional }: { field: { key: keyof FormValues; label: string }; values: FormValues; invalid: boolean; onChange: (values: FormValues) => void; wide?: boolean; optional?: boolean }) {
-  return <label className={wide ? 'sm:col-span-2' : ''}><span className="text-xs font-bold text-[#071f52]">{field.label} {optional ? <span className="font-medium text-[#071f52]/38">(optional)</span> : <span className="text-[#e92935]">*</span>}</span><input value={values[field.key]} aria-label={field.label} aria-invalid={invalid} inputMode={field.key === 'mobile' ? 'numeric' : undefined} maxLength={field.key === 'mobile' ? MOBILE_PREFIX.length + 10 : undefined} onChange={(event) => onChange({ ...values, [field.key]: field.key === 'mobile' ? `${MOBILE_PREFIX}${getMobileDigits(event.target.value).slice(0, 10)}` : event.target.value })} className={`mt-1.5 block w-full rounded-xl border bg-[#f7f9ff] px-3 py-2.5 text-sm font-semibold text-[#071f52] outline-none transition-colors focus:bg-white focus:ring-2 ${invalid ? 'border-[#e92935] focus:border-[#e92935] focus:ring-[#e92935]/20' : 'border-[#071f52]/14 focus:border-[#071f52] focus:ring-[#ffd923]/60'}`} />{invalid && <span className="mt-1 block text-[11px] font-bold text-[#b91c1c]">{field.key === 'mobile' ? 'Enter a complete +63 phone number.' : `${field.label} is required.`}</span>}</label>
+  return <label className={wide ? 'sm:col-span-2' : ''}><span className="text-xs font-bold text-[#071f52]">{field.label} {optional ? <span className="font-medium text-[#071f52]/38">(optional)</span> : <span className="text-[#e92935]">*</span>}</span>{field.key === 'country' ? <CountrySelect value={values.country} onChange={(country) => onChange({ ...values, country })} required invalid={invalid} className="mt-1.5" /> : <input value={values[field.key]} aria-label={field.label} aria-invalid={invalid} inputMode={field.key === 'mobile' ? 'numeric' : undefined} maxLength={field.key === 'mobile' ? MOBILE_PREFIX.length + 10 : undefined} onChange={(event) => onChange({ ...values, [field.key]: field.key === 'mobile' ? `${MOBILE_PREFIX}${getMobileDigits(event.target.value).slice(0, 10)}` : event.target.value })} className={`mt-1.5 block w-full rounded-xl border bg-[#f7f9ff] px-3 py-2.5 text-sm font-semibold text-[#071f52] outline-none transition-colors focus:bg-white focus:ring-2 ${invalid ? 'border-[#e92935] focus:border-[#e92935] focus:ring-[#e92935]/20' : 'border-[#071f52]/14 focus:border-[#071f52] focus:ring-[#ffd923]/60'}`} />}{invalid && <span className="mt-1 block text-[11px] font-bold text-[#b91c1c]">{field.key === 'mobile' ? 'Enter a complete +63 phone number.' : `${field.label} is required.`}</span>}</label>
 }
 
 function ChoiceStep({ onBack, onChoose }: { onBack: () => void; onChoose: (answer: boolean) => void }) {

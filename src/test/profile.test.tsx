@@ -101,4 +101,14 @@ describe('Profile', () => {
       data: expect.objectContaining({ mobile: '+63 9171234567' }),
     }), expect.any(Object))
   })
+
+  it('searches and selects a country from the full list', () => {
+    render(<Profile />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Country' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search countries' }), { target: { value: 'Canada' } })
+    fireEvent.click(screen.getByRole('option', { name: 'Canada' }))
+
+    expect(screen.getByRole('button', { name: 'Country' })).toHaveTextContent('Canada')
+  })
 })
