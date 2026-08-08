@@ -47,9 +47,22 @@ alter table public.vehicles
   drop constraint if exists vehicles_brand_id_fkey,
   drop constraint if exists vehicles_vehicle_type_id_fkey,
   drop column if exists brand_id,
-  drop column if exists vehicle_type_id,
-  add constraint vehicles_vehicle_type_check
-    check (vehicle_type is null or vehicle_type in ('Car', 'Van', 'Truck', 'Mini Van', 'Mini Bus', 'Others'));
+  drop column if exists vehicle_type_id;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.vehicles'::regclass
+      and conname = 'vehicles_vehicle_type_check'
+  ) then
+    alter table public.vehicles
+      add constraint vehicles_vehicle_type_check
+        check (vehicle_type is null or vehicle_type in ('Car', 'Van', 'Truck', 'Mini Van', 'Mini Bus', 'Others'));
+  end if;
+end;
+$$;
 
 drop table if exists public.brands;
 drop table if exists public.vehicle_types;
