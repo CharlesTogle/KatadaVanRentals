@@ -9,9 +9,9 @@ export function useBooking(id: string | undefined) {
   })
 }
 
-export function useAdminBookings(params: { status?: string; search?: string }) {
+export function useAdminBookings(params: { status?: string; search?: string; page: number; pageSize: number }) {
   return useQuery({
-    queryKey: ['admin', 'bookings', params.status, params.search],
+    queryKey: ['admin', 'bookings', params.status, params.search, params.page, params.pageSize],
     queryFn: () => bookingService.getAdminBookings(params),
   })
 }

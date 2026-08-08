@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAdminBookings, useDeleteBooking } from '@/hooks/use-bookings'
 import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
 import { formatBookingStatus } from '@/lib/booking-utils'
-import { MoreHorizontal, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MoreHorizontal, Search } from 'lucide-react'
 import { STATUS_COLORS } from '@/config/constants'
+
+const PAGE_SIZE = 20
 
 const statuses = [
   { value: '', label: 'All' },
@@ -21,12 +23,17 @@ const statuses = [
 ]
 
 export default function AdminBookings() {
+  const navigate = useNavigate()
   const [status, setStatus] = useState('')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
-  const { data: bookings = [], isLoading } = useAdminBookings({ status: status || undefined, search: search || undefined })
+  const { data, isLoading } = useAdminBookings({ status: status || undefined, search: search || undefined, page, pageSize: PAGE_SIZE })
   const deleteBooking = useDeleteBooking()
+  const bookings = data?.items || []
+  const totalPages = Math.max(1, Math.ceil((data?.total || 0) / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
 
   const handleDeleteBooking = async (bookingId: string, bookingNumber: string) => {
     const confirmed = window.confirm(`Delete booking ${bookingNumber}? This cannot be undone.`)
@@ -57,7 +64,10 @@ export default function AdminBookings() {
             <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#071f52]/38" />
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setPage(1)
+              }}
               placeholder="Search..."
               aria-label="Search bookings"
               className="w-full sm:w-56 rounded-xl border border-[#071f52]/14 bg-white py-2 pl-9 pr-4 text-sm font-semibold text-[#071f52] placeholder:text-[#071f52]/38 focus:border-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
@@ -71,7 +81,10 @@ export default function AdminBookings() {
           <button
             key={s.value}
             type="button"
-            onClick={() => setStatus(s.value)}
+            onClick={() => {
+              setStatus(s.value)
+              setPage(1)
+            }}
             className={cn(
               'rounded-full px-3 py-1.5 text-xs font-bold transition-colors',
               status === s.value
@@ -100,6 +113,8 @@ export default function AdminBookings() {
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">BOOKING #</th>
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">CUSTOMER</th>
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">VEHICLE</th>
+                <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">START DATE</th>
+                <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">END DATE</th>
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">TOTAL</th>
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">STATUS</th>
                 <th className="px-5 py-3 text-xs font-bold text-[#071f52]/48">ACTIONS</th>
@@ -110,7 +125,19 @@ export default function AdminBookings() {
                 const openUp = index >= bookings.length - 2
 
                 return (
-                <tr key={b.id} className="hover:bg-[#f7f9ff] transition-colors">
+                <tr
+                  key={b.id}
+                  tabIndex={0}
+                  aria-label={`View booking ${b.booking_number}`}
+                  onClick={() => navigate(`/admin/bookings/${b.booking_number}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      navigate(`/admin/bookings/${b.booking_number}`)
+                    }
+                  }}
+                  className="cursor-pointer transition-colors hover:bg-[#f7f9ff] focus:bg-[#f7f9ff] focus:outline-none"
+                >
                   <td className="px-5 py-3">
                     <Link to={`/admin/bookings/${b.booking_number}`} className="text-sm font-bold text-[#071f52] hover:underline">
                       {b.booking_number}
@@ -128,10 +155,16 @@ export default function AdminBookings() {
                     <p className="text-sm font-semibold text-[#071f52]">{b.vehicles?.name}</p>
                     <p className="text-xs text-[#071f52]/48">{b.vehicles?.plate_number}</p>
                   </td>
+                  <td className="px-5 py-3 text-sm font-semibold text-[#071f52]">
+                    {formatStartDate(b.start_at)}
+                  </td>
+                  <td className="px-5 py-3 text-sm font-semibold text-[#071f52]">
+                    {formatStartDate(b.end_at)}
+                  </td>
                   <td className="px-5 py-3">
                     <span className="text-sm font-bold text-[#071f52]">{b.flagged_for_manual_pricing ? 'TBD' : `₱${b.total_amount?.toLocaleString()}.00`}</span>
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-3" onClick={(event) => event.stopPropagation()}>
                     <span className={cn('rounded-full px-3 py-1 text-[11px] font-bold', STATUS_COLORS[b.status])}>
                       {formatBookingStatus(b.status)}
                     </span>
@@ -177,8 +210,45 @@ export default function AdminBookings() {
               })}
             </tbody>
           </table>
+          {totalPages > 1 ? (
+            <div className="flex items-center justify-between border-t border-[#071f52]/10 bg-white px-5 py-3">
+              <p className="text-xs font-semibold text-[#071f52]/48">
+                Page {currentPage} of {totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="Previous page"
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Next page"
+                  onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       )}
     </div>
   )
+}
+
+function formatStartDate(value: string | null | undefined) {
+  if (!value) return '—'
+
+  return new Date(value).toLocaleDateString('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }

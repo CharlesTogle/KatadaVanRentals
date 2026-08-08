@@ -91,29 +91,54 @@ export async function getMyBookings(status?: string) {
   return data || []
 }
 
-export async function getAdminBookings(params: { status?: string; search?: string }) {
+export interface AdminBookingsPage {
+  items: Record<string, unknown>[]
+  total: number
+}
+
+export async function getAdminBookings(params: { status?: string; search?: string; page: number; pageSize: number }): Promise<AdminBookingsPage> {
+  const search = params.search?.trim().replace(/[%,()]/g, '')
+  const offset = (Math.max(params.page, 1) - 1) * params.pageSize
+
+  let matchingIds: string[] | null = null
+
+  if (search) {
+    const [{ data: bookingNumberMatches, error: bookingSearchError }, { data: profileMatches, error: profileSearchError }] = await Promise.all([
+      supabase.from('bookings').select('id').ilike('booking_number', `%${search}%`),
+      supabase.from('profiles').select('id').or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`),
+    ])
+
+    if (bookingSearchError) throw bookingSearchError
+    if (profileSearchError) throw profileSearchError
+
+    const profileIds = (profileMatches || []).map((profile) => profile.id)
+    const { data: profileBookingMatches, error: profileBookingSearchError } = profileIds.length
+      ? await supabase.from('bookings').select('id').in('customer_id', profileIds)
+      : { data: [], error: null }
+
+    if (profileBookingSearchError) throw profileBookingSearchError
+
+    matchingIds = [...new Set([
+      ...(bookingNumberMatches || []).map((booking) => booking.id),
+      ...(profileBookingMatches || []).map((booking) => booking.id),
+    ])]
+
+    if (!matchingIds.length) return { items: [], total: 0 }
+  }
+
   let query = supabase
     .from('bookings')
-    .select('*, profiles!customer_id(first_name,last_name,email), vehicles!vehicle_id(name,plate_number)')
+    .select('*, profiles!customer_id(first_name,last_name,email), vehicles!vehicle_id(name,plate_number)', { count: 'exact' })
     .order('created_at', { ascending: false })
+    .range(offset, offset + params.pageSize - 1)
 
   if (params.status) query = query.eq('status', params.status)
+  if (matchingIds) query = query.in('id', matchingIds)
 
-  const { data } = await query
-  const rows = data || []
+  const { data, count, error } = await query
+  if (error) throw error
 
-  // ponytail: Supabase .or() doesn't support foreign-table dot notation reliably.
-  // Filter booking_number server-side would be ideal, but .ilike() on the main table
-  // also works. Client-side filter on profiles columns since admin dataset is small.
-  if (!params.search) return rows
-
-  const term = params.search.toLowerCase()
-  return rows.filter((row) =>
-    row.booking_number?.toLowerCase().includes(term) ||
-    row.profiles?.first_name?.toLowerCase().includes(term) ||
-    row.profiles?.last_name?.toLowerCase().includes(term) ||
-    row.profiles?.email?.toLowerCase().includes(term)
-  )
+  return { items: (data || []) as Record<string, unknown>[], total: count || 0 }
 }
 
 export interface AdminFeedbackRow {

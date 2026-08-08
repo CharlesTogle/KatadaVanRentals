@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import AdminBookings from '@/pages/admin/bookings'
 
@@ -20,10 +20,11 @@ describe('AdminBookings', () => {
     vi.clearAllMocks()
     vi.stubGlobal('confirm', vi.fn(() => true))
     useAdminBookings.mockReturnValue({
-      data: [
+      data: { items: [
         {
           id: 'booking-1',
           booking_number: 'CR-260723-ABCD',
+          start_at: '2026-07-23T12:00:00Z',
           total_amount: 4500,
           status: 'for_review',
           profiles: { first_name: 'Alex', last_name: 'Customer', email: 'alex@example.com' },
@@ -32,6 +33,7 @@ describe('AdminBookings', () => {
         {
           id: 'booking-2',
           booking_number: 'CR-260723-EFGH',
+          start_at: '2026-07-24T12:00:00Z',
           total_amount: 3200,
           status: 'confirmed',
           profiles: { first_name: 'Bea', last_name: 'Customer', email: 'bea@example.com' },
@@ -40,12 +42,13 @@ describe('AdminBookings', () => {
         {
           id: 'booking-3',
           booking_number: 'CR-260723-IJKL',
+          start_at: '2026-07-25T12:00:00Z',
           total_amount: 5100,
           status: 'awaiting_documents',
           profiles: { first_name: 'Carl', last_name: 'Customer', email: 'carl@example.com' },
           vehicles: { name: 'Nissan Urvan', plate_number: 'LMN456' },
         },
-      ],
+      ], total: 3 },
       isLoading: false,
     })
     deleteMutateAsync.mockResolvedValue(undefined)
@@ -64,6 +67,23 @@ describe('AdminBookings', () => {
     await waitFor(() => {
       expect(deleteMutateAsync).toHaveBeenCalledWith({ id: 'booking-1' })
     })
+  })
+
+  it('navigates to booking details when a row is clicked', () => {
+    function LocationProbe() {
+      return <output data-testid="location">{useLocation().pathname}</output>
+    }
+
+    render(
+      <MemoryRouter>
+        <AdminBookings />
+        <LocationProbe />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByText('Alex Customer'))
+
+    expect(screen.getByTestId('location')).toHaveTextContent('/admin/bookings/CR-260723-ABCD')
   })
 
   it('opens the kebab menu with a view details link to the detail page', () => {
@@ -101,5 +121,34 @@ describe('AdminBookings', () => {
     )
 
     expect(screen.getByRole('link', { name: 'Create booking' })).toHaveAttribute('href', '/admin/bookings/create')
+  })
+
+  it('shows 20 bookings per page and navigates between pages', () => {
+    const bookings = Array.from({ length: 21 }, (_, index) => ({
+      id: `booking-${index}`,
+      booking_number: `CR-260723-${String(index).padStart(4, '0')}`,
+      total_amount: 4500,
+      status: 'confirmed',
+      profiles: { first_name: `Customer ${index}`, last_name: 'Test', email: `customer${index}@example.com` },
+      vehicles: { name: 'Toyota Commuter', plate_number: 'ABC123' },
+    }))
+    useAdminBookings.mockImplementation(({ page }: { page: number }) => ({
+      data: { items: bookings.slice((page - 1) * 20, page * 20), total: bookings.length },
+      isLoading: false,
+    }))
+
+    render(
+      <MemoryRouter>
+        <AdminBookings />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getAllByRole('link', { name: /CR-260723-/ })).toHaveLength(20)
+    expect(screen.getByText('Page 1 of 2')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+
+    expect(screen.getAllByRole('link', { name: /CR-260723-/ })).toHaveLength(1)
+    expect(screen.getByText('Page 2 of 2')).toBeInTheDocument()
   })
 })
