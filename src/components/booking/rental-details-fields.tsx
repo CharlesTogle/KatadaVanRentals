@@ -303,9 +303,11 @@ export function RentalDetailsFields({ vehicle }: RentalDetailsFieldsProps) {
         )}
       </div>
 
-      <p className={cn('text-sm font-semibold', isAvailabilityLoading || isAvailabilityError ? 'text-[#52627d]' : 'text-[#16a34a]')}>
-        {isAvailabilityLoading ? 'Checking vehicle availability...' : isAvailabilityError ? 'Availability will be confirmed when you submit.' : 'Available for selected dates'}
-      </p>
+      {(isAvailabilityLoading || isAvailabilityError) && (
+        <p className="text-sm font-semibold text-[#52627d]">
+          {isAvailabilityLoading ? 'Checking vehicle availability...' : 'Availability will be confirmed when you submit.'}
+        </p>
+      )}
     </>
   )
 }
