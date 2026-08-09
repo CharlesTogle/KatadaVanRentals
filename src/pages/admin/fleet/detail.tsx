@@ -18,6 +18,7 @@ export default function FleetDetail() {
   const deleteMutation = useDeleteVehicle()
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [selectedImage, setSelectedImage] = useState(0)
 
   const handleEdit = async (data: FleetFormData) => {
     if (!vehicle) return
@@ -86,8 +87,23 @@ export default function FleetDetail() {
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-3">
-          <img src={images[0]} alt={vehicle.name} className="aspect-[16/10] w-full rounded-2xl border border-[#071f52]/10 object-cover" />
-          {images.length > 1 && <div className="flex gap-2 overflow-x-auto">{images.slice(1).map((image) => <img key={image} src={image} alt="" className="h-20 w-28 shrink-0 rounded-xl border border-[#071f52]/10 object-cover" />)}</div>}
+          <img src={images[selectedImage] || images[0]} alt={`${vehicle.name} photo ${selectedImage + 1}`} className="aspect-[16/10] w-full rounded-2xl border border-[#071f52]/10 object-cover" />
+          {images.length > 1 && (
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {images.map((image, index) => (
+                <button
+                  key={image}
+                  type="button"
+                  onClick={() => setSelectedImage(index)}
+                  aria-label={`View ${vehicle.name} photo ${index + 1}`}
+                  aria-pressed={selectedImage === index}
+                  className={cn('overflow-hidden rounded-xl border-2 transition-colors', selectedImage === index ? 'border-[#e92935]' : 'border-transparent')}
+                >
+                  <img src={image} alt="" className="aspect-[4/3] w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="space-y-5">

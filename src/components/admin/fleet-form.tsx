@@ -180,6 +180,7 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files?.length) return
+    e.target.value = ''
     setUploadingImage(true)
     const urls: string[] = []
     try {
@@ -486,8 +487,8 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
       {/* Vehicle Images */}
       <section className="rounded-2xl border border-[#071f52]/10 bg-white p-6">
       <fieldset>
-        <legend className="mb-3 text-sm font-black tracking-[-0.02em] text-[#071f52]">Vehicle Image</legend>
-        <p className="mb-4 text-xs text-[#071f52]/48">Upload one cover photo. It&rsquo;s auto-resized in your browser before upload.</p>
+        <legend className="mb-3 text-sm font-black tracking-[-0.02em] text-[#071f52]">Vehicle Images</legend>
+        <p className="mb-4 text-xs text-[#071f52]/48">Upload multiple photos at once. The first image is used as the cover photo.</p>
         <div className="flex flex-wrap gap-3">
           {images.map((url, i) => (
             <div key={i} className="relative group">
@@ -501,9 +502,10 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
               </button>
             </div>
           ))}
-          <label className="flex h-20 w-28 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-[#071f52]/14 bg-white text-[#071f52]/38 hover:border-[#071f52]/30 hover:text-[#071f52]/60 transition-colors">
+          <label className="flex h-20 w-28 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-[#071f52]/14 bg-white text-[#071f52]/38 transition-colors hover:border-[#071f52]/30 hover:text-[#071f52]/60">
             <input ref={fileInputRef} type="file" accept={UPLOAD_POLICIES.vehicleImages.accept} multiple hidden onChange={handleImageUpload} disabled={uploadingImage} />
             <Upload className="h-5 w-5" />
+            <span className="text-[10px] font-bold">Add photos</span>
           </label>
         </div>
         {uploadingImage && <p className="mt-2 text-xs text-[#071f52]/48">Uploading...</p>}
@@ -518,10 +520,10 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
           </div>
         )}
         <div className="flex justify-end gap-3 sm:ml-auto">
-          <Button type="button" variant="outline" onClick={handleCancel} disabled={isProcessing || uploadingImage}>Cancel</Button>
-          <Button type="submit" disabled={isProcessing || uploadingImage}>
-            {isProcessing ? 'Saving...' : vehicle ? 'Update Vehicle' : 'Add Vehicle'}
-          </Button>
+        <Button type="button" variant="outline" onClick={handleCancel} disabled={isProcessing || uploadingImage}>Cancel</Button>
+        <Button type="submit" disabled={isProcessing || uploadingImage}>
+          {isProcessing ? 'Saving...' : vehicle ? 'Update Vehicle' : 'Add Vehicle'}
+        </Button>
         </div>
       </div>
 
