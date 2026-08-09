@@ -378,6 +378,33 @@ describe('booking-service', () => {
     })
   })
 
+  it('uses the deployed extend-rental RPC parameter names', async () => {
+    await runAdminBookingAction({
+      type: 'extend',
+      bookingId: 'booking-1',
+      newEndAt: '2026-07-30T08:00:00.000Z',
+      extensionAmount: 1500,
+      reason: 'Extra days',
+      collectNow: true,
+      paymentMethodId: 'pm-1',
+      paymentChannel: 'bank_transfer',
+      referenceNumber: 'EXT-456',
+      receiptPath: 'booking-1/receipt.pdf',
+    })
+
+    expect(mocks.rpc).toHaveBeenCalledWith('admin_extend_booking', {
+      target_booking_id: 'booking-1',
+      p_new_end_at: '2026-07-30T08:00:00.000Z',
+      extension_amount: 1500,
+      reason: 'Extra days',
+      collect_now: true,
+      payment_method_id: 'pm-1',
+      payment_channel: 'bank_transfer',
+      reference_number: 'EXT-456',
+      receipt_path: 'booking-1/receipt.pdf',
+    })
+  })
+
   it('passes payment fields when recording a payment after completion', async () => {
     await runAdminBookingAction({
       type: 'make_payment',

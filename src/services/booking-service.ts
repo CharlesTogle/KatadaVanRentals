@@ -575,7 +575,7 @@ export async function runAdminBookingAction(input: AdminBookingActionInput): Pro
       fn: 'admin_extend_booking',
       args: {
         target_booking_id: bookingId,
-        new_end_at: (params as { newEndAt: string }).newEndAt,
+        p_new_end_at: (params as { newEndAt: string }).newEndAt,
         extension_amount: (params as { extensionAmount: number }).extensionAmount,
         reason: (params as { reason?: string }).reason ?? null,
         collect_now: (params as { collectNow?: boolean }).collectNow ?? false,
