@@ -3,11 +3,14 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const APP_URL = Deno.env.get('APP_URL')
 
 serve(async () => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+
+  if (!APP_URL) return Response.json({ errorCode: 'APP_URL_NOT_CONFIGURED' }, { status: 500 })
 
   const { data: queued, error: loadError } = await supabase.rpc(
     'claim_booking_email_outbox',
@@ -29,14 +32,15 @@ serve(async () => {
       idempotencyKey,
       batch: claimedEmails.map((email) => ({
         to: email.recipient_email,
-         template: email.email_type,
-         firstName: email.first_name,
-         bookingNumber: email.booking_number,
-         reason: email.reason,
-         dates: email.dates,
-         duration: email.duration,
-         total: email.total,
-       })),
+        template: email.email_type,
+        firstName: email.first_name,
+        bookingNumber: email.booking_number,
+        reason: email.reason,
+        dates: email.dates,
+        duration: email.duration,
+        total: email.total,
+        bookingUrl: `${APP_URL.replace(/\/$/, '')}/dashboard/bookings/${email.booking_id}`,
+      })),
     },
   })
 

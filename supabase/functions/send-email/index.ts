@@ -3,6 +3,7 @@ import { renderBookingCanceledEmail } from '../_shared/booking-canceled-email.ts
 import { renderBookingRefundPendingEmail } from '../_shared/booking-refund-pending-email.ts'
 import { renderBookingConfirmedEmail } from '../_shared/booking-confirmed-email.ts'
 import { renderBookingRejectedEmail } from '../_shared/booking-rejected-email.ts'
+import { renderBookingDocumentsRequestedEmail } from '../_shared/booking-documents-requested-email.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const DEVELOPER_EMAIL = Deno.env.get('DEVELOPER_EMAIL')!
@@ -105,6 +106,13 @@ serve(async (req) => {
             bookingNumber: String(item.bookingNumber || ''),
             reason: String(item.reason || 'Booking request was not accepted.'),
           })
+      : item.template === 'booking_documents_requested'
+        ? renderBookingDocumentsRequestedEmail({
+            firstName: String(item.firstName || 'there'),
+            bookingNumber: String(item.bookingNumber || ''),
+            requestedDocuments: String(item.reason || ''),
+            bookingUrl: String(item.bookingUrl || ''),
+          })
         : item.template === 'booking_confirmed'
           ? renderBookingConfirmedEmail({
               firstName: String(item.firstName || 'there'),
@@ -162,6 +170,18 @@ serve(async (req) => {
       dates: String(body.dates || 'To be confirmed'),
       duration: String(body.duration || '1 day'),
       total: String(body.total || 'PHP 0'),
+    })
+    body.subject = email.subject
+    body.text = email.text
+    body.html = email.html
+  }
+
+  if (body.template === 'booking_documents_requested') {
+    const email = renderBookingDocumentsRequestedEmail({
+      firstName: String(body.firstName || 'there'),
+      bookingNumber: String(body.bookingNumber || ''),
+      requestedDocuments: String(body.reason || ''),
+      bookingUrl: String(body.bookingUrl || ''),
     })
     body.subject = email.subject
     body.text = email.text
