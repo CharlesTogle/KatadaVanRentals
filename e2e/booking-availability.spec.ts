@@ -65,6 +65,80 @@ test.describe('Booking availability API', () => {
     }
   })
 
+  test('allows an open-ended pickup before a later booking', async () => {
+    test.skip(
+      !supabaseUrl || !anonKey || !serviceRoleKey || !email || !password,
+      'Set VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, E2E_SUPABASE_SERVICE_ROLE_KEY, TEST_EMAIL, and TEST_PASSWORD',
+    )
+
+    const customer = createClient(supabaseUrl!, anonKey!, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+    const admin = createClient(supabaseUrl!, serviceRoleKey!, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+
+    const { error: signInError } = await customer.auth.signInWithPassword({ email: email!, password: password! })
+    expect(signInError).toBeNull()
+
+    const earlierStart = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000)
+    earlierStart.setMinutes(0, 0, 0)
+    const laterStart = new Date(earlierStart.getTime() + 10 * 24 * 60 * 60 * 1000)
+    const laterEnd = new Date(laterStart.getTime() + 2 * 24 * 60 * 60 * 1000)
+    const { data: vehicles, error: vehicleError } = await admin
+      .from('vehicles')
+      .select('id')
+      .eq('is_available', true)
+    expect(vehicleError).toBeNull()
+    expect(vehicles).not.toHaveLength(0)
+
+    const { data: activeBookings, error: bookingsError } = await admin
+      .from('bookings')
+      .select('vehicle_id,start_at,end_at')
+      .in('status', ['for_review', 'awaiting_documents', 'pending_price_approval', 'confirmed', 'on_trip'])
+      .lt('start_at', laterEnd.toISOString())
+    expect(bookingsError).toBeNull()
+
+    const occupiedVehicleIds = new Set((activeBookings || [])
+      .filter((booking) => booking.end_at === null || booking.end_at > earlierStart.toISOString())
+      .map((booking) => booking.vehicle_id))
+    const vehicle = vehicles?.find((candidate) => !occupiedVehicleIds.has(candidate.id))
+    expect(vehicle, 'No available vehicle exists for the test window').toBeDefined()
+
+    const bookingIds: string[] = []
+    try {
+      const { data: laterBooking, error: laterError } = await customer.rpc('create_booking', {
+        p_booking_number: `E2E-OPEN-END-LATER-${Date.now()}`,
+        p_vehicle_id: vehicle!.id,
+        p_rental_model: 'all_out',
+        p_start_at: laterStart.toISOString(),
+        p_end_at: laterEnd.toISOString(),
+        p_duration_days: 2,
+        p_idempotency_key: crypto.randomUUID(),
+      })
+      expect(laterError).toBeNull()
+      bookingIds.push(laterBooking!.id)
+
+      const { data: earlierBooking, error: earlierError } = await customer.rpc('create_booking', {
+        p_booking_number: `E2E-OPEN-END-EARLIER-${Date.now()}`,
+        p_vehicle_id: vehicle!.id,
+        p_rental_model: 'all_in',
+        p_booking_mode: 'dropoff',
+        p_start_at: earlierStart.toISOString(),
+        p_end_at: null,
+        p_duration_days: 1,
+        p_idempotency_key: crypto.randomUUID(),
+      })
+      expect(earlierError).toBeNull()
+      bookingIds.push(earlierBooking!.id)
+    } finally {
+      if (bookingIds.length > 0) {
+        const { error } = await admin.from('bookings').delete().in('id', bookingIds)
+        expect(error).toBeNull()
+      }
+    }
+  })
+
   test('allows only one of two concurrent overlapping bookings', async () => {
     test.skip(
       !supabaseUrl || !anonKey || !serviceRoleKey || !email || !password,
