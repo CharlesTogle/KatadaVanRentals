@@ -198,6 +198,8 @@ export default function BookingDetail() {
   const cancellationReason = booking.status === 'canceled'
     ? cancellation?.reason ? `Type: ${cancellation.cancellation_type}. Reason: ${cancellation.reason}` : null
     : null
+  const customerCanceledConfirmedBooking = cancellation?.cancellation_type === 'customer_request'
+    && status_events.some((event) => event.from_status === 'confirmed' && event.to_status === 'canceled')
   const statusTone = getStatusTone(booking.status)
   const statusMessage = getStatusMessage(booking.status, rejectionReason, cancellationReason)
   const expiryMessage = getBookingExpiryMessage(
@@ -438,7 +440,7 @@ export default function BookingDetail() {
                   <div>
                       <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#071f52]/46 sm:text-xs">{statusMessage.title}</p>
                       <p className={`mt-0.5 text-xs font-medium leading-5 sm:text-sm ${statusTone.text}`}>{statusMessage.body}</p>
-                      {booking.status === 'canceled' && cancellation?.refund_status ? <p className="mt-2 text-xs font-bold leading-5 text-[#16a34a]">Refund status: {formatRefundStatus(cancellation.refund_status)}</p> : null}
+                      {booking.status === 'canceled' && cancellation?.refund_status ? <p className="mt-2 text-xs font-bold leading-5 text-[#16a34a]">Refund status: {customerCanceledConfirmedBooking ? 'Not eligible for refund' : formatRefundStatus(cancellation.refund_status)}</p> : null}
                       {expiryMessage ? <p className="mt-2 text-xs font-semibold leading-5 text-[#6f5a32] sm:text-sm">{expiryMessage}</p> : null}
                   </div>
                 </div>
