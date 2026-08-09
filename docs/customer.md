@@ -139,6 +139,7 @@ Confirmed → On Trip → Completed
 ### Upload Behavior
 - **Auto-save** — each document saved immediately on upload, no Submit/Save button
 - Uploads can be done one at a time
+- Accepted document types are JPEG, PNG, WebP, and PDF; maximum size is 5 MiB per file.
 - System note: "Each document is saved automatically as soon as you add it — there's no Save button. You can upload them one at a time, even on a slow connection."
 
 ### Document Capture Mode (Admin Setting)
@@ -150,13 +151,13 @@ Admin controls in Settings → Customer Documents:
 ## My Profile Tab (`/dashboard?tab=my-profile`)
 
 ### Profile Photo
-- File upload: JPG, PNG, WebP, or GIF, max 4 MB
+- File upload: JPG, PNG, WebP, or GIF, max 5 MiB
 - Falls back to Gravatar associated with email if no photo uploaded
 
 ### Personal Information
 | Field | Type | Required | Placeholder/Notes |
 |-------|------|----------|-------------------|
-| `profile_image` | file | No | JPG, PNG, WebP, GIF, max 4 MB |
+| `profile_image` | file | No | JPG, PNG, WebP, GIF, max 5 MiB |
 | `first_name` | text | Yes | |
 | `last_name` | text | Yes | |
 | `email` | email | Yes | Pre-filled, read-only intent |
@@ -645,7 +646,7 @@ The profile route renders the full settings shell. Subscription content exists i
   time_format (select)
 ```
 
-Profile image note: JPG, PNG, WebP or GIF, max 4 MB. Empty image uses Gravatar.
+Profile image note: JPG, PNG, WebP or GIF, max 5 MiB. Empty image uses Gravatar.
 
 Timezone options:
 ```
@@ -953,7 +954,7 @@ These also have address-autocomplete text inputs with placeholder "Start typing 
 | Payment option | select | Yes | BDO (010960093346) · Bank Transfer, G-Cash (09064961248) · E-Wallet |
 | `payment_amount` | number | No | Pre-filled with security deposit amount |
 | `reference_number` | text | No | Transaction / Ref # |
-| `receipt_image` | file | No | JPG, PNG, WEBP, PDF - max 5 MB. Drag & drop or click |
+| `receipt_image` | file | No | JPG, PNG, WEBP, PDF - max 5 MiB. Drag & drop or click |
 
 **Document Gate**: Self-drive bookings require Driver's License and Valid ID uploaded to profile. If missing, form shows:
 > "You cannot submit a self-drive booking until the following documents are uploaded to your profile."

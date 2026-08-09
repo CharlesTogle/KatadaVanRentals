@@ -141,6 +141,8 @@ Three document types with status:
 | Valid ID | Missing |
 | Proof of Billing | Missing |
 
+Customer documents and payment receipts accept JPEG, PNG, WebP, and PDF files up to 5 MiB. Vehicle images accept JPEG, PNG, and WebP files up to 10 MiB. Business photos, logos, and QR images accept JPEG, PNG, WebP, and GIF files up to 5 MiB; SVG logos are not supported.
+
 ### Actions
 | Action | Endpoint |
 |--------|----------|
@@ -156,7 +158,7 @@ Three document types with status:
 | `balance_amount` | number | Yes | Remaining balance to collect |
 | `payment_method` | select | Yes | Cash, BDO, G-Cash |
 | `reference_number` | text | No | e.g. GCash ref, bank transaction ID |
-| `receipt_image` | file | No | Upload receipt |
+| `receipt_image` | file | No | JPEG, PNG, WebP, or PDF; max 5 MiB |
 
 ### Action: Extend Rental (`POST /admin/bookings/{id}/extend`)
 | Field | Type | Required | Notes |
@@ -167,7 +169,7 @@ Three document types with status:
 | `payment_mode` | radio | No | Collect now vs later |
 | `payment_method` | select | No | Cash, BDO, G-Cash |
 | `reference_number` | text | No | |
-| `receipt_image` | file | No | |
+| `receipt_image` | file | No | JPEG, PNG, WebP, or PDF; max 5 MiB |
 
 ### Action: Cancel Booking (`POST /admin/bookings/{id}/cancel`)
 | Field | Type | Required | Notes |
@@ -324,7 +326,7 @@ All sections currently empty: "No payment data for this period."
 ### Profile (`/admin/settings` — Profile tab)
 | Field | Type | Required | Placeholder |
 |-------|------|----------|-------------|
-| `profile_image` | file | No | JPG, PNG, WebP, GIF. Max 4 MB |
+| `profile_image` | file | No | JPG, PNG, WebP, GIF. Max 5 MiB |
 | `first_name` | text | No | John |
 | `last_name` | text | No | Doe |
 | `email` | email | No | john@example.com |

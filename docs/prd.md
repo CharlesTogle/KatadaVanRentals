@@ -212,7 +212,7 @@ Protected behind login with admin/manager/staff role check. All routes prefixed 
 - Rental model toggles (All In, All Out, Self Drive)
 - Pickup/drop-off support toggle
 - Availability toggle
-- Image upload (multiple, to vehicle-images bucket)
+- Image upload (multiple, to vehicle-images bucket; JPEG, PNG, or WebP; max 10 MiB each)
 - SEO meta title and description
 - Car wash fee, delivery fee override, security deposit, discount
 
