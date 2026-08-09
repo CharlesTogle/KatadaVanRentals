@@ -7,6 +7,7 @@ import { getCustomerDocumentSignedUrl } from '@/services/document-service'
 import { showError } from '@/lib/errors'
 import { getAcceptedMimeTypes } from '@/lib/file-upload'
 import { UPLOAD_POLICIES } from '@/config/constants'
+import { ACCEPTED_PROOF_OF_BILLING_DOCUMENTS } from '@/constants/documents'
 import { removeUploadedFileWithQueue, uploadFile } from '@/services/upload-service'
 import { toast } from '@/lib/toast'
 import { logError } from '@/lib/logger'
@@ -167,6 +168,14 @@ export default function Documents() {
                     <p className="mt-0.5 text-[10px] font-medium text-[#071f52]/48 sm:text-xs">
                       {isUploaded ? existing.original_filename : 'Not uploaded'}
                     </p>
+                    {doc.key === 'proof_of_billing' && (
+                      <div className="mt-2 text-[10px] font-medium text-[#071f52]/58 sm:text-xs">
+                        <p>Accepted documents:</p>
+                        <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                          {ACCEPTED_PROOF_OF_BILLING_DOCUMENTS.map((document) => <li key={document}>{document}</li>)}
+                        </ul>
+                      </div>
+                    )}
                     {existing && (
                       <div className="mt-1.5 flex items-center gap-1.5 sm:mt-2 sm:gap-2">
                         <button

@@ -5,6 +5,7 @@ import { useCustomerDocuments, useSaveCustomerDocument } from '@/hooks/use-docum
 import { showError } from '@/lib/errors'
 import { getAcceptedMimeTypes } from '@/lib/file-upload'
 import { UPLOAD_POLICIES } from '@/config/constants'
+import { ACCEPTED_PROOF_OF_BILLING_DOCUMENTS } from '@/constants/documents'
 import { removeUploadedFileWithQueue, uploadFile } from '@/services/upload-service'
 import { toast } from '@/lib/toast'
 import { logError } from '@/lib/logger'
@@ -108,7 +109,16 @@ export default function RegistrationDocuments() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-[#071f52]">{doc.label}</p>
-                    <p className="mt-0.5 text-xs font-medium text-[#071f52]/48">{doc.accept}</p>
+                    {doc.key === 'proof_of_billing' ? (
+                      <div className="mt-2 text-xs font-medium text-[#071f52]/58">
+                        <p>Accepted documents:</p>
+                        <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                          {ACCEPTED_PROOF_OF_BILLING_DOCUMENTS.map((document) => <li key={document}>{document}</li>)}
+                        </ul>
+                      </div>
+                    ) : (
+                      <p className="mt-0.5 text-xs font-medium text-[#071f52]/48">{doc.accept}</p>
+                    )}
                   </div>
                   {uploads[doc.key] ? (
                     <div className="flex items-center gap-2">

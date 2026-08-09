@@ -73,6 +73,23 @@ describe('Documents', () => {
     expect(screen.getByText('Proof of Billing')).toBeInTheDocument()
   })
 
+  it('shows the accepted proof of billing documents', () => {
+    useCustomerDocuments.mockReturnValue({
+      data: [],
+      isLoading: false,
+    })
+
+    renderDocuments()
+
+    expect(screen.getByText('Accepted documents:')).toBeInTheDocument()
+    expect(screen.getByText('Electricity bills (such as Meralco)')).toBeInTheDocument()
+    expect(screen.getByText('Water bills')).toBeInTheDocument()
+    expect(screen.getByText('Internet or landline bills (such as PLDT or Globe)')).toBeInTheDocument()
+    expect(screen.getByText('Postpaid mobile phone statements')).toBeInTheDocument()
+    expect(screen.getByText('Credit card statements')).toBeInTheDocument()
+    expect(screen.getByText('Bank statements')).toBeInTheDocument()
+  })
+
   it('rejects an unsupported replacement before Storage or metadata save', async () => {
     useCustomerDocuments.mockReturnValue({
       data: [{ id: 'doc-1', customer_id: 'user-1', document_type: 'driver_license', status: 'submitted', file_path: 'user-1/driver_license.jpg', original_filename: 'license.jpg', mime_type: 'image/jpeg' }],
