@@ -8,7 +8,7 @@ import { useProfile } from '@/hooks/use-profile'
 import { isAdminRole } from '@/lib/rbac'
 import { loadBookingDateSelection } from '@/lib/booking-date-storage'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Users, Luggage, Settings, Fuel, Gauge } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Users, Luggage, Settings, Fuel, Gauge } from 'lucide-react'
 
 const specIconMap: Record<string, React.ElementType> = {
   passengers: Users,
@@ -46,7 +46,7 @@ export default function VehicleDetail() {
 
     return inCustomerShell
       ? <CustomerShellFrame>{loadingContent}</CustomerShellFrame>
-      : <div className="min-h-[100dvh] bg-[#f7f9ff]"><AppHeader />{loadingContent}</div>
+      : <div className="min-h-[100dvh] bg-[#f7f9ff]"><AppHeader /><div className="mx-auto max-w-[1180px]">{loadingContent}</div></div>
   }
 
   if (!vehicle) {
@@ -92,12 +92,32 @@ export default function VehicleDetail() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,0.58fr)] sm:gap-8">
         <div className="space-y-3 sm:space-y-4">
-          <div className="overflow-hidden rounded-lg border border-[#071f52]/10 bg-white shadow-[0_8px_24px_rgba(7,31,82,0.06)] sm:rounded-[28px] sm:shadow-[0_12px_40px_rgba(7,31,82,0.08)]">
+          <div className="relative overflow-hidden rounded-lg border border-[#071f52]/10 bg-white shadow-[0_8px_24px_rgba(7,31,82,0.06)] sm:rounded-[28px] sm:shadow-[0_12px_40px_rgba(7,31,82,0.08)]">
             <img
               src={images[selectedImage] || images[0]}
               alt={vehicle.name}
               className="aspect-[16/10] w-full object-cover"
             />
+            {images.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Previous image"
+                  onClick={() => setSelectedImage((index) => (index - 1 + images.length) % images.length)}
+                  className="absolute left-2 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-[#071f52]/78 p-2 text-white transition-colors hover:bg-[#071f52] sm:left-4 sm:p-2.5"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Next image"
+                  onClick={() => setSelectedImage((index) => (index + 1) % images.length)}
+                  className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full bg-[#071f52]/78 p-2 text-white transition-colors hover:bg-[#071f52] sm:right-4 sm:p-2.5"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </>
+            )}
           </div>
           {images.length > 1 && (
             <div className="flex gap-2 overflow-x-auto sm:gap-3">
@@ -164,5 +184,5 @@ export default function VehicleDetail() {
 
   return inCustomerShell
     ? <CustomerShellFrame>{content}</CustomerShellFrame>
-    : <div className="min-h-[100dvh] bg-[#f7f9ff]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}><AppHeader />{content}</div>
+    : <div className="min-h-[100dvh] bg-[#f7f9ff]" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}><AppHeader /><div className="mx-auto max-w-[1180px]">{content}</div></div>
 }

@@ -81,7 +81,9 @@ export default function OurFleet() {
   const [endDatePart, setEndDatePart] = useState(initialEnd.date)
   const [endTimePart, setEndTimePart] = useState(initialEnd.time)
   const [appliedFiltersRows, setAppliedFiltersRows] = useState<Array<{ label: string; value: string }>>([])
-  const [availableVehicleIds, setAvailableVehicleIds] = useState<string[] | null>(savedSelection?.availableVehicleIds || null)
+  const [availableVehicleIds, setAvailableVehicleIds] = useState<string[] | null>(
+    savedSelection?.availabilityChecked ? savedSelection.availableVehicleIds || [] : null,
+  )
   const [availabilityError, setAvailabilityError] = useState('')
 
   const { data: vehicles = [], isLoading, isError, refetch } = useVehicles()
@@ -96,7 +98,7 @@ export default function OurFleet() {
 
     setAvailableVehicleIds(null)
     setAvailabilityError('')
-    saveBookingDateSelection({ ...selection, availableVehicleIds: [] })
+    saveBookingDateSelection(selection)
   }
 
   const applyFilters = async () => {
@@ -112,7 +114,7 @@ export default function OurFleet() {
         ? await findAvailableVehicleIds({ startAt, endAt })
         : vehicles.map((vehicle) => vehicle.id)
       setAvailableVehicleIds(nextAvailableVehicleIds)
-      saveBookingDateSelection({ start: startAt, end: endAt, availableVehicleIds: nextAvailableVehicleIds })
+      saveBookingDateSelection({ start: startAt, end: endAt, availableVehicleIds: nextAvailableVehicleIds, availabilityChecked: true })
     } catch (error) {
       logError('fleet', 'Vehicle availability lookup failed', error, { requestId: getRequestId() })
       setAvailableVehicleIds([])

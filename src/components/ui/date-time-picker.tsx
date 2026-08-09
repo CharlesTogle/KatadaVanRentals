@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { DayPicker } from 'react-day-picker'
 import 'react-day-picker/style.css'
 import { cn } from '@/lib/utils'
+import { X } from 'lucide-react'
 
 const HOURS = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'))
 const MINUTES = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, '0'))
@@ -131,53 +132,55 @@ export function DateTimePicker({
           {required ? <span className="text-[#e92935]"> *</span> : null}
         </label>
       ) : null}
-      <Popover.Root>
-        <Popover.Trigger asChild>
-          <button
-            id={id}
-            type="button"
-            disabled={disabled}
-            className={cn(
-              'flex min-h-[52px] w-full items-center rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-left text-base font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60 disabled:cursor-not-allowed disabled:opacity-60',
-              inlineLabel ? 'min-h-[62px] items-start justify-center' : '',
-              !selectedDate ? 'text-[#071f52]/38' : '',
-              triggerClassName,
-            )}
-          >
-            {inlineLabel ? (
-              <span className="flex min-w-0 flex-col gap-1">
-                <span className={cn('text-[11px] font-bold uppercase tracking-[0.02em] text-[#071f52]/38', labelClassName)}>
-                  {label}
+      <div className="relative">
+        <Popover.Root>
+          <Popover.Trigger asChild>
+            <button
+              id={id}
+              type="button"
+              disabled={disabled}
+              className={cn(
+                'flex min-h-[52px] w-full items-center rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-left text-base font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60 disabled:cursor-not-allowed disabled:opacity-60',
+                inlineLabel ? 'min-h-[62px] items-start justify-center' : '',
+                !selectedDate ? 'text-[#071f52]/38' : '',
+                triggerClassName,
+                selectedDate ? 'pr-11' : '',
+              )}
+            >
+              {inlineLabel ? (
+                <span className="flex min-w-0 flex-col gap-1">
+                  <span className={cn('text-[11px] font-bold uppercase tracking-[0.02em] text-[#071f52]/38', labelClassName)}>
+                    {label}
+                  </span>
+                  <span className={cn('block truncate text-sm font-semibold', !selectedDate ? 'text-[#071f52]/38' : 'text-[#071f52]')}>
+                    {displayValue}
+                  </span>
                 </span>
-                <span className={cn('block truncate text-sm font-semibold', !selectedDate ? 'text-[#071f52]/38' : 'text-[#071f52]')}>
+              ) : (
+                <span className={cn('block truncate', !selectedDate ? 'text-[#071f52]/38' : 'text-[#071f52]')}>
                   {displayValue}
                 </span>
-              </span>
-            ) : (
-              <span className={cn('block truncate', !selectedDate ? 'text-[#071f52]/38' : 'text-[#071f52]')}>
-                {displayValue}
-              </span>
-            )}
-          </button>
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Content
-            align="start"
-            sideOffset={8}
-            className="z-50 w-[340px] rounded-[20px] border border-[#071f52]/12 bg-white p-0 shadow-[0_22px_60px_rgba(7,31,82,0.18)] outline-none"
-          >
-            <div className="[--rdp-accent-color:#5b9cff] [--rdp-accent-background-color:#eaf2ff] [--rdp-day_button-border-radius:9999px] [--rdp-day-height:40px] [--rdp-day-width:40px] [--rdp-nav_button-height:32px] [--rdp-nav_button-width:32px] [--rdp-animation_duration:0s]">
-              <DayPicker
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateSelect}
-                showOutsideDays
-                fixedWeeks
-                disabled={disabledDay}
-                className="p-3"
-              />
-            </div>
-            <div className="grid grid-cols-[minmax(0,1fr)_20px_minmax(0,1fr)_minmax(0,1fr)] items-center gap-0 border-t border-[#071f52]/10 bg-[#f7f9ff] px-3 py-3">
+              )}
+            </button>
+          </Popover.Trigger>
+          <Popover.Portal>
+            <Popover.Content
+              align="start"
+              sideOffset={8}
+              className="z-50 w-[340px] rounded-[20px] border border-[#071f52]/12 bg-white p-0 shadow-[0_22px_60px_rgba(7,31,82,0.18)] outline-none"
+            >
+              <div className="[--rdp-accent-color:#5b9cff] [--rdp-accent-background-color:#eaf2ff] [--rdp-day_button-border-radius:9999px] [--rdp-day-height:40px] [--rdp-day-width:40px] [--rdp-nav_button-height:32px] [--rdp-nav_button-width:32px] [--rdp-animation_duration:0s]">
+                <DayPicker
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  showOutsideDays
+                  fixedWeeks
+                  disabled={disabledDay}
+                  className="p-3"
+                />
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_20px_minmax(0,1fr)_minmax(0,1fr)] items-center gap-0 border-t border-[#071f52]/10 bg-[#f7f9ff] px-3 py-3">
               <div>
                 <label htmlFor={`${id}-hour`} className="sr-only">{label} hour</label>
                 <select
@@ -218,10 +221,22 @@ export function DateTimePicker({
                   ))}
                 </select>
               </div>
-            </div>
-          </Popover.Content>
-        </Popover.Portal>
-      </Popover.Root>
+              </div>
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
+        {selectedDate && !disabled ? (
+          <button
+            type="button"
+            aria-label="Clear date and time"
+            title="Clear date and time"
+            onClick={() => onChange('')}
+            className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-lg p-1.5 text-[#071f52]/48 transition-colors hover:bg-[#071f52]/8 hover:text-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+          >
+            <X size={16} />
+          </button>
+        ) : null}
+      </div>
     </div>
   )
 }

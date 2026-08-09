@@ -11,7 +11,7 @@ import { suggestLocations } from '@/services/location-service'
 import { useServiceAreas, useCreateServiceArea, useUpdateServiceArea, useDeleteServiceArea } from '@/hooks/use-service-areas'
 import type { PaymentMethod, PaymentChannel } from '@/types/payment'
 import type { LocationSuggestion, ServiceArea } from '@/types/location'
-import { MapPin } from 'lucide-react'
+import { Eye, EyeOff, MapPin } from 'lucide-react'
 import { ServiceAreaMap } from '@/components/admin/service-area-map'
 import { getPhilippineMobileDigits, normalizePhilippineMobile } from '@/lib/validation'
 import { logError, getRequestId } from '@/lib/logger'
@@ -262,6 +262,7 @@ export function SettingsPasswordForm({ saving, setSaving, showMessage }: Omit<Se
   const [current, setCurrent] = useState('')
   const [newPw, setNewPw] = useState('')
   const [confirm, setConfirm] = useState('')
+  const [visible, setVisible] = useState<Record<string, boolean>>({})
 
   return (
     <form onSubmit={async (e) => {
@@ -280,7 +281,22 @@ export function SettingsPasswordForm({ saving, setSaving, showMessage }: Omit<Se
       ].map((field) => (
         <div key={field.key} className="space-y-1.5">
           <label className={labelClass}>{field.label}</label>
-          <input type="password" value={field.value} onChange={(e) => field.set(e.target.value)} className={inputClass} />
+          <div className="relative">
+            <input
+              type={visible[field.key] ? 'text' : 'password'}
+              value={field.value}
+              onChange={(e) => field.set(e.target.value)}
+              className={`${inputClass} pr-11`}
+            />
+            <button
+              type="button"
+              onClick={() => setVisible((currentVisible) => ({ ...currentVisible, [field.key]: !currentVisible[field.key] }))}
+              aria-label={visible[field.key] ? `Hide ${field.label}` : `Show ${field.label}`}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-[#071f52]/48 transition-colors hover:bg-[#071f52]/8 hover:text-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
+            >
+              {visible[field.key] ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
         </div>
       ))}
       <Button type="submit" disabled={!current || !newPw || !confirm || saving} className="bg-[#071f52] text-white hover:bg-[#112458]">

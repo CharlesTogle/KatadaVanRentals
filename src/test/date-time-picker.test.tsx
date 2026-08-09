@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
 
@@ -21,5 +21,23 @@ describe('DateTimePicker', () => {
       expect(screen.getByRole('button', { name: /August 12th, 2026/i })).toBeDisabled()
       expect(screen.getByRole('button', { name: /August 13th, 2026/i })).not.toBeDisabled()
     })
+  })
+
+  it('clears the selected date and time', () => {
+    const onChange = vi.fn()
+
+    render(
+      <DateTimePicker
+        id="booking-start-at"
+        label="Pick-up Date & Time"
+        value="2026-08-12T09:00"
+        placeholder="Select date & time"
+        onChange={onChange}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear date and time' }))
+
+    expect(onChange).toHaveBeenCalledWith('')
   })
 })

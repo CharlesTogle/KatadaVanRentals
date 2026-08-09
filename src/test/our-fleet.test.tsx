@@ -62,7 +62,6 @@ describe('OurFleet', () => {
     expect(JSON.parse(window.localStorage.getItem('booking-date-selection') || '{}')).toEqual({
       start: '2026-08-01T09:30',
       end: '2026-08-03T17:45',
-      availableVehicleIds: [],
     })
   })
 
@@ -78,10 +77,30 @@ describe('OurFleet', () => {
 
     expect(findAvailableVehicleIdsMock).toHaveBeenCalledWith({ startAt: '2026-08-12T09:00', endAt: '2026-08-13T09:00' })
     await waitFor(() => {
-      expect(JSON.parse(window.localStorage.getItem('booking-date-selection') || '{}').availableVehicleIds).toEqual(['vehicle-1'])
+      expect(JSON.parse(window.localStorage.getItem('booking-date-selection') || '{}')).toMatchObject({
+        availableVehicleIds: ['vehicle-1'],
+        availabilityChecked: true,
+      })
       expect(screen.getByText('Vehicle 1')).toBeInTheDocument()
       expect(screen.queryByText('Vehicle 2')).not.toBeInTheDocument()
     })
+  })
+
+  it('does not hide vehicles when saved dates have not been checked for availability', () => {
+    window.localStorage.setItem('booking-date-selection', JSON.stringify({
+      start: '2026-08-12T09:00',
+      end: '2026-08-13T09:00',
+      availableVehicleIds: [],
+    }))
+
+    render(
+      <MemoryRouter>
+        <OurFleet />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Vehicle 1')).toBeInTheDocument()
+    expect(screen.getByText('Vehicle 2')).toBeInTheDocument()
   })
 
   it('auto-fills drop-off to 24 hours after the pickup date and time', () => {
@@ -97,7 +116,6 @@ describe('OurFleet', () => {
     expect(JSON.parse(window.localStorage.getItem('booking-date-selection') || '{}')).toEqual({
       start: '2026-08-01T09:30',
       end: '2026-08-02T09:30',
-      availableVehicleIds: [],
     })
   })
 
