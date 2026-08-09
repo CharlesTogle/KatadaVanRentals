@@ -1176,8 +1176,7 @@ function CancelModal({ open, onClose, reason, setReason, onSubmit, isPending }: 
   const [cancelType, setCancelType] = useState('customer_request')
 
   const options = [
-    { value: 'admin_refund', label: 'Admin - refund deposit to customer' },
-    { value: 'admin_no_refund', label: 'Admin - no refund' },
+    { value: 'admin_no_refund', label: 'Admin cancellation - no refund' },
     { value: 'customer_request', label: 'Customer requested - no refund' },
   ]
 
@@ -1350,8 +1349,6 @@ function formatCancellationReason(note?: string | null) {
     switch (type) {
       case 'customer_request':
         return 'Canceled at the customer\'s request'
-      case 'admin_refund':
-        return 'Canceled by admin with a refund'
       case 'admin_no_refund':
         return 'Canceled by admin without a refund'
       default:

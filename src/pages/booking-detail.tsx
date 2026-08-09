@@ -924,8 +924,6 @@ function formatCancellationReason(note?: string | null) {
     switch (type) {
       case 'customer_request':
         return 'Canceled at the customer\'s request'
-      case 'admin_refund':
-        return 'Canceled by admin with a refund'
       case 'admin_no_refund':
         return 'Canceled by admin without a refund'
       default:
