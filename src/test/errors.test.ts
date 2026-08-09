@@ -40,6 +40,11 @@ describe('showError', () => {
     expect(result).not.toBe('')
   })
 
+  it('explains how to fix oversized uploads', () => {
+    expect(showError(new Error('File is too large. Maximum size is 5 MiB.')))
+      .toBe('File is too large. Maximum size is 5 MiB. Choose a smaller file and try again.')
+  })
+
   it('maps safe edge-function error codes without trusting provider text', () => {
     expect(showError({ errorCode: 'ROUTE_NOT_FOUND', message: 'upstream database detail' }))
       .toContain('No drivable route')

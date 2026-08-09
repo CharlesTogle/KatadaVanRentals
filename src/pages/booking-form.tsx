@@ -523,7 +523,7 @@ export default function BookingForm() {
         await uploadFile({ bucket: 'payment-receipts', file: receiptFile, path: receiptPath, policy: UPLOAD_POLICIES.paymentReceipts, upsert: true })
       } catch (error) {
         logError('booking', 'Payment receipt upload failed', error, { requestId: getRequestId() })
-        setError('Receipt upload failed. Please try again.')
+        setError(showError(error))
         setSubmitting(false)
         return
       }

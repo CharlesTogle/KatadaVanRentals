@@ -74,6 +74,7 @@ export function showError(error: unknown): string {
 
   if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string' && error.message) {
     const message = error.message
+    if (message.startsWith('File is too large.')) return `${message} Choose a smaller file and try again.`
     for (const [key, msg] of Object.entries(authMap)) {
       if (message.toLowerCase().includes(key.toLowerCase())) {
         return msg

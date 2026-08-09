@@ -3,6 +3,7 @@ import { Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { removeVehicleImage, uploadVehicleImage } from '@/services/vehicle-service'
 import { UPLOAD_POLICIES } from '@/config/constants'
+import { showError } from '@/lib/errors'
 import { loadDraft, saveDraft, clearDraft } from '@/lib/draft-storage'
 import type { CreateVehicleInput, Vehicle } from '@/types/vehicle'
 import { VEHICLE_TYPES } from '@/constants/vehicle'
@@ -194,7 +195,7 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
         logError('fleet', 'Failed to remove vehicle image after upload failure', cleanupError, { requestId: getRequestId() })
       })))
       logError('fleet', 'Vehicle image upload failed', error, { requestId: getRequestId() })
-      setFormError('Failed to upload image. Try again.')
+      setFormError(showError(error))
     } finally {
       setUploadingImage(false)
     }
@@ -262,12 +263,6 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {formError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
-          {formError}
-        </div>
-      )}
-
       {/* Basic Information */}
       <section className="rounded-2xl border border-[#071f52]/10 bg-white p-6">
       <fieldset>
@@ -516,11 +511,18 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
       </fieldset>
       </section>
 
-      <div className="flex items-center justify-end gap-3 border-t border-[#071f52]/10 pt-5">
-        <Button type="button" variant="outline" onClick={handleCancel} disabled={isProcessing || uploadingImage}>Cancel</Button>
-        <Button type="submit" disabled={isProcessing || uploadingImage}>
-          {isProcessing ? 'Saving...' : vehicle ? 'Update Vehicle' : 'Add Vehicle'}
-        </Button>
+      <div className="flex flex-col gap-3 border-t border-[#071f52]/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        {formError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 sm:max-w-[65%]">
+            {formError}
+          </div>
+        )}
+        <div className="flex justify-end gap-3 sm:ml-auto">
+          <Button type="button" variant="outline" onClick={handleCancel} disabled={isProcessing || uploadingImage}>Cancel</Button>
+          <Button type="submit" disabled={isProcessing || uploadingImage}>
+            {isProcessing ? 'Saving...' : vehicle ? 'Update Vehicle' : 'Add Vehicle'}
+          </Button>
+        </div>
       </div>
 
     </form>
