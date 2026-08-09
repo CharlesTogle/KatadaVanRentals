@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { renderBookingCanceledEmail } from '../_shared/booking-canceled-email.ts'
+import { renderBookingRefundPendingEmail } from '../_shared/booking-refund-pending-email.ts'
 import { renderBookingConfirmedEmail } from '../_shared/booking-confirmed-email.ts'
 import { renderBookingRejectedEmail } from '../_shared/booking-rejected-email.ts'
 
@@ -87,7 +88,12 @@ serve(async (req) => {
 
   const batch = Array.isArray(body.batch) ? body.batch as Record<string, unknown>[] : null
   const batchEmails = batch?.map((item) => {
-    const email = item.template === 'booking_canceled'
+    const email = item.template === 'booking_refund_pending'
+      ? renderBookingRefundPendingEmail({
+          bookingNumber: String(item.bookingNumber || ''),
+          reason: String(item.reason || 'Customer cancellation requires refund review.'),
+        })
+      : item.template === 'booking_canceled'
       ? renderBookingCanceledEmail({
           firstName: String(item.firstName || 'there'),
           bookingNumber: String(item.bookingNumber || ''),
@@ -122,6 +128,16 @@ serve(async (req) => {
       firstName: String(body.firstName || 'there'),
       bookingNumber: String(body.bookingNumber || ''),
       reason: String(body.reason || 'Booking deadline passed.'),
+    })
+    body.subject = email.subject
+    body.text = email.text
+    body.html = email.html
+  }
+
+  if (body.template === 'booking_refund_pending') {
+    const email = renderBookingRefundPendingEmail({
+      bookingNumber: String(body.bookingNumber || ''),
+      reason: String(body.reason || 'Customer cancellation requires refund review.'),
     })
     body.subject = email.subject
     body.text = email.text

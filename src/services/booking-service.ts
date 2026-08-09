@@ -17,6 +17,7 @@ export interface CustomerBookingDetail {
 type BookingCancellation = {
   cancellation_type: string
   reason: string | null
+  refund_status: 'pending_refund' | 'refund_processed' | 'refund_cancelled'
   created_at: string
 }
 
@@ -35,7 +36,7 @@ export async function getBookingById(id: string): Promise<CustomerBookingDetail>
     supabase.from('booking_status_events').select('id,from_status,to_status,note,created_at').eq('booking_id', id).order('created_at', { ascending: false }),
     supabase.from('booking_extensions').select('id,previous_end_at,new_end_at,extension_amount,reason,payment_id,created_at').eq('booking_id', id).order('created_at', { ascending: false }),
     supabase.from('invoices').select('id,invoice_number,status,total_amount,file_path,issued_at').eq('booking_id', id).order('created_at', { ascending: false }).maybeSingle(),
-    supabase.from('booking_cancellations').select('cancellation_type,reason,created_at').eq('booking_id', id).order('created_at', { ascending: false }).maybeSingle(),
+    supabase.from('booking_cancellations').select('cancellation_type,reason,refund_status,created_at').eq('booking_id', id).order('created_at', { ascending: false }).maybeSingle(),
     supabase.from('booking_requested_document_types').select('id,label,created_at').eq('booking_id', id).order('created_at', { ascending: true }),
     supabase.from('booking_requested_documents').select('id,requested_type_id,file_path,original_filename,mime_type,size_bytes,status,created_at').eq('booking_id', id).order('created_at', { ascending: true }),
     supabase.from('booking_feedback').select('id,rating,feedback,created_at').eq('booking_id', id).maybeSingle(),
@@ -81,7 +82,7 @@ export async function getBookingById(id: string): Promise<CustomerBookingDetail>
 export async function getMyBookings(status?: string) {
   let query = supabase
     .from('bookings')
-    .select('id, booking_number, vehicle_id, start_at, end_at, duration_days, distance_km, booking_mode, total_amount, paid_amount, remaining_amount, status, created_at, rental_model, flagged_for_manual_pricing, vehicles!vehicle_id(name,slug,image_paths)')
+    .select('id, booking_number, vehicle_id, start_at, end_at, duration_days, distance_km, booking_mode, total_amount, paid_amount, remaining_amount, status, created_at, rental_model, flagged_for_manual_pricing, price_approval_source, vehicles!vehicle_id(name,slug,image_paths)')
     .order('created_at', { ascending: false })
 
   if (status) query = query.eq('status', status)
@@ -401,7 +402,7 @@ export async function getAdminBookingByNumber(bookingNumber: string): Promise<Ad
     supabase.from('booking_status_events').select('id,from_status,to_status,note,created_at').eq('booking_id', currentBooking.id).order('created_at', { ascending: false }),
     supabase.from('booking_extensions').select('id,previous_end_at,new_end_at,extension_amount,reason,payment_id,created_at').eq('booking_id', currentBooking.id).order('created_at', { ascending: false }),
     supabase.from('invoices').select('id,invoice_number,status,total_amount,file_path,issued_at').eq('booking_id', currentBooking.id).order('created_at', { ascending: false }).maybeSingle(),
-    supabase.from('booking_cancellations').select('cancellation_type,reason,created_at').eq('booking_id', currentBooking.id).order('created_at', { ascending: false }).maybeSingle(),
+    supabase.from('booking_cancellations').select('cancellation_type,reason,refund_status,created_at').eq('booking_id', currentBooking.id).order('created_at', { ascending: false }).maybeSingle(),
     supabase.from('booking_requested_document_types').select('id,label,created_at').eq('booking_id', currentBooking.id).order('created_at', { ascending: true }),
     supabase.from('booking_requested_documents').select('id,requested_type_id,file_path,original_filename,mime_type,size_bytes,status,created_at').eq('booking_id', currentBooking.id).order('created_at', { ascending: true }),
   ])
@@ -478,6 +479,8 @@ export type AdminBookingActionType =
   | 'make_payment'
   | 'cancel'
   | 'delete'
+  | 'process_refund'
+  | 'cancel_refund'
 
 export type AdminBookingActionInput =
   | { type: 'confirm'; bookingId: string; note?: string }
@@ -491,6 +494,8 @@ export type AdminBookingActionInput =
   | { type: 'cancel'; bookingId: string; cancellationType: string; reason: string }
   | { type: 'delete'; bookingId: string }
   | { type: 'set_price_for_manual'; bookingId: string; adjustedTotal: number; reason: string }
+  | { type: 'process_refund'; bookingId: string; amount: number; paymentMethodId?: string; paymentChannel?: string; referenceNumber?: string; receiptPath?: string }
+  | { type: 'cancel_refund'; bookingId: string; reason: string }
 
 export interface SubmittedPaymentRow {
   id: string
@@ -613,6 +618,18 @@ export async function runAdminBookingAction(input: AdminBookingActionInput): Pro
     },
     cancel: { fn: 'admin_cancel_booking', args: { target_booking_id: bookingId, cancellation_type: (params as { cancellationType: string }).cancellationType, reason: (params as { reason: string }).reason } },
     delete: { fn: 'admin_delete_booking', args: { target_booking_id: bookingId } },
+    process_refund: {
+      fn: 'admin_process_booking_refund',
+      args: {
+        target_booking_id: bookingId,
+        p_refund_amount: (params as { amount: number }).amount,
+        p_refund_method_id: (params as { paymentMethodId?: string }).paymentMethodId ?? null,
+        p_refund_channel: (params as { paymentChannel?: string }).paymentChannel ?? 'cash',
+        p_refund_reference: (params as { referenceNumber?: string }).referenceNumber ?? null,
+        p_refund_receipt_path: (params as { receiptPath?: string }).receiptPath ?? null,
+      },
+    },
+    cancel_refund: { fn: 'admin_cancel_booking_refund', args: { target_booking_id: bookingId, reason: (params as { reason: string }).reason } },
   }
 
   const rpc = rpcMap[type]

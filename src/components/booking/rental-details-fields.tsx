@@ -239,8 +239,8 @@ export function RentalDetailsFields({ vehicle }: RentalDetailsFieldsProps) {
             <label className="text-sm font-bold text-[#071f52]">Package <span className="text-[#e92935]">*</span></label>
             <div className="grid gap-3 sm:grid-cols-2">
               {([
-                { type: 'all-in', title: 'All In', subtitle: 'Fuel and toll estimate included', supported: supportsAllIn },
-                { type: 'all-out', title: 'All Out', subtitle: 'Fuel and toll paid separately', supported: supportsAllOut },
+                { type: 'all-in', title: 'All In', subtitle: 'Refundable · fuel and toll estimate included', supported: supportsAllIn },
+                { type: 'all-out', title: 'All Out', subtitle: 'Refundable · fuel and toll paid separately', supported: supportsAllOut },
               ] as const).map((option) => (
                 <button
                   key={option.type}

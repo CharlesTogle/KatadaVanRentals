@@ -61,6 +61,7 @@ export default function BookingDetail() {
     toast.error(showError(viewError))
   })
   const [activeModal, setActiveModal] = useState<AdminActionType | null>(null)
+  const [modalError, setModalError] = useState('')
   const [modalForm, setModalForm] = useState({
     reason: '',
     amount: '',
@@ -96,6 +97,10 @@ export default function BookingDetail() {
       receiptFile: null,
     })
   }, [activeModal, defaultPaymentMethodId])
+
+  useEffect(() => {
+    setModalError('')
+  }, [activeModal])
 
   useEffect(() => {
     if (!defaultPaymentMethodId) return
@@ -171,8 +176,8 @@ export default function BookingDetail() {
   const actions: AdminAction[] = !bookingStatus
     ? []
     : bookingStatus !== 'completed' || displayedRemainingBalance <= 0
-      ? getAdminBookingDetailActions(bookingStatus, booking.flagged_for_manual_pricing)
-      : [{ type: 'make_payment', label: 'Make a Payment', variant: 'primary' }, ...getAdminBookingDetailActions(bookingStatus)]
+      ? getAdminBookingDetailActions(bookingStatus, booking.flagged_for_manual_pricing, cancellation?.refund_status)
+      : [{ type: 'make_payment', label: 'Make a Payment', variant: 'primary' }, ...getAdminBookingDetailActions(bookingStatus, false, cancellation?.refund_status)]
   const primaryActions = actions.filter((action) => action.variant !== 'danger')
   const destructiveActions = actions.filter((action) => action.variant === 'danger')
   const minimumExtensionDateTime = getMinimumExtensionDateTime(booking.end_at)
@@ -196,7 +201,9 @@ export default function BookingDetail() {
       if (receiptPath) await removeUploadedFileWithQueue(PAYMENT_RECEIPT_BUCKET, receiptPath).catch((cleanupError) => {
         logError('admin-booking', 'Failed to remove payment receipt after booking failure', cleanupError)
       })
-      toast.error(showError(actionError as Error))
+      const message = showError(actionError as Error)
+      setModalError(message)
+      toast.error(message)
     }
   }
 
@@ -265,6 +272,25 @@ export default function BookingDetail() {
       receiptPath,
       idempotencyKey: crypto.randomUUID(),
     }, 'Payment recorded.', undefined, receiptPath)
+  }
+  const handleProcessRefund = async () => {
+    let receiptPath: string | undefined
+    try {
+      receiptPath = await uploadReceipt(modalForm.receiptFile)
+    } catch (error) {
+      toast.error(showError(error as Error))
+      return
+    }
+
+    return runAction({
+      type: 'process_refund',
+      bookingId: booking.id,
+      amount: Number(modalForm.amount),
+      paymentMethodId: modalForm.paymentMethodId || undefined,
+      paymentChannel: modalForm.paymentChannel,
+      referenceNumber: modalForm.referenceNumber.trim() || undefined,
+      receiptPath,
+    }, 'Refund processed.', undefined, receiptPath)
   }
   const handleDeleteBooking = () => runAction({ type: 'delete', bookingId: booking.id }, 'Booking deleted.', () => navigate('/admin/bookings'))
 
@@ -784,8 +810,10 @@ export default function BookingDetail() {
       <StartTripModal open={activeModal === 'start_trip'} onClose={() => setActiveModal(null)} amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} paymentMethodId={modalForm.paymentMethodId} setPaymentMethodId={(paymentMethodId) => setModalForm((current) => ({ ...current, paymentMethodId }))} paymentChannel={modalForm.paymentChannel} setPaymentChannel={(paymentChannel) => setModalForm((current) => ({ ...current, paymentChannel }))} referenceNumber={modalForm.referenceNumber} setReferenceNumber={(referenceNumber) => setModalForm((current) => ({ ...current, referenceNumber }))} receiptFile={modalForm.receiptFile} setReceiptFile={(receiptFile) => setModalForm((current) => ({ ...current, receiptFile }))} paymentMethods={paymentMethods} onSubmit={handleStartTrip} isPending={bookingAction.isPending} />
       <ExtendRentalModal open={activeModal === 'extend_rental'} onClose={() => setActiveModal(null)} newDate={modalForm.newDate} setNewDate={(newDate) => setModalForm((current) => ({ ...current, newDate }))} minimumDateTime={minimumExtensionDateTime ? new Date(minimumExtensionDateTime) : undefined} amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} collectNow={modalForm.collectNow} setCollectNow={(collectNow) => setModalForm((current) => ({ ...current, collectNow }))} paymentMethodId={modalForm.paymentMethodId} setPaymentMethodId={(paymentMethodId) => setModalForm((current) => ({ ...current, paymentMethodId }))} paymentChannel={modalForm.paymentChannel} setPaymentChannel={(paymentChannel) => setModalForm((current) => ({ ...current, paymentChannel }))} referenceNumber={modalForm.referenceNumber} setReferenceNumber={(referenceNumber) => setModalForm((current) => ({ ...current, referenceNumber }))} receiptFile={modalForm.receiptFile} setReceiptFile={(receiptFile) => setModalForm((current) => ({ ...current, receiptFile }))} paymentMethods={paymentMethods} onSubmit={handleExtendBooking} isPending={bookingAction.isPending} isDateValid={isExtensionDateValid} />
       <CompleteModal open={activeModal === 'complete'} onClose={() => setActiveModal(null)} amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} actualTollAmount={modalForm.actualTollAmount} setActualTollAmount={(actualTollAmount) => setModalForm((current) => ({ ...current, actualTollAmount }))} actualFuelAmount={modalForm.actualFuelAmount} setActualFuelAmount={(actualFuelAmount) => setModalForm((current) => ({ ...current, actualFuelAmount }))} requiresTripReconciliation={requiresTripReconciliation} tollEstimateAmount={Number(booking.toll_estimate_amount || 0)} fuelEstimateAmount={Number(booking.fuel_estimate_amount || 0)} paymentMethodId={modalForm.paymentMethodId} setPaymentMethodId={(paymentMethodId) => setModalForm((current) => ({ ...current, paymentMethodId }))} paymentChannel={modalForm.paymentChannel} setPaymentChannel={(paymentChannel) => setModalForm((current) => ({ ...current, paymentChannel }))} referenceNumber={modalForm.referenceNumber} setReferenceNumber={(referenceNumber) => setModalForm((current) => ({ ...current, referenceNumber }))} receiptFile={modalForm.receiptFile} setReceiptFile={(receiptFile) => setModalForm((current) => ({ ...current, receiptFile }))} paymentMethods={paymentMethods} onSubmit={handleCompleteBooking} isPending={bookingAction.isPending} />
-      <PaymentModal open={activeModal === 'make_payment'} onClose={() => setActiveModal(null)} title="Make a Payment" description="Record a post-trip payment for this completed booking." submitLabel="Record Payment" amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} paymentMethodId={modalForm.paymentMethodId} setPaymentMethodId={(paymentMethodId) => setModalForm((current) => ({ ...current, paymentMethodId }))} paymentChannel={modalForm.paymentChannel} setPaymentChannel={(paymentChannel) => setModalForm((current) => ({ ...current, paymentChannel }))} referenceNumber={modalForm.referenceNumber} setReferenceNumber={(referenceNumber) => setModalForm((current) => ({ ...current, referenceNumber }))} receiptFile={modalForm.receiptFile} setReceiptFile={(receiptFile) => setModalForm((current) => ({ ...current, receiptFile }))} paymentMethods={paymentMethods} onSubmit={handleMakePayment} isPending={bookingAction.isPending} />
-      <CancelModal open={activeModal === 'cancel'} onClose={() => setActiveModal(null)} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} onSubmit={(cancellationType) => runAction({ type: 'cancel', bookingId: booking.id, cancellationType, reason: modalForm.reason.trim() }, 'Booking canceled.')} isPending={bookingAction.isPending} />
+       <PaymentModal open={activeModal === 'make_payment'} onClose={() => setActiveModal(null)} title="Make a Payment" description="Record a post-trip payment for this completed booking." submitLabel="Record Payment" amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} paymentMethodId={modalForm.paymentMethodId} setPaymentMethodId={(paymentMethodId) => setModalForm((current) => ({ ...current, paymentMethodId }))} paymentChannel={modalForm.paymentChannel} setPaymentChannel={(paymentChannel) => setModalForm((current) => ({ ...current, paymentChannel }))} referenceNumber={modalForm.referenceNumber} setReferenceNumber={(referenceNumber) => setModalForm((current) => ({ ...current, referenceNumber }))} receiptFile={modalForm.receiptFile} setReceiptFile={(receiptFile) => setModalForm((current) => ({ ...current, receiptFile }))} paymentMethods={paymentMethods} onSubmit={handleMakePayment} isPending={bookingAction.isPending} error={modalError} />
+       <PaymentModal open={activeModal === 'process_refund'} onClose={() => setActiveModal(null)} title="Process Refund" description="Record the refund returned to the customer." submitLabel="Process Refund" amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} paymentMethodId={modalForm.paymentMethodId} setPaymentMethodId={(paymentMethodId) => setModalForm((current) => ({ ...current, paymentMethodId }))} paymentChannel={modalForm.paymentChannel} setPaymentChannel={(paymentChannel) => setModalForm((current) => ({ ...current, paymentChannel }))} referenceNumber={modalForm.referenceNumber} setReferenceNumber={(referenceNumber) => setModalForm((current) => ({ ...current, referenceNumber }))} receiptFile={modalForm.receiptFile} setReceiptFile={(receiptFile) => setModalForm((current) => ({ ...current, receiptFile }))} paymentMethods={paymentMethods} onSubmit={handleProcessRefund} isPending={bookingAction.isPending} error={modalError} amountLabel="Amount Refunded" />
+       <CancelModal open={activeModal === 'cancel'} onClose={() => setActiveModal(null)} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} onSubmit={(cancellationType) => runAction({ type: 'cancel', bookingId: booking.id, cancellationType, reason: modalForm.reason.trim() }, 'Booking canceled.')} isPending={bookingAction.isPending} />
+       <RefundCancelModal open={activeModal === 'cancel_refund'} onClose={() => setActiveModal(null)} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} onSubmit={() => runAction({ type: 'cancel_refund', bookingId: booking.id, reason: modalForm.reason.trim() }, 'Refund canceled.')} isPending={bookingAction.isPending} />
       <DeleteModal open={activeModal === 'delete'} onClose={() => setActiveModal(null)} onSubmit={handleDeleteBooking} isPending={bookingAction.isPending} />
       <SetPriceModal open={activeModal === 'set_price_for_manual'} onClose={() => setActiveModal(null)} amount={modalForm.amount} setAmount={(amount) => setModalForm((current) => ({ ...current, amount }))} reason={modalForm.reason} setReason={(reason) => setModalForm((current) => ({ ...current, reason }))} onSubmit={handleSetManualPrice} isPending={bookingAction.isPending} />
       <ImageViewer open={!!viewing} onClose={closeViewer} src={viewing?.src || ''} alt={viewing?.alt || ''} />
@@ -1088,11 +1116,12 @@ function CompleteModal({ open, onClose, amount, setAmount, actualTollAmount, set
   )
 }
 
-function PaymentModal({ open, onClose, title, description, submitLabel, amount, setAmount, paymentMethodId, setPaymentMethodId, paymentChannel, setPaymentChannel, referenceNumber, setReferenceNumber, receiptFile, setReceiptFile, paymentMethods, onSubmit, isPending }: { open: boolean; onClose: () => void; title: string; description: string; submitLabel: string; amount: string; setAmount: (v: string) => void; paymentMethodId: string; setPaymentMethodId: (v: string) => void; paymentChannel: string; setPaymentChannel: (v: string) => void; referenceNumber: string; setReferenceNumber: (v: string) => void; receiptFile: File | null; setReceiptFile: (file: File | null) => void; paymentMethods: Array<{ id: string; provider: string; channel: string }>; onSubmit: () => void; isPending: boolean }) {
+function PaymentModal({ open, onClose, title, description, submitLabel, amount, setAmount, paymentMethodId, setPaymentMethodId, paymentChannel, setPaymentChannel, referenceNumber, setReferenceNumber, receiptFile, setReceiptFile, paymentMethods, onSubmit, isPending, error, amountLabel = 'Amount Collected' }: { open: boolean; onClose: () => void; title: string; description: string; submitLabel: string; amount: string; setAmount: (v: string) => void; paymentMethodId: string; setPaymentMethodId: (v: string) => void; paymentChannel: string; setPaymentChannel: (v: string) => void; referenceNumber: string; setReferenceNumber: (v: string) => void; receiptFile: File | null; setReceiptFile: (file: File | null) => void; paymentMethods: Array<{ id: string; provider: string; channel: string }>; onSubmit: () => void; isPending: boolean; error: string; amountLabel?: string }) {
   return (
     <Dialog open={open} onClose={onClose} title={title}>
       <p className="mb-3 text-sm text-[#071f52]/70">{description}</p>
-      <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Amount Collected</label>
+      {error ? <p role="alert" className="mb-3 rounded-xl border border-[#efb6bc] bg-[#fff7f8] px-3 py-2 text-sm font-semibold text-[#d43a4a]">{error}</p> : null}
+       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">{amountLabel}</label>
       <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Enter the amount collected" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none" />
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Payment Account</label>
       <select value={paymentMethodId} onChange={(e) => setPaymentMethodId(e.target.value)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none">
@@ -1114,6 +1143,30 @@ function PaymentModal({ open, onClose, title, description, submitLabel, amount, 
       <div className="flex justify-end gap-2 mt-4">
         <button onClick={onClose} disabled={isPending} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6 disabled:opacity-50">Cancel</button>
         <button onClick={onSubmit} disabled={isPending || !amount} className="rounded-full px-4 py-2 text-xs font-bold bg-[#071f52] text-white hover:bg-[#071f52]/90 disabled:opacity-50">{isPending ? 'Saving...' : submitLabel}</button>
+      </div>
+    </Dialog>
+  )
+}
+
+function RefundCancelModal({ open, onClose, reason, setReason, onSubmit, isPending }: { open: boolean; onClose: () => void; reason: string; setReason: (v: string) => void; onSubmit: () => void; isPending: boolean }) {
+  return (
+    <Dialog open={open} onClose={onClose} title="Cancel Refund">
+      <div className="space-y-5">
+        <fieldset>
+          <legend className="text-sm font-semibold text-[#4d5a72]">Refund decision <span className="text-[#ef4444]">*</span></legend>
+          <label className="mt-3 flex cursor-pointer items-start gap-3 text-sm font-medium text-[#4d5a72]">
+            <input type="radio" checked readOnly className="mt-0.5 h-4 w-4 border-[#cfd7e6] text-[#ef4444] focus:ring-[#ef4444]/20" />
+            <span>Cancel refund due to fraud or an invalid refund claim</span>
+          </label>
+        </fieldset>
+        <div>
+          <label className="mb-2 block text-sm font-semibold text-[#4d5a72]">Reason <span className="text-[#ef4444]">*</span></label>
+          <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={4} placeholder="Reason for canceling the refund..." className="w-full rounded-2xl border border-[#d9dfeb] px-4 py-3 text-sm text-[#1f2a44] placeholder:text-[#9aa6ba] focus:border-[#071f52] focus:outline-none" />
+        </div>
+      </div>
+      <div className="-mx-6 mt-6 flex gap-3 border-t border-[#071f52]/8 px-6 pt-4">
+        <button onClick={onClose} disabled={isPending} className="flex-1 rounded-2xl border border-[#d7ddea] px-4 py-3 text-sm font-bold text-[#4d5a72] transition-colors hover:bg-[#f7f9fc] disabled:opacity-50">Back</button>
+        <button onClick={onSubmit} disabled={isPending || !reason.trim()} className="flex-1 rounded-2xl bg-[#ef1111] px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-[#d90f0f] disabled:opacity-50">{isPending ? 'Canceling...' : 'Cancel Refund'}</button>
       </div>
     </Dialog>
   )

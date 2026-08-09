@@ -105,6 +105,7 @@ export function PriceSummary({ rentalType, bookingMode, days, basePricePerDay, d
               <div className="max-w-[55%]">
                 <p>Security Deposit ({securityDepositType === 'percent' ? `${securityDepositValue}%` : `₱${securityDepositValue.toLocaleString()} fixed`})</p>
                 <p className="text-xs font-medium text-[#e92935]/72">Vehicle-configured deposit</p>
+                {rentalType !== 'self-drive' ? <p className="text-xs font-semibold text-[#16a34a]">Refundable if cancelled.</p> : null}
               </div>
               <span className="font-bold text-[#e92935]">− ₱{deposit.toLocaleString()}.00</span>
             </div>

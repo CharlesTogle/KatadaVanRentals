@@ -7,7 +7,9 @@ export type BookingStatus =
   | 'rejected'
   | 'canceled'
   | 'on_trip'
-  | 'completed'
+   | 'completed'
+
+export type PriceApprovalSource = 'confirm_with_adjustment' | 'manual_pricing'
 
 export interface Booking {
   id: string
@@ -50,6 +52,7 @@ export interface Booking {
   booking_mode?: 'dropoff' | 'keep'
   flagged_for_manual_pricing?: boolean
   in_service_area?: boolean
+  price_approval_source?: PriceApprovalSource | null
   idempotency_key: string | null
   created_by: string | null
   created_at: string

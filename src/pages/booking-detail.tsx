@@ -186,6 +186,8 @@ export default function BookingDetail() {
   }
 
   const { booking, vehicle, payments, status_events, cancellation, extensions, invoice, requested_document_types = [] } = data
+  const priceApprovalSource = booking.price_approval_source
+    ?? (booking.in_service_area === false ? 'manual_pricing' : 'confirm_with_adjustment')
   const adminRequestSentAt = booking.status === 'awaiting_documents'
     ? status_events.find((e) => e.to_status === 'awaiting_documents')?.created_at || null
     : null
@@ -436,6 +438,7 @@ export default function BookingDetail() {
                   <div>
                       <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#071f52]/46 sm:text-xs">{statusMessage.title}</p>
                       <p className={`mt-0.5 text-xs font-medium leading-5 sm:text-sm ${statusTone.text}`}>{statusMessage.body}</p>
+                      {booking.status === 'canceled' && cancellation?.refund_status ? <p className="mt-2 text-xs font-bold leading-5 text-[#16a34a]">Refund status: {formatRefundStatus(cancellation.refund_status)}</p> : null}
                       {expiryMessage ? <p className="mt-2 text-xs font-semibold leading-5 text-[#6f5a32] sm:text-sm">{expiryMessage}</p> : null}
                   </div>
                 </div>
@@ -567,7 +570,7 @@ export default function BookingDetail() {
         </div>
 
         <aside className="space-y-4">
-          {booking.status === 'pending_price_approval' && balanceSummary ? (
+          {booking.status === 'pending_price_approval' && priceApprovalSource === 'confirm_with_adjustment' && balanceSummary ? (
             <section className="rounded-lg border border-[#f2c96a] bg-[#fff9eb] shadow-[0_6px_20px_rgba(204,152,34,0.08)]">
               <div className="px-4 py-4">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#c76a00] sm:text-xs">Pending price approval</p>
@@ -595,7 +598,7 @@ export default function BookingDetail() {
             </section>
           ) : null}
 
-          {booking.status === 'pending_price_approval' && booking.in_service_area === false ? (
+          {booking.status === 'pending_price_approval' && priceApprovalSource === 'manual_pricing' ? (
             <section className="rounded-lg border border-[#f59e0b] bg-[#fefce8] shadow-[0_6px_20px_rgba(245,158,11,0.08)]">
               <div className="px-4 py-4">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#92400e] sm:text-xs">Manual Pricing</p>
@@ -803,7 +806,7 @@ export default function BookingDetail() {
             </section>
           ) : null}
 
-          {canCustomerCancelBooking(booking.status) && booking.status !== 'pending_price_approval' ? (
+          {canCustomerCancelBooking(booking.status, priceApprovalSource) ? (
             <Button
               variant="outline"
               className="w-full gap-1.5 rounded-lg border-[#e92935]/30 py-4 text-xs text-[#e92935] hover:bg-[#e92935]/8"
@@ -931,6 +934,10 @@ function formatCancellationReason(note?: string | null) {
   })()
 
   return reason ? `${label}. Reason: ${reason}` : label
+}
+
+function formatRefundStatus(status: string) {
+  return status.split('_').join(' ').replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
 function getStatusTone(status: string) {

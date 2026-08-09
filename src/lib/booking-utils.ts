@@ -31,6 +31,7 @@ export function getMissingSelfDriveDocuments(documents: CustomerDocument[]) {
 
 export type CustomerRentalType = 'self-drive' | 'all-out' | 'all-in'
 export type BookingMode = 'dropoff' | 'keep'
+export type RefundStatus = 'pending_refund' | 'refund_processed' | 'refund_cancelled'
 
 interface BookingPriceBreakdownInput {
   rentalType: CustomerRentalType
@@ -127,8 +128,17 @@ export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, e
   }
 }
 
-export function canCustomerCancelBooking(status: BookingStatus) {
-  return status === 'for_review' || status === 'pending_price_approval' || status === 'confirmed'
+export function canCustomerCancelBooking(status: BookingStatus, priceApprovalSource?: 'confirm_with_adjustment' | 'manual_pricing' | null) {
+  return status === 'for_review'
+    || status === 'awaiting_documents'
+    || status === 'confirmed'
+    || (status === 'pending_price_approval' && Boolean(priceApprovalSource))
+}
+
+export function getCustomerCancellationRefundStatus(status: BookingStatus, rentalModel: 'all_in' | 'all_out' | 'self_drive'): RefundStatus {
+  return (status === 'for_review' || status === 'awaiting_documents') && rentalModel !== 'self_drive'
+    ? 'pending_refund'
+    : 'refund_cancelled'
 }
 
 export function canDownloadInvoice(status: BookingStatus) {
@@ -147,6 +157,8 @@ export type AdminActionType =
   | 'cancel'
   | 'delete'
   | 'set_price_for_manual'
+  | 'process_refund'
+  | 'cancel_refund'
 
 export interface AdminAction {
   type: AdminActionType
@@ -154,7 +166,20 @@ export interface AdminAction {
   variant: 'primary' | 'danger' | 'secondary'
 }
 
-export function getAdminBookingDetailActions(status: BookingStatus, flaggedForManualPricing: boolean = false): AdminAction[] {
+export function getAdminBookingDetailActions(status: BookingStatus, flaggedForManualPricing: boolean = false, refundStatus?: RefundStatus | null): AdminAction[] {
+  if (status === 'canceled') {
+    if (refundStatus === 'pending_refund') {
+      return [
+        { type: 'process_refund', label: 'Process Refund', variant: 'primary' },
+        { type: 'cancel_refund', label: 'Cancel Refund', variant: 'danger' },
+      ]
+    }
+
+    return refundStatus === 'refund_cancelled' || refundStatus === 'refund_processed'
+      ? [{ type: 'delete', label: 'Delete Booking', variant: 'danger' }]
+      : []
+  }
+
   if (flaggedForManualPricing) {
     return [
       { type: 'set_price_for_manual', label: 'Set Price', variant: 'primary' },
