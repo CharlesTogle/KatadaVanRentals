@@ -57,9 +57,3 @@ begin
   return new;
 end;
 $$;
-
-drop trigger if exists queue_booking_cancellation_email on public.booking_cancellations;
-
-create trigger queue_booking_cancellation_email
-after insert on public.booking_cancellations
-for each row execute function public.queue_booking_cancellation_email();
