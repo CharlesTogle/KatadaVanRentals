@@ -308,11 +308,27 @@ describe('AdminBookingDetail', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Reject' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Reject Booking' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Confirm with Adjustment' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Request Documents' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Delete Booking' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Release Unit / Start Trip' })).not.toBeInTheDocument()
+    })
+  })
+
+  it('hides Request Documents for awaiting_documents status', async () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'awaiting_documents' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Request Documents' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument()
     })
   })
 
@@ -439,9 +455,9 @@ describe('AdminBookingDetail', () => {
 
     renderDetail()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Reject' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Reject Booking' }))
     fireEvent.change(screen.getByPlaceholderText('Tell the customer why the booking is being rejected'), { target: { value: 'Missing verification' } })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Reject' })[1])
+      fireEvent.click(screen.getAllByRole('button', { name: 'Reject Booking' })[1])
 
     await waitFor(() => {
       expect(mutateAsync).toHaveBeenCalledWith({ type: 'reject', bookingId: 'booking-1', reason: 'Missing verification' })
@@ -581,6 +597,22 @@ describe('AdminBookingDetail', () => {
     })
   })
 
+  it('shows overpayment errors inside the start-trip modal', async () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'confirmed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+    mutateAsync.mockRejectedValueOnce({ code: 'P0001', message: 'Collected amount exceeds the outstanding balance' })
+
+    renderDetail()
+    fireEvent.click(screen.getByRole('button', { name: 'Release Unit / Start Trip' }))
+    fireEvent.change(screen.getByPlaceholderText('Enter the amount collected'), { target: { value: '7001' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Start Trip' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Collected amount exceeds the outstanding balance')
+  })
+
   it('rejects an unsupported receipt before the start-trip action', async () => {
     useAdminBooking.mockReturnValue({
       data: { booking: { ...mockBooking, status: 'confirmed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [], documents: [], status_events: [], extensions: [], invoice: null },
@@ -659,7 +691,7 @@ describe('AdminBookingDetail', () => {
     renderDetail()
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel Booking' }))
-    fireEvent.click(screen.getByLabelText('Admin - no refund'))
+    fireEvent.click(screen.getByLabelText('Admin cancellation - no refund'))
     fireEvent.change(screen.getByPlaceholderText('Reason for cancellation...'), { target: { value: 'Customer did not show up' } })
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Cancel' }))
 
@@ -790,6 +822,32 @@ describe('AdminBookingDetail', () => {
       expect(upload).toHaveBeenCalled()
        expect(mutateAsync).toHaveBeenCalledWith({ type: 'make_payment', bookingId: 'booking-1', collectedAmount: 1500, paymentMethodId: 'pm-1', paymentChannel: 'bank_transfer', referenceNumber: 'BAL-123', receiptPath: expect.stringMatching(/^booking-1\/\d+\.pdf$/), idempotencyKey: expect.any(String) })
     })
+  })
+
+  it('shows payment action errors inside the modal', async () => {
+    useAdminBooking.mockReturnValue({
+      data: {
+        booking: { ...mockBooking, status: 'completed', remaining_amount: 1500 },
+        customer: mockCustomer,
+        vehicle: mockVehicle,
+        payments: [{ id: 'payment-1', channel: 'cash', status: 'submitted', amount: 7500, reference_number: null, receipt_path: null, paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        requested_document_types: [],
+        documents: [],
+        status_events: [],
+        extensions: [],
+        invoice: null,
+      },
+      isLoading: false,
+      error: null,
+    })
+    mutateAsync.mockRejectedValueOnce({ code: 'P0001', message: 'Collected amount exceeds the outstanding balance' })
+
+    renderDetail()
+    fireEvent.click(screen.getByRole('button', { name: 'Make a Payment' }))
+    fireEvent.change(screen.getByPlaceholderText('Enter the amount collected'), { target: { value: '1500' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Record Payment' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Collected amount exceeds the outstanding balance')
   })
 
   it('shows correct actions for on_trip status', async () => {
@@ -946,10 +1004,14 @@ describe('AdminBookingDetail', () => {
   })
 
   it('getAdminBookingDetailActions returns correct actions per status', () => {
-    expect(getAdminBookingDetailActions('for_review').map(a => a.type)).toEqual(['confirm', 'reject', 'adjust_booking', 'request_documents', 'delete'])
+    expect(getAdminBookingDetailActions('for_review').map(a => a.type)).toEqual(['confirm', 'reject', 'adjust_booking', 'request_documents', 'cancel', 'delete'])
+    expect(getAdminBookingDetailActions('awaiting_documents').map(a => a.type)).toContain('cancel')
+    expect(getAdminBookingDetailActions('pending_price_approval').map(a => a.type)).toEqual(['cancel', 'delete'])
     expect(getAdminBookingDetailActions('confirmed').map(a => a.type)).toEqual(['start_trip', 'extend_rental', 'cancel', 'delete'])
     expect(getAdminBookingDetailActions('on_trip').map(a => a.type)).toEqual(['complete', 'extend_rental'])
     expect(getAdminBookingDetailActions('completed').map(a => a.type)).toEqual(['delete'])
-    expect(getAdminBookingDetailActions('canceled')).toEqual([])
+    expect(getAdminBookingDetailActions('canceled', false, 'pending_refund').map(a => a.type)).toEqual(['process_refund', 'cancel_refund'])
+    expect(getAdminBookingDetailActions('canceled', false, 'refund_cancelled').map(a => a.type)).toEqual(['delete'])
+    expect(getAdminBookingDetailActions('canceled', false, 'refund_processed').map(a => a.type)).toEqual(['delete'])
   })
 })

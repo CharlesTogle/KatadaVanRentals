@@ -59,8 +59,9 @@ async function mockLogin(page: import('@playwright/test').Page, session: typeof 
           first_name: role === 'admin' ? 'Ada' : 'Alex',
           last_name: role === 'admin' ? 'Admin' : 'Customer',
           email: session.user.email,
-          mobile: '+63 900 000 0000',
-          address: '123 Test St',
+           mobile: '+63 900 000 0000',
+           is_active: true,
+           address: '123 Test St',
           city: 'Quezon City',
           province: 'Metro Manila',
           zip_code: '1100',
@@ -73,7 +74,7 @@ async function mockLogin(page: import('@playwright/test').Page, session: typeof 
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ role }),
+      body: JSON.stringify({ role, is_active: true }),
     })
   })
 
@@ -81,6 +82,99 @@ async function mockLogin(page: import('@playwright/test').Page, session: typeof 
   await page.getByPlaceholder('you@example.com').fill(session.user.email)
   await page.getByPlaceholder('Enter your password').fill('password123')
   await page.getByRole('button', { name: 'Sign in' }).click()
+}
+
+async function mockAdminBookingDetail(page: import('@playwright/test').Page, status: string, refundStatus: string | null) {
+  const booking = {
+    id: 'booking-1',
+    booking_number: 'CR-260723-ABCD',
+    customer_id: 'customer-1',
+    guest_name: null,
+    guest_email: null,
+    guest_mobile: null,
+    vehicle_id: 'vehicle-1',
+    rental_model: 'all_in',
+    status,
+    start_at: '2026-08-20T08:00:00.000Z',
+    end_at: '2026-08-21T08:00:00.000Z',
+    duration_days: 1,
+    pickup_location: 'Pickup',
+    dropoff_location: 'Dropoff',
+    destination: 'Destination',
+    purpose_of_travel: 'Business',
+    notes: null,
+    self_drive_address: null,
+    distance_km: 20,
+    duration_minutes: 60,
+    toll_estimate_amount: 0,
+    toll_segments: [],
+    fuel_estimate_liters: 0,
+    fuel_estimate_amount: 0,
+    actual_toll_amount: 0,
+    actual_fuel_amount: 0,
+    delivery_fee: 0,
+    recovery_fee: 0,
+    discount_amount: 0,
+    deposit_amount: 500,
+    subtotal_amount: 4500,
+    total_amount: 4500,
+    paid_amount: 500,
+    remaining_amount: 4000,
+    price_line_items: [{ label: 'Base', detail: '1d x 4500', amount: 4500 }],
+    booking_mode: 'keep',
+    flagged_for_manual_pricing: false,
+    in_service_area: true,
+    idempotency_key: null,
+    created_by: 'customer-1',
+    created_at: '2026-07-20T08:00:00.000Z',
+    updated_at: '2026-07-20T08:00:00.000Z',
+    canceled_at: status === 'canceled' ? '2026-07-20T09:00:00.000Z' : null,
+    completed_at: null,
+    profiles: { id: 'customer-1', first_name: 'Alex', last_name: 'Customer', email: 'customer@example.com', mobile: '+63 900 000 0000' },
+    vehicles: { id: 'vehicle-1', name: 'Toyota Commuter', plate_number: 'ABC123', image_paths: [] },
+  }
+
+  await page.route('**/rest/v1/**', async (route) => {
+    const url = new URL(route.request().url())
+    const path = url.pathname
+
+    if (path.includes('/rpc/')) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({}) })
+      return
+    }
+
+    if (path.endsWith('/profiles')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: 'admin-1', role: 'admin', first_name: 'Ada', last_name: 'Admin', email: 'admin@example.com' }),
+      })
+      return
+    }
+
+    if (path.endsWith('/bookings')) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(booking) })
+      return
+    }
+
+    if (path.endsWith('/booking_cancellations')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(refundStatus ? { cancellation_type: 'customer_request', reason: 'Customer requested cancellation.', refund_status: refundStatus, created_at: '2026-07-20T09:00:00.000Z' } : null),
+      })
+      return
+    }
+
+    if (path.endsWith('/app_settings')) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ booking_expiry_hours: 2, support_email: 'support@example.com', tax_mode: 'unregistered' }) })
+      return
+    }
+
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
+  })
+
+  await mockLogin(page, adminSession, 'admin', '/admin/bookings/CR-260723-ABCD')
 }
 
 test.describe('Booking flows', () => {
@@ -162,5 +256,64 @@ test.describe('Booking flows', () => {
 
     await expect(page.getByText('confirmed')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Start Trip' })).toBeVisible()
+  })
+
+  test('admin can cancel a for-review booking', async ({ page }) => {
+    let cancellationRequest: Record<string, unknown> | null = null
+    await mockAdminBookingDetail(page, 'for_review', null)
+    await page.route('**/rest/v1/rpc/admin_cancel_booking', async (route) => {
+      cancellationRequest = route.request().postDataJSON()
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(null) })
+    })
+
+    await page.getByRole('button', { name: 'Cancel Booking', exact: true }).click()
+    await page.getByLabel('Admin cancellation - no refund').check()
+    await page.getByPlaceholder('Reason for cancellation...').fill('Admin cancellation test')
+    await page.getByRole('button', { name: 'Confirm Cancel' }).click()
+
+    await expect.poll(() => cancellationRequest).toEqual({
+      target_booking_id: 'booking-1',
+      cancellation_type: 'admin_no_refund',
+      reason: 'Admin cancellation test',
+    })
+  })
+
+  test('admin can process a pending refund', async ({ page }) => {
+    let refundRequest: Record<string, unknown> | null = null
+    await mockAdminBookingDetail(page, 'canceled', 'pending_refund')
+    await page.route('**/rest/v1/rpc/admin_process_booking_refund', async (route) => {
+      refundRequest = route.request().postDataJSON()
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(null) })
+    })
+
+    await expect(page.getByText('non-refundable')).not.toBeVisible()
+    await page.getByRole('button', { name: 'Process Refund', exact: true }).last().click()
+    await expect(page.getByText('Maximum refundable amount: ₱500.00')).toBeVisible()
+    await page.getByPlaceholder('Enter the amount refunded').fill('500')
+    await page.getByRole('button', { name: 'Process Refund', exact: true }).last().click()
+
+    await expect.poll(() => refundRequest).toEqual(expect.objectContaining({
+      target_booking_id: 'booking-1',
+      p_refund_amount: 500,
+      p_refund_method_id: null,
+      p_refund_channel: null,
+      p_refund_reference: null,
+    }))
+  })
+
+  test('admin cannot process a refund above the security deposit', async ({ page }) => {
+    let refundRequest = false
+    await mockAdminBookingDetail(page, 'canceled', 'pending_refund')
+    await page.route('**/rest/v1/rpc/admin_process_booking_refund', async (route) => {
+      refundRequest = true
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(null) })
+    })
+
+    await page.getByRole('button', { name: 'Process Refund', exact: true }).last().click()
+    await page.getByPlaceholder('Enter the amount refunded').fill('500.01')
+
+    await expect(page.getByText('Refund cannot exceed ₱500.00.')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Process Refund', exact: true }).last()).toBeDisabled()
+    expect(refundRequest).toBe(false)
   })
 })

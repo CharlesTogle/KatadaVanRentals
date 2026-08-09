@@ -494,7 +494,7 @@ export type AdminBookingActionInput =
   | { type: 'cancel'; bookingId: string; cancellationType: string; reason: string }
   | { type: 'delete'; bookingId: string }
   | { type: 'set_price_for_manual'; bookingId: string; adjustedTotal: number; reason: string }
-  | { type: 'process_refund'; bookingId: string; amount: number; paymentMethodId?: string; paymentChannel?: string; referenceNumber?: string; receiptPath?: string }
+  | { type: 'process_refund'; bookingId: string; amount: number; receiptPath?: string }
   | { type: 'cancel_refund'; bookingId: string; reason: string }
 
 export interface SubmittedPaymentRow {
@@ -623,9 +623,9 @@ export async function runAdminBookingAction(input: AdminBookingActionInput): Pro
       args: {
         target_booking_id: bookingId,
         p_refund_amount: (params as { amount: number }).amount,
-        p_refund_method_id: (params as { paymentMethodId?: string }).paymentMethodId ?? null,
-        p_refund_channel: (params as { paymentChannel?: string }).paymentChannel ?? 'cash',
-        p_refund_reference: (params as { referenceNumber?: string }).referenceNumber ?? null,
+        p_refund_method_id: null,
+        p_refund_channel: null,
+        p_refund_reference: null,
         p_refund_receipt_path: (params as { receiptPath?: string }).receiptPath ?? null,
       },
     },

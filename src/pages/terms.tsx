@@ -42,7 +42,7 @@ export default function Terms() {
 
         <section>
           <h2 className="mb-2 text-lg font-black tracking-[-0.02em] text-[#071f52]">4. Cancellation Policy</h2>
-          <p>Cancellations must be made in writing. Refund eligibility depends on the timing of cancellation and the rental type. Down payments for Self Drive bookings are non-refundable. Katada reserves the right to cancel bookings due to force majeure, safety concerns, or violation of terms.</p>
+          <p>Cancellations may be requested while a booking is in For Review, Awaiting Documents, Pending Price Approval, or Confirmed. All In and All Out bookings canceled in For Review or Awaiting Documents are placed into refund review. Pending Price Approval and Confirmed cancellations are non-refundable, including for All In and All Out. Self Drive payments are non-refundable. A refund review may be processed or canceled by Katada for fraud or an invalid refund claim. Once a trip has started, cancellations are not available. Katada reserves the right to cancel bookings due to force majeure, safety concerns, or violation of terms.</p>
         </section>
 
         <section>

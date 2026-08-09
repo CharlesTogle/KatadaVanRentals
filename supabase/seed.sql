@@ -187,10 +187,7 @@ insert into public.payments (
 select
   booking.id,
   'bank_transfer',
-  (case
-    when booking.status in ('rejected', 'canceled') then 'refunded'
-    else 'submitted'
-  end)::public.payment_status,
+   'submitted'::public.payment_status,
   booking.deposit_amount,
   format('SEED-DEPOSIT-%s', booking.booking_number),
   case when booking.status in ('for_review', 'awaiting_documents', 'pending_price_approval', 'confirmed', 'on_trip') then null else now() end,

@@ -67,4 +67,9 @@ describe('showError', () => {
     expect(showError({ code: 'P0001', message: 'booking/customer relation secret', details: '', hint: '' }))
       .not.toContain('booking/customer relation secret')
   })
+
+  it('shows safe payment business errors', () => {
+    expect(showError({ code: 'P0001', message: 'Collected amount exceeds the outstanding balance' }))
+      .toBe('Collected amount exceeds the outstanding balance')
+  })
 })

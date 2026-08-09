@@ -176,8 +176,18 @@ begin
 
   perform public.recalculate_booking_financials(target_booking_id);
 
-  insert into public.booking_status_events (booking_id, from_status, to_status, note, actor_id)
-  values (target_booking_id, previous_status, 'confirmed', note, auth.uid());
+   update public.booking_status_events as event
+   set note = coalesce($2, event.note)
+   where id = (
+     select id
+     from public.booking_status_events as created_event
+     where created_event.booking_id = target_booking_id
+       and created_event.from_status is not distinct from previous_status
+       and created_event.to_status = 'confirmed'
+       and created_event.created_at >= transaction_timestamp()
+     order by created_event.created_at desc
+     limit 1
+   );
 
   select * into booking_record from public.bookings where id = target_booking_id;
   return booking_record;

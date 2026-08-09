@@ -183,19 +183,33 @@ export function getAdminBookingDetailActions(status: BookingStatus, flaggedForMa
   if (flaggedForManualPricing) {
     return [
       { type: 'set_price_for_manual', label: 'Set Price', variant: 'primary' },
-      { type: 'reject', label: 'Reject', variant: 'danger' },
+      { type: 'reject', label: 'Reject Booking', variant: 'danger' },
+      { type: 'cancel', label: 'Cancel Booking', variant: 'danger' },
       { type: 'delete', label: 'Delete Booking', variant: 'danger' },
     ]
   }
 
   switch (status) {
     case 'for_review':
+      return [
+        { type: 'confirm', label: 'Confirm', variant: 'primary' },
+        { type: 'reject', label: 'Reject Booking', variant: 'danger' },
+        { type: 'adjust_booking', label: 'Confirm with Adjustment', variant: 'secondary' },
+        { type: 'request_documents', label: 'Request Documents', variant: 'secondary' },
+        { type: 'cancel', label: 'Cancel Booking', variant: 'danger' },
+        { type: 'delete', label: 'Delete Booking', variant: 'danger' },
+      ]
     case 'awaiting_documents':
       return [
         { type: 'confirm', label: 'Confirm', variant: 'primary' },
-        { type: 'reject', label: 'Reject', variant: 'danger' },
+        { type: 'reject', label: 'Reject Booking', variant: 'danger' },
         { type: 'adjust_booking', label: 'Confirm with Adjustment', variant: 'secondary' },
-        { type: 'request_documents', label: 'Request Documents', variant: 'secondary' },
+        { type: 'cancel', label: 'Cancel Booking', variant: 'danger' },
+        { type: 'delete', label: 'Delete Booking', variant: 'danger' },
+      ]
+    case 'pending_price_approval':
+      return [
+        { type: 'cancel', label: 'Cancel Booking', variant: 'danger' },
         { type: 'delete', label: 'Delete Booking', variant: 'danger' },
       ]
     case 'confirmed':

@@ -65,10 +65,9 @@ describe('booking-utils', () => {
     expect(getAdminBookingActions('completed')).toEqual([])
   })
 
-  it('returns detail actions for awaiting_documents same as for_review', () => {
-    const forReviewActions = getAdminBookingDetailActions('for_review')
+  it('does not offer another document request while awaiting_documents', () => {
     const awaitingDocsActions = getAdminBookingDetailActions('awaiting_documents')
-    expect(awaitingDocsActions).toEqual(forReviewActions)
+    expect(awaitingDocsActions.map((action) => action.type)).not.toContain('request_documents')
     expect(awaitingDocsActions.length).toBeGreaterThan(0)
   })
 

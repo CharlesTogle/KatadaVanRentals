@@ -34,8 +34,15 @@ begin
   insert into public.booking_cancellations (booking_id, cancellation_type, reason, canceled_by, refund_status)
   values (target_booking_id, cancellation_type, cancellation_reason, auth.uid(), cancellation_refund_status);
 
-  insert into public.booking_status_events (booking_id, from_status, to_status, note, actor_id)
-  values (target_booking_id, current_status, 'canceled', format('Type: %s. Reason: %s', cancellation_type, cancellation_reason), auth.uid());
+   update public.booking_status_events
+   set note = format('Type: %s. Reason: %s', cancellation_type, cancellation_reason)
+   where id = (
+     select id from public.booking_status_events
+     where booking_id = target_booking_id
+       and from_status = current_status
+       and to_status = 'canceled'
+     order by created_at desc limit 1
+   );
 end;
 $$;
 
@@ -71,8 +78,15 @@ begin
 
     insert into public.booking_cancellations (booking_id, cancellation_type, reason, canceled_by, refund_status)
     values (target_booking_id, 'customer_request', 'Price adjustment approval deadline passed.', auth.uid(), 'refund_cancelled');
-    insert into public.booking_status_events (booking_id, from_status, to_status, note, actor_id)
-    values (target_booking_id, 'pending_price_approval', 'canceled', 'Price adjustment approval deadline passed.', auth.uid());
+     update public.booking_status_events
+     set note = 'Price adjustment approval deadline passed.'
+     where id = (
+       select id from public.booking_status_events
+       where booking_id = target_booking_id
+         and from_status = 'pending_price_approval'
+         and to_status = 'canceled'
+       order by created_at desc limit 1
+     );
 
     select * into booking_record from public.bookings where id = target_booking_id;
     return booking_record;
@@ -86,8 +100,15 @@ begin
   update public.bookings set status = next_status, updated_at = now()
   where id = target_booking_id;
   perform public.recalculate_booking_financials(target_booking_id);
-  insert into public.booking_status_events (booking_id, from_status, to_status, note, actor_id)
-  values (target_booking_id, 'pending_price_approval', next_status, 'Customer accepted price adjustment.', auth.uid());
+   update public.booking_status_events
+   set note = 'Customer accepted price adjustment.'
+   where id = (
+     select id from public.booking_status_events
+     where booking_id = target_booking_id
+       and from_status = 'pending_price_approval'
+       and to_status = next_status
+     order by created_at desc limit 1
+   );
   select * into booking_record from public.bookings where id = target_booking_id;
   return booking_record;
 end;

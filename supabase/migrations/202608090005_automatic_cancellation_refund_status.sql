@@ -42,16 +42,16 @@ begin
     from expired
     returning booking_id
   )
-  insert into public.booking_status_events (booking_id, from_status, to_status, note, actor_id)
-  select e.id,
-         e.previous_status,
-         'canceled',
-         case e.previous_status
-           when 'for_review' then 'Automatically canceled: booking was not confirmed before the approval deadline.'
-           when 'awaiting_documents' then 'Automatically canceled: required documents were not uploaded before the deadline.'
-         end,
-         null
-  from expired e;
+   update public.booking_status_events event
+   set note = case expired.previous_status
+     when 'for_review' then 'Automatically canceled: booking was not confirmed before the approval deadline.'
+     when 'awaiting_documents' then 'Automatically canceled: required documents were not uploaded before the deadline.'
+   end
+   from expired
+   where event.booking_id = expired.id
+     and event.from_status = expired.previous_status
+     and event.to_status = 'canceled'
+     and event.created_at >= transaction_timestamp();
 
   get diagnostics v_canceled_count = row_count;
   return v_canceled_count;

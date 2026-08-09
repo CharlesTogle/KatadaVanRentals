@@ -34,8 +34,15 @@ begin
   where id = target_booking_id returning * into booking_record;
   perform public.recalculate_booking_financials(target_booking_id);
   select * into booking_record from public.bookings where id = target_booking_id;
-  insert into public.booking_status_events (booking_id, from_status, to_status, note, actor_id)
-  values (target_booking_id, 'confirmed', 'on_trip', format('Trip started. Submitted: %s', collected_amount), auth.uid());
+   update public.booking_status_events
+   set note = format('Trip started. Submitted: %s', collected_amount)
+   where id = (
+     select id from public.booking_status_events
+     where booking_id = target_booking_id
+       and from_status = 'confirmed'
+       and to_status = 'on_trip'
+     order by created_at desc limit 1
+   );
   return booking_record;
 end;
 $$;
@@ -122,8 +129,15 @@ begin
   where id = target_booking_id;
   perform public.recalculate_booking_financials(target_booking_id);
   select * into booking_record from public.bookings where id = target_booking_id;
-  insert into public.booking_status_events (booking_id, from_status, to_status, note, actor_id)
-  values (target_booking_id, 'on_trip', 'completed', coalesce(note, 'Booking completed.'), auth.uid());
+   update public.booking_status_events
+   set note = coalesce(note, 'Booking completed.')
+   where id = (
+     select id from public.booking_status_events
+     where booking_id = target_booking_id
+       and from_status = 'on_trip'
+       and to_status = 'completed'
+     order by created_at desc limit 1
+   );
   return booking_record;
 end;
 $$;

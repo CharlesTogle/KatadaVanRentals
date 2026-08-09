@@ -49,6 +49,7 @@ const functionMap: Record<string, string> = {
 }
 
 const unrecoverablePostgrestCodes = new Set(['42P01', '42703'])
+const safeBusinessErrors = new Set(['Collected amount exceeds the outstanding balance'])
 
 export function showError(error: unknown): string {
   if (!error) return ''
@@ -62,6 +63,7 @@ export function showError(error: unknown): string {
 
   if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P0001') {
     logError('client', 'Database business error', error, { path, requestId: getRequestId() })
+    if ('message' in error && typeof error.message === 'string' && safeBusinessErrors.has(error.message)) return error.message
     return 'Something went wrong. Please try again later.'
   }
 

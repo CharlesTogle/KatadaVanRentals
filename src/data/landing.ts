@@ -17,7 +17,7 @@ export const faqs = [
   },
   {
     question: 'Can I cancel or modify a booking?',
-    answer: 'Cancellations depend on the booking status. Bookings in For Review, Awaiting Documents, or Accepted stages can be cancelled. Once a trip has started, cancellations are not available. Contact us for modifications.',
+    answer: 'You can cancel bookings in For Review, Awaiting Documents, Pending Price Approval, or Confirmed. All In and All Out cancellations in For Review or Awaiting Documents enter refund review; Pending Price Approval and Confirmed cancellations are non-refundable. Self Drive payments are non-refundable. Once a trip has started, cancellation is not available. Contact us for modifications.',
   },
   {
     question: 'How do payments work?',
