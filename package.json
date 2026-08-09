@@ -8,6 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run",
+    "test:edge": "deno test supabase/functions/log-event/diagnostic.deno.ts",
+    "test:worker": "deno test supabase/functions/process-storage-cleanup-queue/worker.deno.ts",
     "test:e2e": "playwright test",
     "test:watch": "vitest",
     "preview": "vite preview"
