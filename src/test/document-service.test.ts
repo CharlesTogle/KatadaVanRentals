@@ -33,12 +33,13 @@ const mocks = vi.hoisted(() => {
 
   const storageRemove = vi.fn()
   const storageFrom = vi.fn(() => ({ remove: storageRemove }))
+  const cleanupInsert = vi.fn()
 
-  return { order, eq, select, upsert, from, reqDocSingle, reqDocUpsert, reqDocDeleteEq, storageRemove, storageFrom }
+  return { order, eq, select, upsert, from, reqDocSingle, reqDocUpsert, reqDocDeleteEq, storageRemove, storageFrom, cleanupInsert }
 })
 
 vi.mock('@/lib/supabase', () => ({
-  supabase: { from: mocks.from, storage: { from: mocks.storageFrom } },
+  supabase: { from: (table: string) => table === 'storage_cleanup_queue' ? { insert: mocks.cleanupInsert } : mocks.from(table), storage: { from: mocks.storageFrom } },
 }))
 
 describe('document-service', () => {
@@ -122,9 +123,11 @@ describe('document-service', () => {
     mocks.reqDocSingle.mockResolvedValue({ data: { file_path: 'path/doc.pdf' }, error: null })
     mocks.reqDocDeleteEq.mockResolvedValue({ error: null })
     mocks.storageRemove.mockResolvedValue({ error: new Error('cleanup failed') })
+    mocks.cleanupInsert.mockResolvedValue({ error: null })
 
     await expect(deleteBookingRequestedDocument('rd-1')).resolves.toEqual({ cleanupFailed: true })
     expect(mocks.reqDocDeleteEq).toHaveBeenCalledWith('id', 'rd-1')
+    expect(mocks.cleanupInsert).toHaveBeenCalledWith({ bucket: 'customer-documents', file_path: 'path/doc.pdf' })
   })
 
   it('throws if select fails before delete', async () => {

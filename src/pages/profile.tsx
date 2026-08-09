@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { showError } from '@/lib/errors'
 import { getAcceptedMimeTypes } from '@/lib/file-upload'
 import { UPLOAD_POLICIES } from '@/config/constants'
-import { uploadFile } from '@/services/upload-service'
+import { removeUploadedFileWithQueue, removeUploadedFileByUrlWithQueue, uploadFile } from '@/services/upload-service'
 import { toast } from '@/lib/toast'
 import { Button } from '@/components/ui/button'
 import { CountrySelect } from '@/components/ui/country-select'
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { getPhilippineMobileDigits, isValidPassword, normalizePhilippineMobile } from '@/lib/validation'
 import { AUTH_MESSAGES } from '@/constants/auth'
 import { composeProfileAddress, parseProfileAddress } from '@/lib/profile-address'
+import { logError } from '@/lib/logger'
 
 const emptyProfile = {
   first_name: '',
@@ -128,14 +129,23 @@ export default function Profile() {
     const file = e.target.files?.[0]
     if (!file || !user) return
     setUploading(true)
+    let uploadedPath: string | null = null
+    const previousUrl = profile.profile_image_path
     try {
       const ext = file.name.split('.').pop()
-      const path = `profile-photos/${user.id}.${ext}`
+      const path = `profile-photos/${user.id}-${crypto.randomUUID()}.${ext}`
+      uploadedPath = path
       await uploadFile({ bucket: 'business-assets', file, path, policy: UPLOAD_POLICIES.businessAssets, upsert: true })
       const { data: { publicUrl } } = supabase.storage.from('business-assets').getPublicUrl(path)
       setProfile({ ...profile, profile_image_path: publicUrl })
-      updateProfile.mutate({ id: user.id, data: { profile_image_path: publicUrl } })
+      await updateProfile.mutateAsync({ id: user.id, data: { profile_image_path: publicUrl } })
+      if (previousUrl) await removeUploadedFileByUrlWithQueue('business-assets', previousUrl).catch((cleanupError) => {
+        logError('profile', 'Failed to remove previous profile photo', cleanupError)
+      })
     } catch (error) {
+      if (uploadedPath) await removeUploadedFileWithQueue('business-assets', uploadedPath).catch((cleanupError) => {
+        logError('profile', 'Failed to remove profile photo after save failure', cleanupError)
+      })
       toast.error(showError(error as Error))
     } finally {
       setUploading(false)

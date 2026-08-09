@@ -49,6 +49,21 @@ describe('PaymentFields', () => {
     })
   })
 
+  it('rejects an unsupported receipt before storing it', () => {
+    render(
+      <MemoryRouter initialEntries={['/dashboard/book/vehicle-1?type=self-drive']}>
+        <PaymentFields depositAmount={8400} />
+      </MemoryRouter>,
+    )
+
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, {
+      target: { files: [new File(['receipt'], 'receipt.gif', { type: 'image/gif' })] },
+    })
+
+    expect(screen.queryByText('receipt.gif')).not.toBeInTheDocument()
+    expect(useBookingStore.getState().receiptFile).toBeNull()
+  })
+
   it('shows the computed deposit amount', () => {
     render(
       <MemoryRouter initialEntries={['/dashboard/book/vehicle-1?type=with-driver']}>

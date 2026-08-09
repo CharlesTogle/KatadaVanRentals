@@ -15,9 +15,8 @@ import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
 import { getBookingPriceBreakdown, normalizeCustomerRentalType, toBookingRentalModel, type CustomerRentalType } from '@/lib/booking-utils'
 import { calculateToll, getNearestTollPlazas, getRouteQuote, suggestLocations } from '@/services/location-service'
-import { supabase } from '@/lib/supabase'
 import { UPLOAD_POLICIES } from '@/config/constants'
-import { uploadFile } from '@/services/upload-service'
+import { removeUploadedFileWithQueue, uploadFile } from '@/services/upload-service'
 import { useBookingStore } from '@/store/booking-store'
 import type { AdminBookingCreateInput } from '@/types/admin-booking'
 import { useVatPercent } from '@/hooks/use-vat-percent'
@@ -473,7 +472,9 @@ export function BookingCreateForm() {
       toast.success(`Booking ${result.bookingNumber} confirmed.`)
       navigate('/admin/bookings')
     } catch (err: any) {
-      if (receiptPath) await supabase.storage.from('payment-receipts').remove([receiptPath])
+      if (receiptPath) await removeUploadedFileWithQueue('payment-receipts', receiptPath).catch((cleanupError) => {
+        logError('admin-booking', 'Failed to remove payment receipt after booking failure', cleanupError)
+      })
       setError(err?.status === 409 ? err.message || 'Vehicle is not available for these dates.' : showError(err))
     } finally {
       setSubmitting(false)

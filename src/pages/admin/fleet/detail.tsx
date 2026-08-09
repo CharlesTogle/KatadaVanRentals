@@ -25,8 +25,9 @@ export default function FleetDetail() {
       await updateMutation.mutateAsync({ id: vehicle.id, data: toVehicleInput(data) })
       toast.success(`${data.name} updated.`)
       setEditing(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(showError(error))
+      throw error
     }
   }
 

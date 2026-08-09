@@ -683,6 +683,10 @@ describe('BookingDetail', () => {
     expect(screen.getByText('Valid ID')).toBeInTheDocument()
     expect(screen.getByText('Upload file')).toBeInTheDocument()
     expect(screen.getAllByText('Please upload your valid ID and proof of billing.').length).toBeGreaterThanOrEqual(1)
+
+    fireEvent.click(screen.getByText('Upload file'))
+    fireEvent.change(screen.getByLabelText('Upload requested document'), { target: { files: [new File(['bad'], 'requested.gif', { type: 'image/gif' })] } })
+    expect(mockInsert).not.toHaveBeenCalled()
   })
 
   it('lists already-uploaded requested documents in the card', async () => {

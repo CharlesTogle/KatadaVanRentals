@@ -112,6 +112,18 @@ describe('Onboarding', () => {
     await waitFor(() => expect(saveDocumentMock).toHaveBeenCalledWith(expect.objectContaining({ document_type: 'driver_license', file_path: 'user-1/driver_license.jpg' })))
   })
 
+  it('rejects an unsupported onboarding document before metadata save', async () => {
+    const user = userEvent.setup()
+    renderOnboarding()
+    await advanceToChoice(user)
+    await user.click(screen.getByRole('button', { name: /self drive/i }))
+    await user.click(screen.getAllByRole('button', { name: /upload/i })[0])
+    await user.upload(screen.getByLabelText('Upload document file'), new File(['bad'], 'document.gif', { type: 'image/gif' }))
+
+    expect(saveDocumentMock).not.toHaveBeenCalled()
+    expect(uploadMock).not.toHaveBeenCalled()
+  })
+
   it('completes the self-drive branch when both documents already exist', async () => {
     const user = userEvent.setup()
     useCustomerDocumentsMock.mockReturnValue({ data: documents, isLoading: false })

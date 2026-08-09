@@ -6,8 +6,10 @@ import { useProfile, useUpdateProfile } from '@/hooks/use-profile'
 import { useCustomerDocuments, useSaveCustomerDocument } from '@/hooks/use-documents'
 import { composeProfileAddress, parseProfileAddress } from '@/lib/profile-address'
 import { showError } from '@/lib/errors'
+import { UPLOAD_POLICIES } from '@/config/constants'
+import { removeUploadedFileWithQueue, uploadFile } from '@/services/upload-service'
 import { toast } from '@/lib/toast'
-import { supabase } from '@/lib/supabase'
+import { logError } from '@/lib/logger'
 import { Button } from '@/components/ui/button'
 import { CountrySelect } from '@/components/ui/country-select'
 import { getPhilippineMobileDigits, normalizePhilippineMobile } from '@/lib/validation'
@@ -163,11 +165,14 @@ export default function Onboarding() {
     if (!file || !activeDocument || !user) return
     setUploading(true)
     const extension = file.name.split('.').pop() || 'bin'
-    const path = `${user.id}/${activeDocument}.${extension}`
+    const previousPath = documentsByType[activeDocument]?.file_path
+    const path = previousPath ? `${user.id}/${activeDocument}-${crypto.randomUUID()}.${extension}` : `${user.id}/${activeDocument}.${extension}`
 
+    let uploaded = false
+    let saved = false
     try {
-      const { error } = await supabase.storage.from('customer-documents').upload(path, file, { upsert: true })
-      if (error) throw error
+      await uploadFile({ bucket: 'customer-documents', file, path, policy: UPLOAD_POLICIES.customerDocuments, upsert: true })
+      uploaded = true
       await saveDocument.mutateAsync({
         customer_id: user.id,
         document_type: activeDocument,
@@ -176,13 +181,20 @@ export default function Onboarding() {
         mime_type: file.type || 'application/octet-stream',
         size_bytes: file.size,
       })
+      saved = true
     } catch (error) {
+      if (uploaded) await removeUploadedFileWithQueue('customer-documents', path).catch((cleanupError) => {
+        logError('documents', 'Failed to remove onboarding document after save failure', cleanupError)
+      })
       toast.error(showError(error as Error))
     } finally {
       setUploading(false)
       setActiveDocument(null)
       event.target.value = ''
     }
+    if (saved && previousPath) await removeUploadedFileWithQueue('customer-documents', previousPath).catch((cleanupError) => {
+      logError('documents', 'Failed to remove previous onboarding document', cleanupError)
+    })
   }
 
   const completeOnboarding = async () => {
@@ -278,7 +290,7 @@ function ChoiceButton({ icon, label, onClick }: { icon: ReactNode; label: string
 }
 
 function DocumentsStep({ documentsByType, loading, uploading, fileInputRef, onUpload, onFileChange, canContinue, onBack, onContinue }: { documentsByType: Record<string, { original_filename: string | null; status: string; file_path: string }>; loading: boolean; uploading: boolean; fileInputRef: React.RefObject<HTMLInputElement | null>; onUpload: (type: DocumentType) => void; onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void; canContinue: boolean; onBack: () => void; onContinue: () => void }) {
-  return <div><StepHeading title="Bring the essentials" description="Self-drive rentals require both documents below. Each upload is saved automatically." /><input ref={fileInputRef} type="file" accept="image/*,.pdf" onChange={onFileChange} className="hidden" aria-label="Upload document file" /><div className="mt-6 space-y-3">{onboardingDocuments.map(({ key, label }) => { const document = documentsByType[key]; const uploaded = document && ['submitted', 'verified'].includes(document.status) && document.file_path; return <div key={key} className="flex items-center justify-between gap-3 rounded-2xl border border-[#071f52]/10 bg-[#f7f9ff] p-4"><div className="min-w-0"><p className="text-sm font-bold text-[#071f52]">{label}</p><p className="mt-1 truncate text-xs font-medium text-[#071f52]/48">{uploaded ? document.original_filename : 'Not uploaded'}</p></div>{uploaded ? <CheckCircle2 className="shrink-0 text-[#16a34a]" size={20} /> : <button type="button" onClick={() => onUpload(key)} disabled={loading || uploading} className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#071f52] px-3 py-2 text-xs font-bold text-white hover:bg-[#112458] disabled:opacity-50"><Upload size={13} /> Upload</button>}</div> })}</div><div className="mt-6 flex gap-3"><Button type="button" variant="outline" onClick={onBack} className="flex-1" size="lg">Back</Button><Button type="button" onClick={onContinue} disabled={!canContinue || loading || uploading} className="flex-1 bg-[#071f52] text-white hover:bg-[#112458]" size="lg">Continue</Button></div></div>
+  return <div><StepHeading title="Bring the essentials" description="Self-drive rentals require both documents below. Each upload is saved automatically." /><input ref={fileInputRef} type="file" accept={UPLOAD_POLICIES.customerDocuments.accept} onChange={onFileChange} className="hidden" aria-label="Upload document file" /><div className="mt-6 space-y-3">{onboardingDocuments.map(({ key, label }) => { const document = documentsByType[key]; const uploaded = document && ['submitted', 'verified'].includes(document.status) && document.file_path; return <div key={key} className="flex items-center justify-between gap-3 rounded-2xl border border-[#071f52]/10 bg-[#f7f9ff] p-4"><div className="min-w-0"><p className="text-sm font-bold text-[#071f52]">{label}</p><p className="mt-1 truncate text-xs font-medium text-[#071f52]/48">{uploaded ? document.original_filename : 'Not uploaded'}</p></div>{uploaded ? <CheckCircle2 className="shrink-0 text-[#16a34a]" size={20} /> : <button type="button" onClick={() => onUpload(key)} disabled={loading || uploading} className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#071f52] px-3 py-2 text-xs font-bold text-white hover:bg-[#112458] disabled:opacity-50"><Upload size={13} /> Upload</button>}</div> })}</div><div className="mt-6 flex gap-3"><Button type="button" variant="outline" onClick={onBack} className="flex-1" size="lg">Back</Button><Button type="button" onClick={onContinue} disabled={!canContinue || loading || uploading} className="flex-1 bg-[#071f52] text-white hover:bg-[#112458]" size="lg">Continue</Button></div></div>
 }
 
 function CompletionStep({ completing, onDashboard }: { completing: boolean; onDashboard: () => void }) {

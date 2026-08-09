@@ -1,7 +1,7 @@
 import { type FormEvent, useCallback, useRef, useState } from 'react'
 import { Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { uploadVehicleImage } from '@/services/vehicle-service'
+import { removeVehicleImage, uploadVehicleImage } from '@/services/vehicle-service'
 import { UPLOAD_POLICIES } from '@/config/constants'
 import { loadDraft, saveDraft, clearDraft } from '@/lib/draft-storage'
 import type { CreateVehicleInput, Vehicle } from '@/types/vehicle'
@@ -161,6 +161,8 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
 
   const initial = buildInitial()
   const [images, setImages] = useState<string[]>(vehicle?.image_paths || [])
+  const [uploadedImages, setUploadedImages] = useState<string[]>([])
+  const [removedImages, setRemovedImages] = useState<string[]>([])
   const [form, setForm] = useState<FleetFormData>(initial)
 
   const set = useCallback(
@@ -178,15 +180,19 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
     const files = e.target.files
     if (!files?.length) return
     setUploadingImage(true)
+    const urls: string[] = []
     try {
-      const urls: string[] = []
       for (const file of Array.from(files)) {
         urls.push(await uploadVehicleImage(file))
       }
       const newImages = [...images, ...urls]
+      setUploadedImages((current) => [...current, ...urls])
       setImages(newImages)
       setForm((prev) => ({ ...prev, image_paths: newImages }))
     } catch (error) {
+      await Promise.all(urls.map((image) => removeVehicleImage(image).catch((cleanupError) => {
+        logError('fleet', 'Failed to remove vehicle image after upload failure', cleanupError, { requestId: getRequestId() })
+      })))
       logError('fleet', 'Vehicle image upload failed', error, { requestId: getRequestId() })
       setFormError('Failed to upload image. Try again.')
     } finally {
@@ -195,7 +201,9 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
   }
 
   const removeImage = (index: number) => {
+    const image = images[index]
     const newImages = images.filter((_, i) => i !== index)
+    if (image) setRemovedImages((current) => [...current, image])
     setImages(newImages)
     setForm((prev) => ({ ...prev, image_paths: newImages }))
   }
@@ -219,8 +227,37 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
     if (form.year.trim() && (isNaN(Number(form.year)) || Number(form.year) < 1900 || Number(form.year) > 2100)) {
       setFormError('Invalid Year.'); return
     }
-    await onSubmit(form)
-    if (draftKey) clearDraft(draftKey)
+    try {
+      await onSubmit(form)
+      await Promise.all(removedImages.map((image) => removeVehicleImage(image).catch((cleanupError) => {
+        logError('fleet', 'Failed to remove vehicle image after update', cleanupError, { requestId: getRequestId() })
+      })))
+      setRemovedImages([])
+      setUploadedImages([])
+      if (draftKey) clearDraft(draftKey)
+    } catch (error) {
+      const failedCleanup = (await Promise.all(uploadedImages.map(async (image) => {
+        try {
+          await removeVehicleImage(image)
+          return null
+        } catch (cleanupError) {
+          logError('fleet', 'Failed to remove vehicle image after save failure', cleanupError, { requestId: getRequestId() })
+          return image
+        }
+      }))).filter((image): image is string => image !== null)
+      const remainingImages = images.filter((image) => !uploadedImages.includes(image) || failedCleanup.includes(image))
+      setImages(remainingImages)
+      setForm((current) => ({ ...current, image_paths: remainingImages }))
+      setUploadedImages(failedCleanup)
+      throw error
+    }
+  }
+
+  const handleCancel = async () => {
+    await Promise.all(uploadedImages.map((image) => removeVehicleImage(image).catch((cleanupError) => {
+      logError('fleet', 'Failed to remove vehicle image after form cancellation', cleanupError, { requestId: getRequestId() })
+    })))
+    onCancel()
   }
 
   return (
@@ -480,7 +517,7 @@ export function FleetForm({ vehicle, onSubmit, onCancel, isProcessing, draftKey 
       </section>
 
       <div className="flex items-center justify-end gap-3 border-t border-[#071f52]/10 pt-5">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={isProcessing}>Cancel</Button>
+        <Button type="button" variant="outline" onClick={handleCancel} disabled={isProcessing || uploadingImage}>Cancel</Button>
         <Button type="submit" disabled={isProcessing || uploadingImage}>
           {isProcessing ? 'Saving...' : vehicle ? 'Update Vehicle' : 'Add Vehicle'}
         </Button>

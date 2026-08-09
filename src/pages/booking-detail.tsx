@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
 import { validateFile } from '@/lib/file-upload'
 import { UPLOAD_POLICIES } from '@/config/constants'
-import { uploadFile } from '@/services/upload-service'
+import { queueUploadedFileCleanup, removeUploadedFile, uploadFile } from '@/services/upload-service'
 import { useAcceptOwnPriceAdjustment, useBooking, useCancelOwnBooking } from '@/hooks/use-bookings'
 import { useFileViewer } from '@/hooks/use-file-viewer'
 import { saveBookingRequestedDocument, deleteBookingRequestedDocument, getCustomerDocumentSignedUrl } from '@/services/document-service'
@@ -226,44 +226,37 @@ export default function BookingDetail() {
       const path = `${user.id}/requested/${booking.id}/${Date.now()}.${ext}`
 
       validateFile(file, UPLOAD_POLICIES.customerDocuments)
-      const docId = await saveBookingRequestedDocument({
-        booking_id: booking.id,
-        customer_id: user.id,
-        requested_type_id: requestedTypeId,
-        file_path: path,
-        original_filename: file.name,
-        mime_type: file.type || 'application/octet-stream',
-        size_bytes: file.size,
-      })
-
-      let uploadError: Error | null = null
+      await uploadFile({ bucket: 'customer-documents', file, path, policy: UPLOAD_POLICIES.customerDocuments, upsert: true })
       try {
-        await uploadFile({ bucket: 'customer-documents', file, path, policy: UPLOAD_POLICIES.customerDocuments, upsert: true })
+        await saveBookingRequestedDocument({
+          booking_id: booking.id,
+          customer_id: user.id,
+          requested_type_id: requestedTypeId,
+          file_path: path,
+          original_filename: file.name,
+          mime_type: file.type || 'application/octet-stream',
+          size_bytes: file.size,
+        })
       } catch (error) {
-        uploadError = error as Error
-      }
-
-      if (uploadError) {
-        if (oldUpload) {
-          await saveBookingRequestedDocument({
-            booking_id: booking.id,
-            customer_id: user.id,
-            requested_type_id: requestedTypeId,
-            file_path: oldUpload.file_path,
-            original_filename: oldUpload.original_filename,
-            mime_type: oldUpload.mime_type,
-            size_bytes: oldUpload.size_bytes,
+        await removeUploadedFile('customer-documents', path).catch(async (cleanupError) => {
+          logError('documents', 'Failed to remove requested-document upload after metadata failure', cleanupError)
+          await queueUploadedFileCleanup('customer-documents', path).catch((queueError) => {
+            logError('documents', 'Failed to queue requested-document cleanup after metadata failure', queueError)
           })
-        } else {
-          await supabase.from('booking_requested_documents').delete().eq('id', docId)
-        }
-        throw uploadError
+        })
+        throw error
       }
 
       if (oldUpload) {
-        const { error: removeError } = await supabase.storage.from('customer-documents').remove([oldUpload.file_path])
-        if (removeError) {
+        try {
+          await removeUploadedFile('customer-documents', oldUpload.file_path)
+        } catch (removeError) {
           logError('documents', 'Failed to remove old requested-document file', removeError)
+          try {
+            await queueUploadedFileCleanup('customer-documents', oldUpload.file_path)
+          } catch (queueError) {
+            logError('documents', 'Failed to queue old requested-document cleanup', queueError)
+          }
           toast.warning('Replacement saved. The old file cleanup is still pending.')
         }
       }
@@ -271,7 +264,9 @@ export default function BookingDetail() {
       toast.success('Document uploaded.')
       refetchBooking()
     } catch (error) {
-      toast.error(showError(error as Error))
+      const message = showError(error as Error)
+      setUploadError({ typeId: requestedTypeId, message })
+      toast.error(message)
     } finally {
       setUploadingTypeId(null)
     }
@@ -306,7 +301,6 @@ export default function BookingDetail() {
       setUploadingTypeId(null)
       return
     }
-    try { validateFile(file, UPLOAD_POLICIES.customerDocuments) } catch (error) { const message = showError(error as Error); setUploadError({ typeId: requestedTypeId, message }); toast.error(message); setUploadingTypeId(null); return }
     doUpload(file, requestedTypeId, oldUploadRef.current)
   }
 
@@ -315,7 +309,6 @@ export default function BookingDetail() {
     setDragOver(false)
     const file = e.dataTransfer.files?.[0]
     if (!file) return
-    try { validateFile(file, UPLOAD_POLICIES.customerDocuments) } catch (error) { const message = showError(error as Error); setUploadError({ typeId: requestedTypeId, message }); toast.error(message); return }
     doUpload(file, requestedTypeId, null)
   }
 

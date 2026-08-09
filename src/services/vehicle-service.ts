@@ -1,4 +1,7 @@
 import { supabase } from '@/lib/supabase'
+import { UPLOAD_POLICIES } from '@/config/constants'
+import { queueUploadedFileCleanup, removeUploadedFile, uploadFile } from '@/services/upload-service'
+import { logError } from '@/lib/logger'
 import type { CreateVehicleInput, UpdateVehicleInput, Vehicle, VehicleUnavailableRange } from '@/types/vehicle'
 
 function slugify(name: string): string {
@@ -109,15 +112,35 @@ export async function updateVehicle(id: string, input: UpdateVehicleInput): Prom
 }
 
 export async function deleteVehicle(id: string): Promise<void> {
+  const { data: vehicle, error: loadError } = await supabase.from('vehicles').select('image_paths').eq('id', id).single()
+  if (loadError) throw loadError
   const { error } = await supabase.from('vehicles').delete().eq('id', id)
   if (error) throw error
+  await Promise.all((vehicle.image_paths || []).map((image: string) => removeVehicleImage(image).catch((cleanupError) => {
+    logError('vehicles', 'Failed to remove vehicle image after vehicle deletion', cleanupError)
+  })))
 }
 
 export async function uploadVehicleImage(file: File): Promise<string> {
   const ext = file.name.split('.').pop()
   const fileName = `${crypto.randomUUID()}.${ext}`
-  const { data, error } = await supabase.storage.from('vehicle-images').upload(fileName, file)
-  if (error) throw error
-  const { data: urlData } = supabase.storage.from('vehicle-images').getPublicUrl(data.path)
+  const path = await uploadFile({ bucket: 'vehicle-images', file, path: fileName, policy: UPLOAD_POLICIES.vehicleImages })
+  const { data: urlData } = supabase.storage.from('vehicle-images').getPublicUrl(path)
   return urlData.publicUrl
+}
+
+export async function removeVehicleImage(publicUrl: string): Promise<void> {
+  const marker = '/vehicle-images/'
+  const path = decodeURIComponent(new URL(publicUrl).pathname.split(marker)[1] || '')
+  if (!path) return
+  try {
+    await removeUploadedFile('vehicle-images', path)
+  } catch (error) {
+    try {
+      await queueUploadedFileCleanup('vehicle-images', path)
+    } catch (queueError) {
+      logError('vehicles', 'Failed to queue vehicle image cleanup', queueError)
+    }
+    throw error
+  }
 }

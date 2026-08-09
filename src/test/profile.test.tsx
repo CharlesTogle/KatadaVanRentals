@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Profile from '@/pages/profile'
 
 const mutate = vi.fn()
 const useProfileMock = vi.fn()
+const { toastError } = vi.hoisted(() => ({ toastError: vi.fn() }))
 const mockUser = {
   id: 'user-1',
   email: 'customer@example.com',
@@ -34,6 +35,8 @@ vi.mock('@/lib/supabase', () => ({
     },
   },
 }))
+
+vi.mock('@/lib/toast', () => ({ toast: { error: toastError } }))
 
 const validProfile = {
   first_name: 'Alex',
@@ -82,6 +85,17 @@ describe('Profile', () => {
     expect(screen.getByText('Last name is required.')).toBeInTheDocument()
     expect(screen.getByText('Mobile number must be exactly 10 digits.')).toBeInTheDocument()
     expect(mutate).not.toHaveBeenCalled()
+  })
+
+  it('shows an error when the profile photo type is unsupported', async () => {
+    render(<Profile />)
+
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, {
+      target: { files: [new File(['bad'], 'avatar.svg', { type: 'image/svg+xml' })] },
+    })
+
+    expect(mutate).not.toHaveBeenCalled()
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(expect.any(String)))
   })
 
   it('keeps the mobile input at exactly 10 digits after the +63 prefix', () => {

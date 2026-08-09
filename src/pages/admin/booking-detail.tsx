@@ -15,6 +15,9 @@ import { showError } from '@/lib/errors'
 import { toast } from '@/lib/toast'
 import { downloadBookingInvoicePdf } from '@/lib/invoice-pdf'
 import { supabase } from '@/lib/supabase'
+import { UPLOAD_POLICIES } from '@/config/constants'
+import { removeUploadedFileWithQueue, uploadFile } from '@/services/upload-service'
+import { logError } from '@/lib/logger'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { Dialog } from '@/components/ui/dialog'
 import { ImageViewer } from '@/components/ui/image-viewer'
@@ -182,6 +185,7 @@ export default function BookingDetail() {
     input: Parameters<typeof bookingAction.mutateAsync>[0],
     successMessage: string,
     onSuccess?: () => void,
+    receiptPath?: string,
   ) => {
     try {
       await bookingAction.mutateAsync(input)
@@ -189,6 +193,9 @@ export default function BookingDetail() {
       toast.success(successMessage)
       onSuccess?.()
     } catch (actionError) {
+      if (receiptPath) await removeUploadedFileWithQueue(PAYMENT_RECEIPT_BUCKET, receiptPath).catch((cleanupError) => {
+        logError('admin-booking', 'Failed to remove payment receipt after booking failure', cleanupError)
+      })
       toast.error(showError(actionError as Error))
     }
   }
@@ -218,7 +225,13 @@ export default function BookingDetail() {
   )
   const handleRequestDocuments = (labels: string[]) => runAction({ type: 'request_documents', bookingId: booking.id, requestedDocumentLabels: labels }, 'Document request sent.')
   const handleCompleteBooking = async () => {
-    const receiptPath = await uploadReceipt(modalForm.receiptFile)
+    let receiptPath: string | undefined
+    try {
+      receiptPath = await uploadReceipt(modalForm.receiptFile)
+    } catch (error) {
+      toast.error(showError(error as Error))
+      return
+    }
 
     return runAction({
       type: 'complete',
@@ -230,11 +243,17 @@ export default function BookingDetail() {
       receiptPath,
       actualTollAmount: requiresTripReconciliation ? actualTollAmount : undefined,
       actualFuelAmount: requiresTripReconciliation ? actualFuelAmount : undefined,
-    }, 'Booking marked as returned.')
+    }, 'Booking marked as returned.', undefined, receiptPath)
   }
 
   const handleMakePayment = async () => {
-    const receiptPath = await uploadReceipt(modalForm.receiptFile)
+    let receiptPath: string | undefined
+    try {
+      receiptPath = await uploadReceipt(modalForm.receiptFile)
+    } catch (error) {
+      toast.error(showError(error as Error))
+      return
+    }
 
     return runAction({
       type: 'make_payment',
@@ -245,7 +264,7 @@ export default function BookingDetail() {
       referenceNumber: modalForm.referenceNumber.trim() || undefined,
       receiptPath,
       idempotencyKey: crypto.randomUUID(),
-    }, 'Payment recorded.')
+    }, 'Payment recorded.', undefined, receiptPath)
   }
   const handleDeleteBooking = () => runAction({ type: 'delete', bookingId: booking.id }, 'Booking deleted.', () => navigate('/admin/bookings'))
 
@@ -284,15 +303,19 @@ export default function BookingDetail() {
 
     const ext = file.name.split('.').pop()
     const path = `${booking.id}/${Date.now()}.${ext}`
-    const { error: uploadError } = await supabase.storage.from(PAYMENT_RECEIPT_BUCKET).upload(path, file)
-
-    if (uploadError) throw uploadError
+    await uploadFile({ bucket: PAYMENT_RECEIPT_BUCKET, file, path, policy: UPLOAD_POLICIES.paymentReceipts })
 
     return path
   }
 
   const handleStartTrip = async () => {
-    const receiptPath = await uploadReceipt(modalForm.receiptFile)
+    let receiptPath: string | undefined
+    try {
+      receiptPath = await uploadReceipt(modalForm.receiptFile)
+    } catch (error) {
+      toast.error(showError(error as Error))
+      return
+    }
 
     return runAction({
       type: 'start_trip',
@@ -302,7 +325,7 @@ export default function BookingDetail() {
       paymentChannel: modalForm.paymentChannel,
       referenceNumber: modalForm.referenceNumber.trim() || undefined,
       receiptPath,
-    }, 'Trip started.')
+    }, 'Trip started.', undefined, receiptPath)
   }
 
   const handleExtendBooking = async () => {
@@ -311,7 +334,15 @@ export default function BookingDetail() {
       return
     }
 
-    const receiptPath = modalForm.collectNow ? await uploadReceipt(modalForm.receiptFile) : undefined
+    let receiptPath: string | undefined
+    if (modalForm.collectNow) {
+      try {
+        receiptPath = await uploadReceipt(modalForm.receiptFile)
+      } catch (error) {
+        toast.error(showError(error as Error))
+        return
+      }
+    }
 
     return runAction({
       type: 'extend',
@@ -324,7 +355,7 @@ export default function BookingDetail() {
       paymentChannel: modalForm.collectNow ? modalForm.paymentChannel : undefined,
       referenceNumber: modalForm.collectNow ? modalForm.referenceNumber.trim() || undefined : undefined,
       receiptPath,
-    }, 'Booking extended.')
+    }, 'Booking extended.', undefined, receiptPath)
   }
 
   return (
@@ -953,7 +984,7 @@ function StartTripModal({ open, onClose, amount, setAmount, paymentMethodId, set
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Reference Number (optional)</label>
       <input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} placeholder="Reference number or official receipt" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none" />
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Upload Receipt (optional)</label>
-      <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
+      <input type="file" accept={UPLOAD_POLICIES.paymentReceipts.accept} onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
       {receiptFile ? <p className="mt-2 text-xs font-medium text-[#071f52]/48">{receiptFile.name}</p> : null}
       <div className="flex justify-end gap-2 mt-4">
         <button onClick={onClose} disabled={isPending} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6 disabled:opacity-50">Cancel</button>
@@ -999,7 +1030,7 @@ function ExtendRentalModal({ open, onClose, newDate, setNewDate, minimumDateTime
           <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Reference Number (optional)</label>
           <input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} placeholder="Reference number or official receipt" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none" />
           <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Upload Receipt (optional)</label>
-          <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
+          <input type="file" accept={UPLOAD_POLICIES.paymentReceipts.accept} onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
           {receiptFile ? <p className="mt-2 text-xs font-medium text-[#071f52]/48">{receiptFile.name}</p> : null}
         </>
       ) : null}
@@ -1047,7 +1078,7 @@ function CompleteModal({ open, onClose, amount, setAmount, actualTollAmount, set
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Reference Number (optional)</label>
       <input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} placeholder="Reference number or official receipt" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none" />
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Upload Receipt (optional)</label>
-      <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
+          <input type="file" accept={UPLOAD_POLICIES.paymentReceipts.accept} onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
       {receiptFile ? <p className="mt-2 text-xs font-medium text-[#071f52]/48">{receiptFile.name}</p> : null}
       <div className="flex justify-end gap-2 mt-4">
         <button onClick={onClose} disabled={isPending} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6 disabled:opacity-50">Cancel</button>
@@ -1078,7 +1109,7 @@ function PaymentModal({ open, onClose, title, description, submitLabel, amount, 
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Reference Number (optional)</label>
       <input value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} placeholder="Reference number or official receipt" className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm mb-3 focus:border-[#071f52] focus:outline-none" />
       <label className="block text-xs font-bold text-[#071f52]/48 mb-1">Upload Receipt (optional)</label>
-      <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
+          <input type="file" accept={UPLOAD_POLICIES.paymentReceipts.accept} onChange={(e) => setReceiptFile(e.target.files?.[0] || null)} className="w-full rounded-xl border border-[#071f52]/14 px-3 py-2 text-sm focus:border-[#071f52] focus:outline-none" />
       {receiptFile ? <p className="mt-2 text-xs font-medium text-[#071f52]/48">{receiptFile.name}</p> : null}
       <div className="flex justify-end gap-2 mt-4">
         <button onClick={onClose} disabled={isPending} className="rounded-full px-4 py-2 text-xs font-bold border border-[#071f52]/12 hover:bg-[#071f52]/6 disabled:opacity-50">Cancel</button>

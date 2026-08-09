@@ -5,6 +5,8 @@ import Documents from '@/pages/documents'
 
 const useCustomerDocuments = vi.fn()
 const createSignedUrl = vi.fn()
+const saveDocument = vi.fn()
+const upload = vi.fn()
 
 vi.mock('@/contexts/useAuth', () => ({
   useAuth: () => ({
@@ -16,7 +18,7 @@ vi.mock('@/contexts/useAuth', () => ({
 
 vi.mock('@/hooks/use-documents', () => ({
   useCustomerDocuments: (...args: unknown[]) => useCustomerDocuments(...args),
-  useSaveCustomerDocument: () => ({ mutateAsync: vi.fn() }),
+  useSaveCustomerDocument: () => ({ mutateAsync: saveDocument }),
   useDeleteCustomerDocument: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
@@ -24,7 +26,7 @@ vi.mock('@/lib/supabase', () => ({
   supabase: {
     storage: {
       from: () => ({
-        upload: vi.fn(),
+        upload,
         createSignedUrl: (...args: unknown[]) => createSignedUrl(...args),
       }),
     },
@@ -42,6 +44,7 @@ function renderDocuments() {
 describe('Documents', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    upload.mockReset()
     createSignedUrl.mockResolvedValue({ data: { signedUrl: 'https://example.com/document.jpg' }, error: null })
   })
 
@@ -68,6 +71,22 @@ describe('Documents', () => {
     expect(screen.getByText("Driver's License")).toBeInTheDocument()
     expect(screen.getByText('Valid ID')).toBeInTheDocument()
     expect(screen.getByText('Proof of Billing')).toBeInTheDocument()
+  })
+
+  it('rejects an unsupported replacement before Storage or metadata save', async () => {
+    useCustomerDocuments.mockReturnValue({
+      data: [{ id: 'doc-1', customer_id: 'user-1', document_type: 'driver_license', status: 'submitted', file_path: 'user-1/driver_license.jpg', original_filename: 'license.jpg', mime_type: 'image/jpeg' }],
+      isLoading: false,
+    })
+    renderDocuments()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Replace' }))
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [new File(['bad'], 'replacement.gif', { type: 'image/gif' })] } })
+
+    await waitFor(() => {
+      expect(upload).not.toHaveBeenCalled()
+      expect(saveDocument).not.toHaveBeenCalled()
+    })
   })
 
   it('creates a signed URL only when viewing a document', async () => {

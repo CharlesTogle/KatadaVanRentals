@@ -88,6 +88,7 @@ describe('AdminBookingDetail', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mutateAsync.mockResolvedValue(undefined)
+    upload.mockReset()
     upload.mockResolvedValue({ error: null })
     createSignedUrl.mockResolvedValue({ data: { signedUrl: 'https://example.com/receipt.pdf' }, error: null })
   })
@@ -578,6 +579,24 @@ describe('AdminBookingDetail', () => {
       expect(upload).toHaveBeenCalled()
       expect(mutateAsync).toHaveBeenCalledWith({ type: 'start_trip', bookingId: 'booking-1', collectedAmount: 7000, paymentMethodId: 'pm-1', paymentChannel: 'bank_transfer', referenceNumber: 'REF-123', receiptPath: expect.stringMatching(/^booking-1\/\d+\.pdf$/) })
     })
+  })
+
+  it('rejects an unsupported receipt before the start-trip action', async () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'confirmed' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [], documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+    renderDetail()
+    fireEvent.click(screen.getByRole('button', { name: 'Release Unit / Start Trip' }))
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [new File(['receipt'], 'receipt.gif', { type: 'image/gif' })] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Start Trip' }))
+
+    await waitFor(() => {
+      expect(upload).not.toHaveBeenCalled()
+      expect(mutateAsync).not.toHaveBeenCalled()
+    })
+    upload.mockResolvedValue({ error: null })
   })
 
   it('extends an on trip booking from the modal', async () => {

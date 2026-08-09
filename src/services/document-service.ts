@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import type { BookingRequestedDocument, CustomerDocument, DocumentType } from '@/types/document'
 import { logError } from '@/lib/logger'
+import { queueUploadedFileCleanup, removeUploadedFile } from '@/services/upload-service'
 
 const CUSTOMER_DOCUMENT_BUCKET = 'customer-documents'
 
@@ -52,11 +53,7 @@ export async function saveCustomerDocument(data: {
 
 export async function deleteCustomerDocument(doc: { id: string; file_path: string }) {
   const paths = getCustomerDocumentPathCandidates(doc.file_path)
-  const { error: storageError } = await supabase.storage
-    .from(CUSTOMER_DOCUMENT_BUCKET)
-    .remove(paths)
-
-  if (storageError) throw storageError
+  await removeUploadedFile(CUSTOMER_DOCUMENT_BUCKET, paths)
 
   const { error } = await supabase
     .from('customer_documents')
@@ -112,9 +109,18 @@ export async function deleteBookingRequestedDocument(docId: string): Promise<{ c
 
   if (doc?.file_path) {
     const paths = getCustomerDocumentPathCandidates(doc.file_path)
-    const { error: removeError } = await supabase.storage.from(CUSTOMER_DOCUMENT_BUCKET).remove(paths)
-    if (removeError) {
+    try {
+      await removeUploadedFile(CUSTOMER_DOCUMENT_BUCKET, paths)
+    } catch (removeError) {
       logError('documents', 'Failed to remove requested-document file', removeError)
+      try {
+        await queueUploadedFileCleanup(
+          CUSTOMER_DOCUMENT_BUCKET,
+          paths.find((path) => !path.startsWith(`${CUSTOMER_DOCUMENT_BUCKET}/`)) || paths[0],
+        )
+      } catch (queueError) {
+        logError('documents', 'Failed to queue requested-document cleanup', queueError)
+      }
       return { cleanupFailed: true }
     }
   }

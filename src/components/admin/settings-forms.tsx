@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { UPLOAD_POLICIES } from '@/config/constants'
-import { uploadFile } from '@/services/upload-service'
+import { queueUploadedFileCleanup, removeUploadedFile, removeUploadedFileByUrl, removeUploadedFileByUrlWithQueue, removeUploadedFileWithQueue, uploadFile } from '@/services/upload-service'
 import { showError } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { getAllPaymentMethods, createPaymentMethod, updatePaymentMethod, deletePaymentMethod } from '@/services/payment-method-service'
@@ -43,6 +43,7 @@ export function SettingsProfileForm({ user, profile, saving, setSaving, showMess
   const [email] = useState(user.email || '')
   const [phone, setPhone] = useState(profile?.mobile ? normalizePhilippineMobile(profile.mobile) : '+63')
   const [profilePicture, setProfilePicture] = useState<string | null>(profile?.profile_image_path || null)
+  const [uploadedPhotoPath, setUploadedPhotoPath] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
   const [dateFormat, setDateFormat] = useState('MM/DD/YYYY')
@@ -72,9 +73,18 @@ export function SettingsProfileForm({ user, profile, saving, setSaving, showMess
     if (!file) return
     setUploading(true)
     const ext = file.name.split('.').pop()
-    const path = `admin-photos/${user.id}.${ext}`
+    const path = `admin-photos/${user.id}-${crypto.randomUUID()}.${ext}`
     try {
+      if (uploadedPhotoPath) {
+        try {
+          await removeUploadedFileWithQueue('business-assets', uploadedPhotoPath)
+        } catch (cleanupError) {
+          logError('settings', 'Failed to remove previous pending profile photo', cleanupError)
+          throw cleanupError
+        }
+      }
       await uploadFile({ bucket: 'business-assets', file, path, policy: UPLOAD_POLICIES.businessAssets, upsert: true })
+      setUploadedPhotoPath(path)
       const { data: { publicUrl } } = supabase.storage.from('business-assets').getPublicUrl(path)
       setProfilePicture(publicUrl)
     } catch (error) {
@@ -83,7 +93,19 @@ export function SettingsProfileForm({ user, profile, saving, setSaving, showMess
     setUploading(false)
   }
 
-  const handleRemovePhoto = () => {
+  const handleRemovePhoto = async () => {
+    if (uploadedPhotoPath) {
+      try {
+        await removeUploadedFile('business-assets', uploadedPhotoPath)
+        setUploadedPhotoPath(null)
+      } catch (error) {
+        await queueUploadedFileCleanup('business-assets', uploadedPhotoPath).catch((queueError) => {
+          logError('settings', 'Failed to queue profile photo cleanup', queueError)
+        })
+        showMessage(showError(error), 'error')
+        return
+      }
+    }
     setProfilePicture(null)
   }
 
@@ -91,6 +113,7 @@ export function SettingsProfileForm({ user, profile, saving, setSaving, showMess
     <form onSubmit={async (e) => {
       e.preventDefault()
       setSaving(true)
+      const previousPicture = profile?.profile_image_path || null
       const { error } = await supabase.from('profiles').update({
         first_name: firstName,
         last_name: lastName,
@@ -98,10 +121,26 @@ export function SettingsProfileForm({ user, profile, saving, setSaving, showMess
         profile_image_path: profilePicture,
       }).eq('id', user.id)
       if (error) {
+        if (uploadedPhotoPath) await removeUploadedFile('business-assets', uploadedPhotoPath).catch(async (cleanupError) => {
+          logError('settings', 'Failed to remove profile photo after metadata failure', cleanupError)
+          await queueUploadedFileCleanup('business-assets', uploadedPhotoPath).catch((queueError) => {
+            logError('settings', 'Failed to queue profile photo cleanup after metadata failure', queueError)
+          })
+        })
         showMessage(showError(error), 'error')
         setSaving(false)
         return
       }
+      if (previousPicture && previousPicture !== profilePicture) await removeUploadedFileByUrl('business-assets', previousPicture).catch(async (cleanupError) => {
+        logError('settings', 'Failed to remove previous profile photo', cleanupError)
+        const marker = '/business-assets/'
+        const path = decodeURIComponent(new URL(previousPicture).pathname.split(marker)[1] || '')
+        if (path) {
+          await queueUploadedFileCleanup('business-assets', path).catch((queueError) => {
+            logError('settings', 'Failed to queue previous profile photo cleanup', queueError)
+          })
+        }
+      })
       await supabase.from('app_settings').upsert({
         id: true,
         timezone,
@@ -110,6 +149,7 @@ export function SettingsProfileForm({ user, profile, saving, setSaving, showMess
       })
       queryClient.invalidateQueries({ queryKey: ['profile', user.id] })
       showMessage('Profile saved.', 'success')
+      setUploadedPhotoPath(null)
       setSaving(false)
     }} className="space-y-6">
       <div>
@@ -373,16 +413,23 @@ export function SettingsBusinessForm({ saving, setSaving, showMessage }: Omit<Se
     if (!file) return
     setLogoUploading(true)
     const ext = file.name.split('.').pop()
-    const path = `business/logo.${ext}`
+    const path = `business/logo-${crypto.randomUUID()}.${ext}`
+    const previousLogo = business.logo_url
     try {
       await uploadFile({ bucket: 'business-assets', file, path, policy: UPLOAD_POLICIES.businessAssets, upsert: true })
       const { data: { publicUrl } } = supabase.storage.from('business-assets').getPublicUrl(path)
       const url = `${publicUrl}?t=${Date.now()}`
       setBusiness({ ...business, logo_url: url })
       const { error: saveError } = await supabase.from('app_settings').upsert({ id: true, logo_url: url })
-      if (saveError) showMessage(showError(saveError), 'error')
-      else await queryClient.invalidateQueries({ queryKey: ['app-settings'] })
+        if (saveError) throw saveError
+        await queryClient.invalidateQueries({ queryKey: ['app-settings'] })
+        if (previousLogo) await removeUploadedFileByUrlWithQueue('business-assets', previousLogo).catch((cleanupError) => {
+          logError('settings', 'Failed to remove previous business logo', cleanupError)
+        })
     } catch (error) {
+      await removeUploadedFileWithQueue('business-assets', path).catch((cleanupError) => {
+        logError('settings', 'Failed to remove business logo after save failure', cleanupError)
+      })
       showMessage(showError(error as Error), 'error')
     }
     setLogoUploading(false)
@@ -588,14 +635,17 @@ export function SettingsPaymentsForm({ saving, setSaving, showMessage }: Omit<Se
     e.preventDefault()
     if (!editing) return
     setSaving(true)
+    let uploadedQrPath: string | null = null
     try {
       let qrPath = editing.qr_image_path ?? null
+      const previousQrPath = qrPath
 
       if (qrFile) {
         const ext = qrFile.name.split('.').pop()
         const storageKey = editing.id ?? crypto.randomUUID()
-        const path = `payment-qr/${storageKey}.${ext}`
+        const path = `payment-qr/${storageKey}-${crypto.randomUUID()}.${ext}`
         await uploadFile({ bucket: 'business-assets', file: qrFile, path, policy: UPLOAD_POLICIES.businessAssets, upsert: true })
+        uploadedQrPath = path
         const { data: { publicUrl } } = supabase.storage.from('business-assets').getPublicUrl(path)
         qrPath = `${publicUrl}?t=${Date.now()}`
       }
@@ -612,12 +662,18 @@ export function SettingsPaymentsForm({ saving, setSaving, showMessage }: Omit<Se
         const { id, created_at, updated_at, ...rest } = payload as PaymentMethod
         await createPaymentMethod(rest)
       }
+      if (previousQrPath && uploadedQrPath) await removeUploadedFileByUrlWithQueue('business-assets', previousQrPath).catch((cleanupError) => {
+        logError('settings', 'Failed to remove previous payment QR code', cleanupError)
+      })
       showMessage('Payment method saved.', 'success')
       setEditing(null)
       setShowForm(false)
       setQrFile(null)
       loadMethods()
     } catch (err) {
+      if (uploadedQrPath) await removeUploadedFileWithQueue('business-assets', uploadedQrPath).catch((cleanupError) => {
+        logError('settings', 'Failed to remove payment QR code after save failure', cleanupError)
+      })
       showMessage(showError(err instanceof Error ? err : new Error('Save failed')), 'error')
     }
     setSaving(false)

@@ -1,12 +1,15 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
-import { supabase } from '@/lib/supabase'
 import { useCustomerDocuments, useSaveCustomerDocument, useDeleteCustomerDocument } from '@/hooks/use-documents'
 import { useFileViewer } from '@/hooks/use-file-viewer'
 import { getCustomerDocumentSignedUrl } from '@/services/document-service'
 import { showError } from '@/lib/errors'
+import { getAcceptedMimeTypes } from '@/lib/file-upload'
+import { UPLOAD_POLICIES } from '@/config/constants'
+import { removeUploadedFileWithQueue, uploadFile } from '@/services/upload-service'
 import { toast } from '@/lib/toast'
+import { logError } from '@/lib/logger'
 import { Dialog } from '@/components/ui/dialog'
 import { ImageViewer } from '@/components/ui/image-viewer'
 import { Upload, CheckCircle2, Trash2, FileText } from 'lucide-react'
@@ -58,14 +61,11 @@ export default function Documents() {
     setUploading((prev) => ({ ...prev, [activeKey]: true }))
 
     const ext = file.name.split('.').pop()
-    const path = `${user.id}/${activeKey}.${ext}`
-    const { error: uploadError } = await supabase.storage
-      .from('customer-documents')
-      .upload(path, file, { upsert: true })
-
-    if (uploadError) {
-      toast.error(showError(uploadError))
-    } else {
+    const previousPath = docsByKey[activeKey]?.file_path
+    const path = previousPath ? `${user.id}/${activeKey}-${crypto.randomUUID()}.${ext}` : `${user.id}/${activeKey}.${ext}`
+    let saved = false
+    try {
+      await uploadFile({ bucket: 'customer-documents', file, path, policy: UPLOAD_POLICIES.customerDocuments, upsert: true })
       try {
         await saveDocument.mutateAsync({
           customer_id: user.id,
@@ -75,9 +75,18 @@ export default function Documents() {
           mime_type: file.type || 'application/octet-stream',
           size_bytes: file.size,
         })
+        saved = true
       } catch (error) {
+        await removeUploadedFileWithQueue('customer-documents', path).catch((cleanupError) => {
+          logError('documents', 'Failed to remove document upload after metadata failure', cleanupError)
+        })
         toast.error(showError(error as Error))
       }
+      if (saved && previousPath) await removeUploadedFileWithQueue('customer-documents', previousPath).catch((cleanupError) => {
+        logError('documents', 'Failed to remove previous customer document', cleanupError)
+      })
+    } catch (error) {
+      toast.error(showError(error as Error))
     }
 
     setUploading((prev) => ({ ...prev, [activeKey]: false }))
@@ -114,7 +123,7 @@ export default function Documents() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,.pdf"
+        accept={getAcceptedMimeTypes(UPLOAD_POLICIES.customerDocuments)}
         onChange={handleFileChange}
         className="hidden"
         aria-label="Upload document file"

@@ -18,7 +18,7 @@ import { loadBookingDateSelection, saveBookingDateSelection } from '@/lib/bookin
 import { calculateToll, getNearestTollPlazas, getRouteQuote, suggestLocations } from '@/services/location-service'
 import { supabase } from '@/lib/supabase'
 import { UPLOAD_POLICIES } from '@/config/constants'
-import { uploadFile } from '@/services/upload-service'
+import { removeUploadedFileWithQueue, uploadFile } from '@/services/upload-service'
 import { queryClient } from '@/lib/query'
 import { useBookingStore } from '@/store/booking-store'
 import { useVatPercent } from '@/hooks/use-vat-percent'
@@ -572,7 +572,9 @@ export default function BookingForm() {
     )
 
     if (bookingError) {
-      if (receiptPath) await supabase.storage.from('payment-receipts').remove([receiptPath])
+      if (receiptPath) await removeUploadedFileWithQueue('payment-receipts', receiptPath).catch((cleanupError) => {
+        logError('booking', 'Failed to remove payment receipt after booking failure', cleanupError)
+      })
       setError(showError(bookingError))
       setSubmitting(false)
       return
