@@ -455,7 +455,7 @@ describe('BookingDetail', () => {
     expect(screen.getAllByText('New Remaining Balance').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Out-of-city surcharge').length).toBeGreaterThan(0)
     expect(screen.getByText(/Respond by Jul 25, 2026, 2:00 PM/)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Cancel Booking' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Cancel Booking' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Accept Adjustment' }))
     expect(screen.getByRole('button', { name: 'Accepting...' })).toBeDisabled()
