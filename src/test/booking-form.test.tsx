@@ -209,7 +209,7 @@ describe('BookingForm', () => {
   it('shows drop-off fields only for Just a Drop Off and trip details for Keep the Car', () => {
     useCustomerDocuments.mockReturnValue({ data: [], isLoading: false })
 
-    renderBookingForm('/dashboard/book/vehicle-1?type=all-in&start=2026-08-05T08:00:00.000Z&end=2026-08-06T08:00:00.000Z')
+    renderBookingForm('/dashboard/book/vehicle-1?type=all-in&start=2030-08-05T08:00:00.000Z&end=2030-08-06T08:00:00.000Z')
 
     expect(screen.getByRole('button', { name: /Just a Drop Off/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Keep the Car/i })).toBeInTheDocument()
@@ -419,6 +419,8 @@ describe('BookingForm', () => {
       expect(functionsInvoke.mock.calls.filter(([name, options]) => name === 'toll-estimate' && options?.body?.entryPlaza)).toHaveLength(1)
     })
     expect(screen.getAllByText(/We can't compute the toll price yet/).length).toBeGreaterThanOrEqual(1)
+    fillPaymentProof()
+    expect(screen.getByRole('button', { name: 'Submit Booking' })).toBeDisabled()
 
     await new Promise((resolve) => setTimeout(resolve, 50))
 

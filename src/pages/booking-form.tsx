@@ -438,6 +438,7 @@ export default function BookingForm() {
   const fuelPriceLoading = routeLoading && rentalType === 'all-in' && routeQuote?.inServiceArea !== false
   const tollPriceLoading = rentalType === 'all-in' && (routeLoading || tollLoading) && routeQuote?.inServiceArea !== false
   const tollQuoteReady = !!routeQuote
+    && !tollError
     && !!tollSelections.entry
     && !!tollSelections.exit
     && routeQuote.tollEntryPlaza === tollSelections.entry.name
@@ -449,7 +450,7 @@ export default function BookingForm() {
   const routeIncomplete = needsRouteQuote && (routeSelections.pickup.lat == null || (rentalType === 'all-in' && mode === 'keep' && routeSelections.destination.lat == null) || routeSelections.dropoff.lat == null || !routeQuote)
   const paymentIncomplete = requiresPayment && (!payment.method || !payment.reference.trim() || !receiptFile)
   const isWithDriverDropoff = rentalType !== 'self-drive' && mode === 'dropoff'
-  const formIncomplete = !startParam || (!endParam && !isWithDriverDropoff) || profileBlocked || selfDriveBlocked || documentsQuery.isLoading || (requiresPayment && paymentMethodsQuery.isLoading) || routeIncomplete || needsTollEstimate || tollLoading || paymentIncomplete
+  const formIncomplete = !startParam || (!endParam && !isWithDriverDropoff) || profileBlocked || selfDriveBlocked || documentsQuery.isLoading || (requiresPayment && paymentMethodsQuery.isLoading) || routeIncomplete || needsTollEstimate || tollLoading || Boolean(tollError) || paymentIncomplete
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -491,6 +492,11 @@ export default function BookingForm() {
 
     if (needsTollEstimate) {
       setError(tollError || 'Wait for the toll estimate to finish before submitting.')
+      return
+    }
+
+    if (tollError) {
+      setError(tollError)
       return
     }
 

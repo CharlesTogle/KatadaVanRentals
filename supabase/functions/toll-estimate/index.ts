@@ -107,7 +107,20 @@ function toSegmentName(segment: Record<string, unknown>) {
   return `${expresswayName}: ${entryPlaza} to ${exitPlaza}`
 }
 
+type TollPayload = {
+  totalToll?: number
+  vehicleClass?: 1 | 2 | 3
+  segments?: Array<Record<string, unknown>>
+  rfidBreakdown?: Array<{ system?: string; total?: number }>
+}
+
+function zeroTollPayload(vehicleClass: 1 | 2 | 3): TollPayload {
+  return { totalToll: 0, vehicleClass, segments: [], rfidBreakdown: [] }
+}
+
 async function fetchToll(entryPlaza: { name: string }, exitPlaza: { name: string }, vehicleClass: 1 | 2 | 3, requestId: string) {
+  if (entryPlaza.name === exitPlaza.name) return { payload: zeroTollPayload(vehicleClass) }
+
   const url = new URL('https://www.expressway.ph/api/toll-calculator')
   url.searchParams.set('origin', entryPlaza.name)
   url.searchParams.set('dest', exitPlaza.name)
@@ -126,12 +139,7 @@ async function fetchToll(entryPlaza: { name: string }, exitPlaza: { name: string
   if (!response.ok) return { error: jsonError('Toll calculation failed', 502) }
 
   return {
-    payload: await response.json() as {
-      totalToll?: number
-      vehicleClass?: 1 | 2 | 3
-      segments?: Array<Record<string, unknown>>
-      rfidBreakdown?: Array<{ system?: string; total?: number }>
-    },
+    payload: await response.json() as TollPayload,
   }
 }
 
