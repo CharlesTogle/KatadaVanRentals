@@ -160,6 +160,15 @@ export default function BookingDetail() {
     })
   }
 
+  const handleViewRefundProof = async (proofId: string, path: string) => {
+    await openFile({
+      id: proofId,
+      path,
+      alt: 'Refund proof',
+      resolveUrl: getPaymentReceiptSignedUrl,
+    })
+  }
+
   if (loading) {
     return (
       <div className="w-full animate-pulse px-4 py-4 sm:px-5 sm:py-6 space-y-4">
@@ -212,6 +221,9 @@ export default function BookingDetail() {
   const displayedTotal = Number(booking.total_amount || 0)
   const paymentMadeAmount = payments
     .filter((payment) => payment.status === 'submitted')
+    .reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
+  const refundedPaymentAmount = payments
+    .filter((payment) => payment.status === 'refunded')
     .reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
   const displayedRemainingBalance = Number(booking.remaining_amount || 0)
   const customerNote = getDisplayBookingNote(booking.notes)
@@ -514,6 +526,7 @@ export default function BookingDetail() {
                 {balanceSummary && balanceSummary.extensionAmount > 0 ? <SummaryRow label={getExtensionChargeLabel(balanceSummary.extensionDays)} value={`+${formatCurrency(balanceSummary.extensionAmount)}`} valueClassName="text-[#f97316]" /> : null}
                  {depositAmount > 0 && <SummaryRow label="Security Deposit" value={`-${formatCurrency(depositAmount)}`} valueClassName="text-[#16a34a]" note={cancellation?.refund_status === 'pending_refund' || cancellation?.refund_status === 'refund_processed' ? undefined : 'non-refundable'} />}
                 {paymentMadeAmount > 0 ? <SummaryRow label="Payment Made" value={`-${formatCurrency(paymentMadeAmount)}`} valueClassName="text-[#16a34a]" /> : null}
+                {refundedPaymentAmount > 0 ? <SummaryRow label="Refunded Payment" value={`+${formatCurrency(refundedPaymentAmount)}`} valueClassName="text-[#16a34a]" /> : null}
                 <SummaryRow label="Remaining Balance" value={formatCurrency(displayedRemainingBalance)} strong valueClassName="text-[#f97316]" />
               </div>
               </>
@@ -554,6 +567,11 @@ export default function BookingDetail() {
                               <FileText className="h-3.5 w-3.5" /> {openingId === payment.id ? 'Opening...' : 'View receipt'}
                             </a>
                           ) : null}
+                          {payment.status === 'refunded' && cancellation?.refund_receipt_path ? (
+                            <a href="#" onClick={(event) => { event.preventDefault(); handleViewRefundProof(cancellation.id, cancellation.refund_receipt_path!) }} className="mt-2 ml-3 inline-flex items-center gap-1 text-xs font-bold text-[#4f46e5] transition-colors hover:text-[#3639d4] sm:text-sm">
+                              <FileText className="h-3.5 w-3.5" /> {openingId === cancellation.id ? 'Opening...' : 'View proof'}
+                            </a>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -563,6 +581,12 @@ export default function BookingDetail() {
                     <span>Recorded Payments</span>
                     <span className="font-black text-[#1f2a44] tabular-nums">{formatCurrency(paymentMadeAmount)}</span>
                   </div>
+                  {refundedPaymentAmount > 0 ? (
+                    <div className="flex items-center justify-between text-xs font-semibold text-[#071f52]/62 sm:text-sm">
+                      <span>Refunded Payments</span>
+                      <span className="font-black text-[#16a34a] tabular-nums">{formatCurrency(refundedPaymentAmount)}</span>
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <EmptyNote>No payments recorded.</EmptyNote>

@@ -312,6 +312,15 @@ export default function BookingDetail() {
     })
   }
 
+  const handleViewRefundProof = async (proofId: string, path: string) => {
+    await openFile({
+      id: proofId,
+      path,
+      alt: 'Refund proof',
+      resolveUrl: getPaymentReceiptSignedUrl,
+    })
+  }
+
   const handleViewDocument = async (doc: { id: string; file_path: string; document_type?: string; mime_type?: string | null }) => {
     await openFile({
       id: doc.id,
@@ -577,6 +586,11 @@ export default function BookingDetail() {
                             {payment.receipt_path ? (
                               <a href="#" onClick={(e) => { e.preventDefault(); handleViewReceipt(payment.id, payment.receipt_path!) }} className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-[#4f46e5] transition-colors hover:text-[#3639d4]">
                                 <FileText className="h-4 w-4" /> {openingId === payment.id ? 'Opening...' : 'View receipt'}
+                              </a>
+                            ) : null}
+                            {payment.status === 'refunded' && cancellation?.refund_receipt_path ? (
+                              <a href="#" onClick={(e) => { e.preventDefault(); handleViewRefundProof(cancellation.id, cancellation.refund_receipt_path!) }} className="mt-3 ml-3 inline-flex items-center gap-1 text-sm font-bold text-[#4f46e5] transition-colors hover:text-[#3639d4]">
+                                <FileText className="h-4 w-4" /> {openingId === cancellation.id ? 'Opening...' : 'View proof'}
                               </a>
                             ) : null}
                           </div>

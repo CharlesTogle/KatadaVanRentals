@@ -362,6 +362,30 @@ describe('AdminBookingDetail', () => {
     expect(screen.getByText('Remaining Balance')).toBeInTheDocument()
   })
 
+  it('shows the refund proof beside a refunded payment', () => {
+    useAdminBooking.mockReturnValue({
+      data: {
+        booking: { ...mockBooking, status: 'canceled' },
+        customer: mockCustomer,
+        vehicle: mockVehicle,
+        payments: [{ id: 'payment-1', channel: 'bank_transfer', status: 'refunded', amount: 900, reference_number: null, receipt_path: 'booking-1/receipt.png', paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        cancellation: { id: 'cancellation-1', cancellation_type: 'admin', reason: 'Canceled', refund_status: 'refund_processed', refund_receipt_path: 'booking-1/refund-proof.png', created_at: '2026-07-24T10:00:00Z' },
+        requested_document_types: [],
+        documents: [],
+        status_events: [],
+        extensions: [],
+        invoice: null,
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    expect(screen.getByRole('link', { name: /view receipt/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /view proof/i })).toBeInTheDocument()
+  })
+
   it('adds unpaid extension charges to the admin balance summary', () => {
     useAdminBooking.mockReturnValue({
       data: {

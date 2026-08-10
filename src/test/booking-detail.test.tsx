@@ -116,7 +116,11 @@ describe('BookingDetail', () => {
           updated_at: '2026-07-23T10:00:00Z',
         },
         vehicle: { id: 'veh-1', name: 'Toyota Commuter', plate_number: 'ABC123', image_paths: [] },
-        payments: [{ id: 'payment-1', channel: 'bank_transfer', status: 'submitted', amount: 2000, reference_number: 'REF-123', receipt_path: 'booking-1/receipt.png', paid_at: null, created_at: '2026-07-23T10:15:00Z' }],
+        payments: [
+          { id: 'payment-1', channel: 'bank_transfer', status: 'submitted', amount: 2000, reference_number: 'REF-123', receipt_path: 'booking-1/receipt.png', paid_at: null, created_at: '2026-07-23T10:15:00Z' },
+          { id: 'payment-2', channel: 'bank_transfer', status: 'refunded', amount: 900, reference_number: 'REF-123', receipt_path: null, paid_at: null, created_at: '2026-07-24T10:15:00Z' },
+        ],
+        cancellation: { id: 'cancellation-1', cancellation_type: 'admin', reason: 'Canceled', refund_status: 'refund_processed', refund_receipt_path: 'booking-1/refund-proof.png', created_at: '2026-07-24T10:00:00Z' },
         status_events: [{ id: 'event-1', from_status: 'for_review', to_status: 'confirmed', note: 'Approved', created_at: '2026-07-23T10:30:00Z' }],
         extensions: [{ id: 'extension-1', previous_end_at: '2026-07-27T08:00:00Z', new_end_at: '2026-07-28T08:00:00Z', extension_amount: 1500, reason: 'Extended one day', created_at: '2026-07-26T09:00:00Z' }],
         invoice: { id: 'invoice-1', invoice_number: 'INV-1001', status: 'issued', total_amount: 9000, file_path: null, issued_at: '2026-07-23T11:00:00Z' },
@@ -140,6 +144,10 @@ describe('BookingDetail', () => {
     expect(screen.getByText('Toyota Commuter')).toBeInTheDocument()
     expect(screen.getByText('Please call on arrival.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /view receipt/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /view proof/i })).toBeInTheDocument()
+    expect(screen.getByText('Refunded Payment')).toBeInTheDocument()
+    expect(screen.getByText('Refunded Payments')).toBeInTheDocument()
+    expect(screen.getAllByText('₱900.00').length).toBeGreaterThanOrEqual(2)
     expect(screen.getByRole('button', { name: 'Cancel Booking' })).toBeInTheDocument()
     expect(screen.queryByText('Documents')).not.toBeInTheDocument()
     expect(screen.queryByText('Actions')).not.toBeInTheDocument()
