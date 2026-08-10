@@ -70,11 +70,12 @@ describe('AdminBookings', () => {
 
   it('navigates to booking details when a row is clicked', () => {
     function LocationProbe() {
-      return <output data-testid="location">{useLocation().pathname}</output>
+      const location = useLocation()
+      return <output data-testid="location">{location.pathname}{location.search}</output>
     }
 
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/admin/bookings?status=for_review&search=Alex&page=2']}>
         <AdminBookings />
         <LocationProbe />
       </MemoryRouter>,
@@ -82,7 +83,29 @@ describe('AdminBookings', () => {
 
     fireEvent.click(screen.getByText('Alex Customer'))
 
-    expect(screen.getByTestId('location')).toHaveTextContent('/admin/bookings/CR-260723-ABCD')
+    expect(screen.getByTestId('location')).toHaveTextContent('/admin/bookings/CR-260723-ABCD?status=for_review&search=Alex&page=2')
+  })
+
+  it('initializes filters from and writes changes to the URL', () => {
+    function LocationProbe() {
+      const location = useLocation()
+      return <output data-testid="location">{location.pathname}{location.search}</output>
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/admin/bookings?status=for_review&search=Alex&page=2&sort=start_at&direction=asc']}>
+        <AdminBookings />
+        <LocationProbe />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('button', { name: 'For Review' })).toHaveClass('bg-[#071f52]')
+    expect(screen.getByRole('textbox', { name: 'Search bookings' })).toHaveValue('Alex')
+    expect(screen.getByRole('combobox', { name: 'Sort bookings by' })).toHaveValue('start_at')
+    expect(screen.getByRole('combobox', { name: 'Sort direction' })).toHaveValue('asc')
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmed' }))
+
+    expect(screen.getByTestId('location')).toHaveTextContent('/admin/bookings?status=confirmed&search=Alex&page=1&sort=start_at&direction=asc')
   })
 
   it('renders create booking CTA linking to the create page', () => {
@@ -99,11 +122,13 @@ describe('AdminBookings', () => {
     useAdminBookings.mockReturnValue({
       data: { items: [{
         id: 'booking-1',
-        booking_number: 'CR-260723-ABCD',
-        start_at: '2026-07-23T12:00:00Z',
-        total_amount: 4500,
-        status: 'canceled',
+         booking_number: 'CR-260723-ABCD',
+         start_at: '2026-07-23T12:00:00Z',
+         total_amount: 4500,
+         rental_model: 'all_in',
+         status: 'canceled',
          cancellation: [{ cancellation_type: 'customer_request', refund_status: 'refund_cancelled' }],
+         status_events: [{ from_status: 'for_review', to_status: 'canceled' }],
         profiles: { first_name: 'Alex', last_name: 'Customer', email: 'alex@example.com' },
         vehicles: { name: 'Toyota Commuter', plate_number: 'ABC123' },
       }], total: 1 },
@@ -112,12 +137,15 @@ describe('AdminBookings', () => {
 
     render(<MemoryRouter><AdminBookings /></MemoryRouter>)
 
-    expect(screen.getByText('Not eligible for refund')).toBeInTheDocument()
     const bookingRow = screen.getByRole('row', { name: /View booking CR-260723-ABCD/ })
-    expect(bookingRow).not.toHaveTextContent('Refund Cancelled')
+    expect(bookingRow).toHaveTextContent('Refund Cancelled')
+    const refundBadge = [...bookingRow.querySelectorAll('span')].find((element) => element.textContent === 'Refund Cancelled')
+    expect(refundBadge).toHaveClass('rounded-full', 'text-[#c91f2a]')
+    expect(bookingRow).not.toHaveTextContent('Not eligible for refund')
     expect(bookingRow).not.toHaveTextContent('canceled')
     fireEvent.click(screen.getByRole('button', { name: 'Refund Processed' }))
     expect(useAdminBookings).toHaveBeenLastCalledWith(expect.objectContaining({ refundStatus: 'refund_processed', status: undefined }))
+    expect(screen.getByRole('button', { name: 'All' })).not.toHaveClass('bg-[#071f52]')
   })
 
   it('passes the selected sort and resets pagination when sorting changes', () => {

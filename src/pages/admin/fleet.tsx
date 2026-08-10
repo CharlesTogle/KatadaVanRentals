@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Search, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, RefreshCw, Search, Trash2 } from 'lucide-react'
 import {
   useAdminVehicles,
   useDeleteVehicle,
@@ -18,7 +18,7 @@ const PAGE_SIZE = 20
 
 export default function Fleet() {
   const navigate = useNavigate()
-  const { data: vehicles = [], isLoading, isError, refetch } = useAdminVehicles()
+  const { data: vehicles = [], isLoading, isFetching, isError, refetch } = useAdminVehicles()
   const deleteMutation = useDeleteVehicle()
 
   const [search, setSearch] = useState('')
@@ -112,8 +112,19 @@ export default function Fleet() {
       {(isLoading || (!isError && filtered.length > 0)) ? (
         <div className="mt-6 card-overflow">
           <div className="flex items-center justify-between border-b border-[#071f52]/10 bg-white px-5 py-3">
-            <p className="text-xs font-semibold text-[#071f52]/48">Show 20 per page</p>
-            <FleetPagination page={currentPage} totalPages={totalPages} setPage={setPage} disabled={isLoading} />
+            <div className="flex items-center gap-3">
+              <p className="text-xs font-semibold text-[#071f52]/48">Show 20 per page</p>
+              <button
+                type="button"
+                aria-label="Refresh fleet"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                <RefreshCw size={16} className={isFetching ? 'animate-spin' : undefined} />
+              </button>
+            </div>
+            <FleetPagination page={currentPage} totalPages={totalPages} setPage={setPage} disabled={isFetching} />
           </div>
         </div>
       ) : null}

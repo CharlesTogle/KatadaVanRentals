@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAdminBooking, useAdminBookingAction } from '@/hooks/use-bookings'
 import { useFileViewer } from '@/hooks/use-file-viewer'
 import { getCustomerDocumentSignedUrl } from '@/services/document-service'
@@ -52,7 +52,9 @@ function getPaymentReceiptPathCandidates(filePath: string) {
 
 export default function BookingDetail() {
   const { bookingNumber } = useParams<{ bookingNumber: string }>()
+  const location = useLocation()
   const navigate = useNavigate()
+  const bookingsUrl = `/admin/bookings${location.search}`
   const { data, isLoading, error } = useAdminBooking(bookingNumber)
   const { data: paymentMethods = [] } = usePaymentMethods()
   const { data: appSettings } = useAppSettings()
@@ -126,7 +128,7 @@ export default function BookingDetail() {
   if (error || !data) {
     return (
       <div className="py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-        <Link to="/admin/bookings" className="inline-flex items-center gap-2 text-sm font-semibold text-[#071f52]/60 hover:text-[#071f52] mb-6">
+        <Link to={bookingsUrl} className="inline-flex items-center gap-2 text-sm font-semibold text-[#071f52]/60 hover:text-[#071f52] mb-6">
           <ArrowLeft className="h-4 w-4" /> Back to Bookings
         </Link>
         <div className="rounded-2xl border border-[#071f52]/10 bg-white p-12 text-center">
@@ -290,7 +292,7 @@ export default function BookingDetail() {
       receiptPath,
     }, 'Refund processed.', undefined, receiptPath)
   }
-  const handleDeleteBooking = () => runAction({ type: 'delete', bookingId: booking.id }, 'Booking deleted.', () => navigate('/admin/bookings'))
+    const handleDeleteBooking = () => runAction({ type: 'delete', bookingId: booking.id }, 'Booking deleted.', () => navigate(bookingsUrl))
 
   const getPaymentReceiptSignedUrl = async (path: string) => {
     for (const candidate of getPaymentReceiptPathCandidates(path)) {
@@ -397,12 +399,12 @@ export default function BookingDetail() {
         <nav className="mb-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-[#071f52]/42">
           <Link to="/admin" className="transition-colors hover:text-[#071f52]">Dashboard</Link>
           <ChevronRight className="h-3.5 w-3.5" />
-          <Link to="/admin/bookings" className="transition-colors hover:text-[#071f52]">Bookings</Link>
+          <Link to={bookingsUrl} className="transition-colors hover:text-[#071f52]">Bookings</Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <span className="font-bold text-[#071f52]">{booking.booking_number}</span>
         </nav>
 
-        <Link to="/admin/bookings" className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-[#071f52]/60 transition-colors hover:text-[#071f52]">
+        <Link to={bookingsUrl} className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-[#071f52]/60 transition-colors hover:text-[#071f52]">
           <ArrowLeft className="h-4 w-4" /> Back to Bookings
         </Link>
 
@@ -476,6 +478,12 @@ export default function BookingDetail() {
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#071f52]/46">{statusMessage.title}</p>
                       <p className={cn('mt-1 text-sm font-medium leading-6', statusTone.text)}>{statusMessage.body}</p>
+                      {booking.status === 'canceled' && cancellation?.refund_status ? (
+                        <div className="mt-2 text-xs font-bold leading-5 text-[#16a34a]">
+                          <p>Refund Status: {formatRefundStatus(cancellation.refund_status)}</p>
+                          {cancellation.refund_cancel_reason ? <p className="mt-1">Reason: {cancellation.refund_cancel_reason}</p> : null}
+                        </div>
+                      ) : null}
                       {expiryMessage ? <p className="mt-2 text-sm font-semibold leading-6 text-[#6f5a32]">{expiryMessage}</p> : null}
                     </div>
                   </div>
@@ -1195,11 +1203,10 @@ function RefundCancelModal({ open, onClose, reason, setReason, onSubmit, isPendi
 }
 
 function CancelModal({ open, onClose, reason, setReason, onSubmit, isPending }: { open: boolean; onClose: () => void; reason: string; setReason: (v: string) => void; onSubmit: (cancellationType: string) => void; isPending: boolean }) {
-  const [cancelType, setCancelType] = useState('customer_request')
+  const [cancelType, setCancelType] = useState('admin_no_refund')
 
   const options = [
     { value: 'admin_no_refund', label: 'Admin cancellation - no refund' },
-    { value: 'customer_request', label: `${formatCancellationType('customer_request')} - no refund` },
   ]
 
   return (
@@ -1355,6 +1362,10 @@ function toLabel(value: string) {
     .split('_')
     .join(' ')
     .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function formatRefundStatus(status: string) {
+  return toLabel(status)
 }
 
 function formatCancellationReason(note?: string | null) {

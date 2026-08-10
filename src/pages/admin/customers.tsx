@@ -6,7 +6,7 @@ import { deactivateCustomer, reactivateCustomer, deleteCustomer } from '@/servic
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
 import { cn } from '@/lib/utils'
-import { ChevronLeft, ChevronRight, Search, Download, MoreHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, MoreHorizontal, RefreshCw, Search } from 'lucide-react'
 import type { AdminCustomerRow } from '@/types/admin-customer'
 
 function formatCurrency(amount: number) {
@@ -67,7 +67,7 @@ export default function Customers() {
     return () => window.clearTimeout(timeout)
   }, [search])
 
-  const { data, isLoading } = useAdminCustomers(debouncedSearch || undefined, page, PAGE_SIZE)
+  const { data, isLoading, isFetching, refetch } = useAdminCustomers(debouncedSearch || undefined, page, PAGE_SIZE)
   const customers = data?.items || []
   const totalPages = Math.max(1, Math.ceil((data?.total || 0) / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
@@ -138,7 +138,18 @@ export default function Customers() {
       {(isLoading || customers.length > 0) ? (
         <div className="mt-6 admin-table-wrap">
           <div className="flex items-center justify-between border-b border-[#071f52]/10 bg-white px-5 py-3">
-            <p className="text-xs font-semibold text-[#071f52]/48">Show 20 per page</p>
+            <div className="flex items-center gap-3">
+              <p className="text-xs font-semibold text-[#071f52]/48">Show 20 per page</p>
+              <button
+                type="button"
+                aria-label="Refresh customers"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                <RefreshCw size={16} className={isFetching ? 'animate-spin' : undefined} />
+              </button>
+            </div>
             {totalPages > 1 ? (
               <div className="flex items-center gap-3">
                 <p className="text-xs font-semibold text-[#071f52]/48">Page {currentPage} of {totalPages}</p>
@@ -147,7 +158,7 @@ export default function Customers() {
                     type="button"
                     aria-label="Previous page"
                     onClick={() => setPage((current) => Math.max(1, current - 1))}
-                    disabled={isLoading || currentPage === 1}
+                    disabled={isFetching || currentPage === 1}
                     className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
                   >
                     <ChevronLeft size={16} />
@@ -156,7 +167,7 @@ export default function Customers() {
                     type="button"
                     aria-label="Next page"
                     onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                    disabled={isLoading || currentPage === totalPages}
+                    disabled={isFetching || currentPage === totalPages}
                     className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
                   >
                     <ChevronRight size={16} />

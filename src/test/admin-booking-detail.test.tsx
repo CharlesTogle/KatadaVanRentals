@@ -715,6 +715,7 @@ describe('AdminBookingDetail', () => {
     renderDetail()
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel Booking' }))
+    expect(screen.queryByLabelText('Customer request - no refund')).not.toBeInTheDocument()
     fireEvent.click(screen.getByLabelText('Admin cancellation - no refund'))
     fireEvent.change(screen.getByPlaceholderText('Reason for cancellation...'), { target: { value: 'Customer did not show up' } })
     fireEvent.click(screen.getByRole('button', { name: 'Confirm Cancel' }))
@@ -975,6 +976,30 @@ describe('AdminBookingDetail', () => {
     await waitFor(() => {
       expect(screen.getByText("Canceled at the customer's request. Reason: Cinancel eh")).toBeInTheDocument()
     })
+  })
+
+  it('shows the refund cancellation reason', () => {
+    useAdminBooking.mockReturnValue({
+      data: {
+        booking: { ...mockBooking, status: 'canceled' },
+        customer: mockCustomer,
+        vehicle: mockVehicle,
+        cancellation: { cancellation_type: 'customer_request', reason: 'test', refund_status: 'refund_cancelled', refund_cancel_reason: 'Invalid refund claim', created_at: '2026-07-23T10:00:00Z' },
+        payments: [],
+        requested_document_types: [],
+        documents: [],
+        status_events: [],
+        extensions: [],
+        invoice: null,
+      },
+      isLoading: false,
+      error: null,
+    })
+
+    renderDetail()
+
+    expect(screen.getByText('Refund Status: Refund Cancelled')).toBeInTheDocument()
+    expect(screen.getByText('Reason: Invalid refund claim')).toBeInTheDocument()
   })
 
   it('shows payment receipts inline when the stored path includes the bucket prefix', async () => {

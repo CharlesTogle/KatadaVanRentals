@@ -1,12 +1,11 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAdminBookings, useDeleteBooking } from '@/hooks/use-bookings'
-import type { AdminBookingSortDirection, AdminBookingSortField } from '@/services/booking-service'
+import type { AdminBookingSortField } from '@/services/booking-service'
 import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
-import { formatBookingStatus, type RefundStatus } from '@/lib/booking-utils'
-import { ChevronLeft, ChevronRight, Search, Trash2 } from 'lucide-react'
+import { formatBookingStatus, isRefundIneligible, type RefundStatus } from '@/lib/booking-utils'
+import { ChevronLeft, ChevronRight, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { STATUS_COLORS } from '@/config/constants'
 
 const PAGE_SIZE = 20
@@ -39,24 +38,55 @@ function formatRefundStatus(status: string) {
   return status.split('_').join(' ').replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
-function getDisplayedRefundStatus(cancellation: { cancellation_type?: string; refund_status?: string } | undefined) {
-  if (cancellation?.cancellation_type === 'customer_request' && cancellation.refund_status === 'refund_cancelled') {
+function getDisplayedRefundStatus(booking: { rental_model?: string; status_events?: Array<{ from_status?: string; to_status?: string }> }, cancellation: { refund_status?: string } | undefined) {
+  if (cancellation?.refund_status === 'refund_cancelled' && isRefundIneligible(booking.rental_model, booking.status_events)) {
     return 'Not eligible for refund'
   }
 
   return cancellation?.refund_status ? formatRefundStatus(cancellation.refund_status) : null
 }
 
+function getRefundStatusColor(booking: { rental_model?: string; status_events?: Array<{ from_status?: string; to_status?: string }> }, cancellation: { refund_status?: string } | undefined) {
+  if (cancellation?.refund_status === 'refund_cancelled' && isRefundIneligible(booking.rental_model, booking.status_events)) {
+    return 'bg-[#e92935]/10 text-[#c91f2a]'
+  }
+
+  return cancellation?.refund_status === 'refund_processed'
+    ? 'bg-[#16a34a]/10 text-[#16a34a]'
+    : cancellation?.refund_status === 'pending_refund'
+      ? 'bg-[#ffd923]/20 text-[#b8860b]'
+      : 'bg-[#e92935]/10 text-[#c91f2a]'
+}
+
 export default function AdminBookings() {
   const navigate = useNavigate()
-  const [status, setStatus] = useState('')
-  const [refundStatus, setRefundStatus] = useState<RefundStatus | undefined>()
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1)
-  const [sortField, setSortField] = useState<AdminBookingSortField>('created_at')
-  const [sortDirection, setSortDirection] = useState<AdminBookingSortDirection>('desc')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const statusParam = searchParams.get('status') || ''
+  const status = statuses.some((item) => item.value === statusParam) ? statusParam : ''
+  const refundParam = searchParams.get('refund')
+  const refundStatus = refundStatuses.some((item) => item.value === refundParam)
+    ? refundParam as RefundStatus
+    : undefined
+  const search = searchParams.get('search') || ''
+  const pageParam = Number(searchParams.get('page'))
+  const page = Number.isInteger(pageParam) && pageParam > 0 ? pageParam : 1
+  const sortParam = searchParams.get('sort')
+  const sortField = sortFields.some((item) => item.value === sortParam)
+    ? sortParam as AdminBookingSortField
+    : 'created_at'
+  const directionParam = searchParams.get('direction')
+  const sortDirection = directionParam === 'asc' || directionParam === 'desc' ? directionParam : 'desc'
 
-  const { data, isLoading, isFetching } = useAdminBookings({
+  const updateParams = (updates: Record<string, string | undefined>) => {
+    const nextParams = new URLSearchParams(searchParams)
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) nextParams.set(key, value)
+      else nextParams.delete(key)
+    })
+    setSearchParams(nextParams, { replace: true })
+  }
+
+  const { data, isLoading, isFetching, refetch } = useAdminBookings({
     status: status || undefined,
     refundStatus,
     search: search || undefined,
@@ -89,7 +119,7 @@ export default function AdminBookings() {
         <h1 className="text-2xl font-black tracking-[-0.03em] text-[#071f52]">Bookings</h1>
         <div className="flex items-center gap-3">
           <Link
-            to="/admin/bookings/create"
+            to={`/admin/bookings/create${searchParams.toString() ? `?${searchParams.toString()}` : ''}`}
             className="rounded-xl bg-[#071f52] px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-[#0b2f7d]"
           >
             Create booking
@@ -99,8 +129,7 @@ export default function AdminBookings() {
             <input
               value={search}
               onChange={(e) => {
-                setSearch(e.target.value)
-                setPage(1)
+                updateParams({ search: e.target.value, page: '1' })
               }}
               placeholder="Search..."
               aria-label="Search bookings"
@@ -116,28 +145,24 @@ export default function AdminBookings() {
             key={s.value}
             type="button"
             onClick={() => {
-              setStatus(s.value)
-              setRefundStatus(undefined)
-              setPage(1)
+              updateParams({ status: s.value, refund: undefined, page: '1' })
             }}
             className={cn(
               'rounded-full px-3 py-1.5 text-xs font-bold transition-colors',
-              status === s.value
+               status === s.value && !refundStatus
                 ? 'bg-[#071f52] text-white'
                 : 'bg-white text-[#071f52]/58 border border-[#071f52]/10 hover:bg-[#071f52]/8',
             )}
           >
             {s.label}
           </button>
-         ))}
+        ))}
         {refundStatuses.map((s) => (
           <button
             key={s.value}
             type="button"
             onClick={() => {
-              setStatus('')
-              setRefundStatus(s.value)
-              setPage(1)
+              updateParams({ status: undefined, refund: s.value, page: '1' })
             }}
             className={cn(
               'rounded-full px-3 py-1.5 text-xs font-bold transition-colors',
@@ -158,8 +183,7 @@ export default function AdminBookings() {
           aria-label="Sort bookings by"
           value={sortField}
           onChange={(event) => {
-            setSortField(event.target.value as AdminBookingSortField)
-            setPage(1)
+            updateParams({ sort: event.target.value, page: '1' })
           }}
           className="rounded-xl border border-[#071f52]/14 bg-white px-3 py-2 text-sm font-semibold focus:border-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
         >
@@ -169,8 +193,7 @@ export default function AdminBookings() {
           aria-label="Sort direction"
           value={sortDirection}
           onChange={(event) => {
-            setSortDirection(event.target.value as AdminBookingSortDirection)
-            setPage(1)
+            updateParams({ direction: event.target.value, page: '1' })
           }}
           className="rounded-xl border border-[#071f52]/14 bg-white px-3 py-2 text-sm font-semibold focus:border-[#071f52] focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60"
         >
@@ -185,8 +208,24 @@ export default function AdminBookings() {
       {(loading || bookings.length > 0) ? (
         <div className="mt-6 card-overflow">
           <div className="flex items-center justify-between border-b border-[#071f52]/10 bg-white px-5 py-3">
-            <p className="text-xs font-semibold text-[#071f52]/48">Show 20 per page</p>
-            <PaginationControls page={currentPage} totalPages={totalPages} setPage={setPage} disabled={loading} />
+            <div className="flex items-center gap-3">
+              <p className="text-xs font-semibold text-[#071f52]/48">Show 20 per page</p>
+              <button
+                type="button"
+                aria-label="Refresh bookings"
+                onClick={() => refetch()}
+                disabled={loading}
+                className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                <RefreshCw size={16} className={isFetching ? 'animate-spin' : undefined} />
+              </button>
+            </div>
+            <PaginationControls
+              page={currentPage}
+              totalPages={totalPages}
+              setPage={(nextPage) => updateParams({ page: String(nextPage) })}
+              disabled={loading}
+            />
           </div>
         </div>
       ) : null}
@@ -221,17 +260,17 @@ export default function AdminBookings() {
                   key={b.id}
                   tabIndex={0}
                   aria-label={`View booking ${b.booking_number}`}
-                  onClick={() => navigate(`/admin/bookings/${b.booking_number}`)}
+                  onClick={() => navigate(`/admin/bookings/${b.booking_number}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
                       event.preventDefault()
-                      navigate(`/admin/bookings/${b.booking_number}`)
+                      navigate(`/admin/bookings/${b.booking_number}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`)
                     }
                   }}
                   className="cursor-pointer transition-colors hover:bg-[#f7f9ff] focus:bg-[#f7f9ff] focus:outline-none"
                 >
                   <td className="px-5 py-3">
-                    <Link to={`/admin/bookings/${b.booking_number}`} className="text-sm font-bold text-[#071f52] hover:underline">
+                    <Link to={`/admin/bookings/${b.booking_number}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`} className="text-sm font-bold text-[#071f52] hover:underline">
                       {b.booking_number}
                     </Link>
                   </td>
@@ -257,10 +296,10 @@ export default function AdminBookings() {
                     <span className="text-sm font-bold text-[#071f52]">{b.flagged_for_manual_pricing ? 'TBD' : `₱${b.total_amount?.toLocaleString()}.00`}</span>
                   </td>
                     <td className="px-5 py-3" onClick={(event) => event.stopPropagation()}>
-                      {b.status === 'canceled' && getDisplayedRefundStatus(b.cancellation?.[0]) ? (
-                        <p className="mt-1 text-xs font-bold text-[#16a34a]">
-                          {getDisplayedRefundStatus(b.cancellation[0])}
-                        </p>
+                      {b.status === 'canceled' && getDisplayedRefundStatus(b, b.cancellation?.[0]) ? (
+                        <span className={cn('inline-flex rounded-full px-3 py-1 text-[11px] font-bold', getRefundStatusColor(b, b.cancellation[0]))}>
+                          {getDisplayedRefundStatus(b, b.cancellation[0])}
+                        </span>
                       ) : (
                         <span className={cn('rounded-full px-3 py-1 text-[11px] font-bold', STATUS_COLORS[b.status])}>
                           {formatBookingStatus(b.status)}
@@ -297,7 +336,7 @@ function PaginationControls({
 }: {
   page: number
   totalPages: number
-  setPage: React.Dispatch<React.SetStateAction<number>>
+  setPage: (page: number) => void
   disabled?: boolean
 }) {
   if (totalPages <= 1) return null
@@ -309,7 +348,7 @@ function PaginationControls({
         <button
           type="button"
           aria-label="Previous page"
-          onClick={() => setPage((current) => Math.max(1, current - 1))}
+          onClick={() => setPage(Math.max(1, page - 1))}
           disabled={disabled || page === 1}
           className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
         >
@@ -318,7 +357,7 @@ function PaginationControls({
         <button
           type="button"
           aria-label="Next page"
-          onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+          onClick={() => setPage(Math.min(totalPages, page + 1))}
           disabled={disabled || page === totalPages}
           className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
         >
