@@ -317,10 +317,11 @@ export function BookingCreateForm() {
     ? !customer.existingCustomer?.id
     : !customer.newCustomer.firstName.trim() || !customer.newCustomer.lastName.trim() || !customer.newCustomer.email.trim()
   const routeIncomplete = needsRouteQuote && (routeSelections.pickup.lat == null || (rentalType === 'all-in' && mode === 'keep' && routeSelections.destination.lat == null) || routeSelections.dropoff.lat == null || !routeQuote)
-  const paymentIncomplete = !payment.reference.trim()
+  const paymentIncomplete = !payment.method || !payment.reference.trim()
+  const receiptIncomplete = !receiptFile
   const isWithDriverDropoff = rentalType !== 'self-drive' && mode === 'dropoff'
   const sameDropoffLocation = isWithDriverDropoff && isSameBookingLocation(locations.pickup, locations.dropoff)
-  const formIncomplete = customerSelectionIncomplete || locationSelectionIncomplete || sameDropoffLocation || !vehicleId || !startParam || (!endParam && !isWithDriverDropoff) || selfDriveAddressIncomplete || routeIncomplete || needsTollEstimate || tollLoading || paymentIncomplete || createBooking.isPending || paymentMethodsQuery.isLoading
+  const formIncomplete = customerSelectionIncomplete || locationSelectionIncomplete || sameDropoffLocation || !vehicleId || !startParam || (!endParam && !isWithDriverDropoff) || selfDriveAddressIncomplete || routeIncomplete || needsTollEstimate || tollLoading || paymentIncomplete || receiptIncomplete || createBooking.isPending || paymentMethodsQuery.isLoading
   const selectedPaymentMethod = paymentMethodsQuery.data?.find((method) => method.id === payment.method)
 
   const uploadReceipt = async (paymentIdempotencyKey: string) => {
@@ -391,8 +392,16 @@ export function BookingCreateForm() {
       setError(tollError || 'Wait for the toll estimate to finish before submitting.')
       return
     }
+    if (!payment.method) {
+      setError('Please select the payment method.')
+      return
+    }
     if (!payment.reference.trim()) {
       setError('Please enter the payment reference number.')
+      return
+    }
+    if (!receiptFile) {
+      setError('Please upload the receipt or proof of payment.')
       return
     }
 
@@ -470,7 +479,7 @@ export function BookingCreateForm() {
       if (receiptPath) await removeUploadedFileWithQueue('payment-receipts', receiptPath).catch((cleanupError) => {
         logError('admin-booking', 'Failed to remove payment receipt after booking failure', cleanupError)
       })
-      setError(err?.status === 409 ? err.message || 'Vehicle is not available for these dates.' : showError(err))
+      setError(showError(err) || 'We could not create the booking. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -567,7 +576,7 @@ export function BookingCreateForm() {
           </BookingSection>
 
           <BookingSection title="5. PAYMENT">
-            <PaymentFields depositAmount={pricing.deposit} methodRequired={false} receiptRequired={false} autoSelectMethod={false} />
+            <PaymentFields depositAmount={pricing.deposit} methodRequired receiptRequired autoSelectMethod={false} />
           </BookingSection>
 
           <div className="card">
@@ -605,7 +614,7 @@ export function BookingCreateForm() {
               remaining={pricing.remaining}
               submitting={submitting}
               disabled={formIncomplete}
-                disabledMessage={customerSelectionIncomplete ? 'Select a customer to continue.' : !vehicleId ? 'Select a vehicle to continue.' : (!startParam || (!endParam && !isWithDriverDropoff)) ? 'Pick-up and return dates are required unless this is a drop-off booking.' : locationSelectionIncomplete ? 'Pick suggested locations to continue.' : sameDropoffLocation ? 'Pickup and drop-off locations must be different.' : selfDriveAddressIncomplete ? 'Enter the full self-drive address.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : paymentIncomplete ? 'Reference number is required.' : undefined))}
+                disabledMessage={customerSelectionIncomplete ? 'Select a customer to continue.' : !vehicleId ? 'Select a vehicle to continue.' : (!startParam || (!endParam && !isWithDriverDropoff)) ? 'Pick-up and return dates are required unless this is a drop-off booking.' : locationSelectionIncomplete ? 'Pick suggested locations to continue.' : sameDropoffLocation ? 'Pickup and drop-off locations must be different.' : selfDriveAddressIncomplete ? 'Enter the full self-drive address.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : !payment.method ? 'Select a payment method.' : !payment.reference.trim() ? 'Enter the payment reference number.' : receiptIncomplete ? 'Upload the receipt or proof of payment.' : undefined))}
               error={error}
               submitLabel="Confirm Booking"
               footerNote="Admin bookings are confirmed immediately after creation."

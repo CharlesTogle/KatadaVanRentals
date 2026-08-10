@@ -171,7 +171,7 @@ describe('AdminBookingsCreate', () => {
     expect(screen.getByText('1. CUSTOMER SELECTION')).toBeInTheDocument()
     expect(screen.getByText(/rental details/i)).toBeInTheDocument()
     expect(screen.getByText('5. PAYMENT')).toBeInTheDocument()
-    expect(screen.getByText(/receipt is optional for admin-created bookings/i)).toBeInTheDocument()
+    expect(screen.getByText(/upload receipt \/ proof of payment/i)).toHaveTextContent('*')
   })
 
   it('validates self-drive address fields and uses the full country dataset', () => {

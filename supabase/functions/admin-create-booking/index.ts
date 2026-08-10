@@ -221,20 +221,51 @@ serve(async (req) => {
     return json(req, { errorCode: 'INVALID_INPUT' }, 400)
   }
 
-  // Check availability before creating a customer account.
-  const overlapEndAt = normalizedEndAt ?? new Date(new Date(startAt).getTime() + 24 * 60 * 60 * 1000).toISOString()
-  const { data: overlapping } = await supabase
+  const { data: vehicle, error: vehicleError } = await supabase
+    .from('vehicles')
+    .select('id, is_available')
+    .eq('id', vehicleId)
+    .maybeSingle()
+
+  if (vehicleError) {
+    log('ERROR', 'Availability check failed', { requestId, errorCode: vehicleError.code ?? 'AVAILABILITY_CHECK_FAILED' })
+    return json(req, { errorCode: 'AVAILABILITY_CHECK_FAILED' }, 500)
+  }
+
+  if (!vehicle?.is_available) {
+    return json(req, { errorCode: 'VEHICLE_UNAVAILABLE' }, 409)
+  }
+
+  const { data: activeBookings, error: bookingsError } = await supabase
     .from('bookings')
-    .select('id, booking_number')
+    .select('start_at, end_at, booking_number')
     .eq('vehicle_id', vehicleId)
     .in('status', [...LIVE_BOOKING_STATUSES])
-    .lt('start_at', overlapEndAt)
-    .or(`end_at.is.null,end_at.gt.${startAt}`)
 
-  if (overlapping && overlapping.length > 0) {
+  if (bookingsError) {
+    log('ERROR', 'Availability check failed', { requestId, errorCode: bookingsError.code ?? 'AVAILABILITY_CHECK_FAILED' })
+    return json(req, { errorCode: 'AVAILABILITY_CHECK_FAILED' }, 500)
+  }
+
+  const requestedStart = new Date(startAt).getTime()
+  const requestedEnd = normalizedEndAt ? new Date(normalizedEndAt).getTime() : requestedStart
+  const overlapping = activeBookings?.find((booking) => {
+    const bookingStart = new Date(booking.start_at).getTime()
+    const bookingEnd = booking.end_at ? new Date(booking.end_at).getTime() : bookingStart
+
+    return normalizedEndAt
+      ? booking.end_at
+        ? bookingStart < requestedEnd && bookingEnd > requestedStart
+        : bookingStart >= requestedStart && bookingStart < requestedEnd
+      : booking.end_at
+        ? bookingStart <= requestedStart && bookingEnd > requestedStart
+        : bookingStart === requestedStart
+  })
+
+  if (overlapping) {
     return json(req, {
       errorCode: 'VEHICLE_UNAVAILABLE',
-      conflictBookingNumber: overlapping[0].booking_number,
+      ...(overlapping.booking_number ? { conflictBookingNumber: overlapping.booking_number } : {}),
     }, 409)
   }
 
@@ -282,62 +313,106 @@ serve(async (req) => {
 
   // Insert booking and its mandatory payment in one database transaction.
   const durationDays = computeDurationDays(startAt, normalizedEndAt)
-  const { data: booking, error: bookingError } = await supabase.rpc('admin_create_booking_with_payment', {
-    p_customer_id: customerId,
-    p_actor_id: user.id,
-    p_booking: {
-      booking_number: generateBookingNumber(),
-      guest_name: customerMode === 'new' ? `${newCustomer!.firstName} ${newCustomer!.lastName}`.trim() : null,
-      guest_email: customerMode === 'new' ? newCustomer!.email : null,
-      guest_mobile: customerMode === 'new' ? normalizedNewCustomerMobile || null : null,
-      vehicle_id: vehicleId,
-      rental_model: rentalModel,
-      booking_mode: bookingMode,
-      status: 'confirmed',
-      start_at: startAt,
-      end_at: normalizedEndAt,
-      duration_days: durationDays,
-      pickup_location: pickupLocation || null,
-      pickup_lat: pickupLat ?? null,
-      pickup_lng: pickupLng ?? null,
-      dropoff_location: dropoffLocation || null,
-      dropoff_lat: dropoffLat ?? null,
-      dropoff_lng: dropoffLng ?? null,
-      destination: normalizedDestination,
-      purpose_of_travel: normalizedPurposeOfTravel,
-      notes: notes || null,
-      distance_km: normalizedDistanceKm,
-      duration_minutes: normalizedDurationMinutes,
-      fuel_estimate_liters: normalizedFuelEstimateLiters,
-      fuel_estimate_amount: normalizedFuelEstimateAmount,
-      toll_estimate_amount: normalizedTollEstimateAmount,
-      toll_segments: normalizedTollSegments,
-      toll_entry_plaza: normalizedTollEntryPlaza,
-      toll_entry_expressway: normalizedTollEntryExpressway,
-      toll_exit_plaza: normalizedTollExitPlaza,
-      toll_exit_expressway: normalizedTollExitExpressway,
-      toll_vehicle_class: normalizedTollVehicleClass,
-      toll_rfid_breakdown: normalizedTollRfidBreakdown,
-      self_drive_address: normalizedSelfDriveAddress,
-      in_service_area: inServiceArea ?? true,
-      flagged_for_manual_pricing: flaggedForManualPricing ?? false,
-      created_by: user.id,
-      idempotency_key: bookingIdempotencyKey,
-    },
-    p_payment: {
-      idempotency_key: paymentIdempotencyKey,
-      payment_method_id: paymentMethodId ?? null,
-      channel: paymentChannel ?? 'cash',
-      reference_number: paymentReference ?? null,
-      receipt_path: paymentReceiptPath ?? null,
-    },
+  log('INFO', 'Calling admin booking RPC', {
+    requestId,
+    customerId,
+    actorId: user.id,
+    vehicleId,
+    bookingIdempotencyKey,
+    paymentIdempotencyKey,
+    flaggedForManualPricing: flaggedForManualPricing ?? false,
   })
+  let booking: typeof import('https://esm.sh/@supabase/supabase-js@2').SupabaseClient extends never ? never : Record<string, unknown> | null
+  let bookingError: { code?: string; message: string; details?: string; hint?: string } | null
+  try {
+    const result = await supabase.rpc('admin_create_booking_with_payment', {
+      p_customer_id: customerId,
+      p_actor_id: user.id,
+      p_booking: {
+        booking_number: generateBookingNumber(),
+        guest_name: customerMode === 'new' ? `${newCustomer!.firstName} ${newCustomer!.lastName}`.trim() : null,
+        guest_email: customerMode === 'new' ? newCustomer!.email : null,
+        guest_mobile: customerMode === 'new' ? normalizedNewCustomerMobile || null : null,
+        vehicle_id: vehicleId,
+        rental_model: rentalModel,
+        booking_mode: bookingMode,
+        status: 'confirmed',
+        start_at: startAt,
+        end_at: normalizedEndAt,
+        duration_days: durationDays,
+        pickup_location: pickupLocation || null,
+        pickup_lat: pickupLat ?? null,
+        pickup_lng: pickupLng ?? null,
+        dropoff_location: dropoffLocation || null,
+        dropoff_lat: dropoffLat ?? null,
+        dropoff_lng: dropoffLng ?? null,
+        destination: normalizedDestination,
+        purpose_of_travel: normalizedPurposeOfTravel,
+        notes: notes || null,
+        distance_km: normalizedDistanceKm,
+        duration_minutes: normalizedDurationMinutes,
+        fuel_estimate_liters: normalizedFuelEstimateLiters,
+        fuel_estimate_amount: normalizedFuelEstimateAmount,
+        toll_estimate_amount: normalizedTollEstimateAmount,
+        toll_segments: normalizedTollSegments,
+        toll_entry_plaza: normalizedTollEntryPlaza,
+        toll_entry_expressway: normalizedTollEntryExpressway,
+        toll_exit_plaza: normalizedTollExitPlaza,
+        toll_exit_expressway: normalizedTollExitExpressway,
+        toll_vehicle_class: normalizedTollVehicleClass,
+        toll_rfid_breakdown: normalizedTollRfidBreakdown,
+        self_drive_address: normalizedSelfDriveAddress,
+        in_service_area: inServiceArea ?? true,
+        flagged_for_manual_pricing: flaggedForManualPricing ?? false,
+        created_by: user.id,
+        idempotency_key: bookingIdempotencyKey,
+      },
+      p_payment: {
+        idempotency_key: paymentIdempotencyKey,
+        payment_method_id: paymentMethodId ?? null,
+        channel: paymentChannel ?? 'cash',
+        reference_number: paymentReference ?? null,
+        receipt_path: paymentReceiptPath ?? null,
+      },
+    })
+    booking = result.data as Record<string, unknown> | null
+    bookingError = result.error
+  } catch (error) {
+    const thrownError = error instanceof Error ? error : new Error(String(error))
+    log('ERROR', 'Admin booking RPC threw', {
+      requestId,
+      errorName: thrownError.name,
+      errorMessage: thrownError.message,
+      errorStack: thrownError.stack,
+      rpc: 'admin_create_booking_with_payment',
+      bookingIdempotencyKey,
+      paymentIdempotencyKey,
+    })
+    return json(req, { errorCode: 'BOOKING_CREATE_FAILED' }, 500)
+  }
 
   if (bookingError) {
     if (newlyCreatedCustomerId) await deleteCreatedCustomer(supabase, newlyCreatedCustomerId, requestId)
-    log('ERROR', 'Failed to create booking', { requestId, errorCode: bookingError.code ?? 'BOOKING_CREATE_FAILED' })
+    log('ERROR', 'Failed to create booking', {
+      requestId,
+      errorCode: bookingError.code ?? 'BOOKING_CREATE_FAILED',
+      errorMessage: bookingError.message,
+      errorDetails: bookingError.details,
+      errorHint: bookingError.hint,
+      rpc: 'admin_create_booking_with_payment',
+      bookingIdempotencyKey,
+      paymentIdempotencyKey,
+    })
     return json(req, { errorCode: 'BOOKING_CREATE_FAILED' }, 500)
   }
+
+  log('INFO', 'Admin booking RPC completed', {
+    requestId,
+    bookingId: booking?.id,
+    bookingNumber: booking?.booking_number,
+    customerId,
+    paymentIdempotencyKey,
+  })
 
   if (newCustomer?.sendInvite && customerId) {
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({

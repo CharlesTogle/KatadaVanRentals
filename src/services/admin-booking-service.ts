@@ -52,7 +52,10 @@ export async function createAdminBooking(input: AdminBookingCreateInput): Promis
   })
 
   if (error) {
-    const response = data as { errorCode?: string; message?: string; error?: string } | null
+    let response = data as { errorCode?: string; message?: string; error?: string } | null
+    if (!response && error.context instanceof Response) {
+      response = await error.context.clone().json().catch(() => null)
+    }
     const err = new Error(response?.message || response?.error || error.message) as Error & { status?: number; errorCode?: string }
     err.status = error.context?.status
     err.errorCode = response?.errorCode
