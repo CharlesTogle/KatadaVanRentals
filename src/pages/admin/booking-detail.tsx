@@ -41,7 +41,7 @@ const MAX_BOOKING_ADJUSTMENT = 99999.99
 
 function getPaymentReceiptPathCandidates(filePath: string) {
   const trimmedPath = filePath.replace(/^\/+/, '')
-  const strippedBucketPath = trimmedPath.replace(new RegExp(`^${PAYMENT_RECEIPT_BUCKET}/`), '')
+  const strippedBucketPath = trimmedPath.replace(new RegExp(`^(?:${PAYMENT_RECEIPT_BUCKET}/)+`), '')
 
   return [...new Set([
     strippedBucketPath,

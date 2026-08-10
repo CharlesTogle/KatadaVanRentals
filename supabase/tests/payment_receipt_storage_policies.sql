@@ -8,7 +8,7 @@ begin
   where schemaname = 'storage'
     and tablename = 'objects'
     and policyname in (
-      'payment receipt files own or admin',
+      'payment receipt files own booking or admin',
       'payment receipt uploads own or admin',
       'payment receipt updates own or admin',
       'payment receipt deletes own or admin'
