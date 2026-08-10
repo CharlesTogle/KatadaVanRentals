@@ -85,7 +85,13 @@ export default function Profile() {
     barangay: showProfileValidation && isMissingRequiredValue(profile.barangay) ? 'Barangay is required.' : '',
     city: showProfileValidation && isMissingRequiredValue(profile.city) ? 'City is required.' : '',
     province: showProfileValidation && isMissingRequiredValue(profile.province) ? 'Province is required.' : '',
-    zip_code: showProfileValidation && isMissingRequiredValue(profile.zip_code) ? 'ZIP code is required.' : '',
+    zip_code: !showProfileValidation
+      ? ''
+      : isMissingRequiredValue(profile.zip_code)
+        ? 'ZIP code is required.'
+        : !/^\d{4}$/.test(profile.zip_code.trim())
+          ? 'ZIP code must be exactly 4 digits.'
+          : '',
     country: showProfileValidation && isMissingRequiredValue(profile.country) ? 'Country is required.' : '',
   }
 
@@ -432,9 +438,12 @@ export default function Profile() {
                 <label className="text-[10px] font-bold text-[#071f52] sm:text-xs">ZIP Code <span className="text-[#e92935]">*</span></label>
                 <input
                   value={profile.zip_code}
-                  onChange={(e) => setProfile({ ...profile, zip_code: e.target.value })}
+                  onChange={(e) => setProfile({ ...profile, zip_code: e.target.value.replace(/\D/g, '').slice(0, 4) })}
                   aria-invalid={invalidProfileFields.zip_code}
                   required
+                  inputMode="numeric"
+                  maxLength={4}
+                  pattern="[0-9]{4}"
                   placeholder="1309"
                   className={getProfileFieldClassName(invalidProfileFields.zip_code)}
                 />

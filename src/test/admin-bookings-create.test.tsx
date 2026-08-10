@@ -173,4 +173,23 @@ describe('AdminBookingsCreate', () => {
     expect(screen.getByText('5. PAYMENT')).toBeInTheDocument()
     expect(screen.getByText(/receipt is optional for admin-created bookings/i)).toBeInTheDocument()
   })
+
+  it('validates self-drive address fields and uses the full country dataset', () => {
+    render(
+      <MemoryRouter initialEntries={['/admin/bookings/create?type=self-drive']}>
+        <AdminBookingsCreate />
+      </MemoryRouter>,
+    )
+
+    const zipCode = screen.getByLabelText(/zip code/i)
+    expect(zipCode).toHaveAttribute('inputmode', 'numeric')
+    expect(zipCode).toHaveAttribute('maxlength', '4')
+    expect(zipCode).toHaveAttribute('pattern', '[0-9]{4}')
+
+    fireEvent.change(zipCode, { target: { value: '123' } })
+    expect(zipCode).toHaveClass('border-[#e92935]')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Country' }))
+    expect(screen.getByRole('option', { name: 'United States' })).toBeInTheDocument()
+  })
 })

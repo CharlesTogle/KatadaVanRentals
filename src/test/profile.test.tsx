@@ -87,6 +87,19 @@ describe('Profile', () => {
     expect(mutate).not.toHaveBeenCalled()
   })
 
+  it('marks a ZIP code red when it is not four digits', () => {
+    mockProfile = { ...validProfile, zip_code: '123' }
+    useProfileMock.mockReturnValue({ data: mockProfile, isLoading: false })
+    vi.spyOn(HTMLFormElement.prototype, 'reportValidity').mockReturnValue(false)
+
+    render(<Profile />)
+    fireEvent.click(screen.getByRole('button', { name: /save profile/i }))
+
+    const zipCode = screen.getByDisplayValue('123')
+    expect(zipCode).toHaveClass('border-[#e92935]')
+    expect(screen.getByText('ZIP code must be exactly 4 digits.')).toBeInTheDocument()
+  })
+
   it('shows an error when the profile photo type is unsupported', async () => {
     render(<Profile />)
 

@@ -11,6 +11,7 @@ import { LocationsFields } from '@/components/booking/locations-fields'
 import { PaymentFields } from '@/components/booking/payment-fields'
 import { PriceSummary } from '@/components/booking/price-summary'
 import { BookingFormSkeleton } from '@/components/booking/booking-form-skeleton'
+import { CountrySelect } from '@/components/ui/country-select'
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
 import { getBookingPriceBreakdown, isSameBookingLocation, normalizeCustomerRentalType, toBookingRentalModel, type CustomerRentalType } from '@/lib/booking-utils'
@@ -64,17 +65,15 @@ const emptySelfDriveAddress: SelfDriveAddress = {
   country: 'Philippines',
 }
 
-function formatSelfDriveAddress(address: SelfDriveAddress) {
+function isCompleteSelfDriveAddress(address: SelfDriveAddress) {
   return [
     address.addressLine1,
-    address.addressLine2,
     address.streetAddress,
     address.barangay,
     address.city,
     address.province,
-    address.zipCode,
     address.country,
-  ].map((part) => part.trim()).filter(Boolean).join(', ')
+  ].every((part) => part.trim()) && /^\d{4}$/.test(address.zipCode.trim())
 }
 
 export function BookingCreateForm() {
@@ -309,7 +308,8 @@ export function BookingCreateForm() {
     && routeQuote.tollExitPlaza === tollSelections.exit.name
     && routeQuote.tollVehicleClass === tollSelections.vehicleClass
   const needsTollEstimate = rentalType === 'all-in' && routeQuote?.inServiceArea !== false && !tollQuoteReady
-  const selfDriveAddressIncomplete = rentalType === 'self-drive' && !formatSelfDriveAddress(completeAddress)
+  const selfDriveAddressIncomplete = rentalType === 'self-drive' && !isCompleteSelfDriveAddress(completeAddress)
+  const invalidSelfDriveZip = rentalType === 'self-drive' && completeAddress.zipCode.length !== 4
   const locationSelectionIncomplete = routeSelections.pickup.lat == null
     || routeSelections.dropoff.lat == null
     || ((mode === 'keep' || rentalType === 'self-drive') && routeSelections.destination.lat == null)
@@ -379,9 +379,8 @@ export function BookingCreateForm() {
       return
     }
 
-    const bookingAddress = formatSelfDriveAddress(completeAddress)
-    if (rentalType === 'self-drive' && !bookingAddress) {
-      setError('Please enter the complete address for this self-drive booking.')
+    if (rentalType === 'self-drive' && !isCompleteSelfDriveAddress(completeAddress)) {
+      setError(/^\d{4}$/.test(completeAddress.zipCode.trim()) ? 'Please enter the complete address for this self-drive booking.' : 'ZIP code must be exactly 4 digits.')
       return
     }
     if (needsRouteQuote && (routeSelections.pickup.lat == null || (rentalType === 'all-in' && mode === 'keep' && routeSelections.destination.lat == null) || routeSelections.dropoff.lat == null || !routeQuote)) {
@@ -552,13 +551,11 @@ export function BookingCreateForm() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <label htmlFor="admin-booking-zip-code" className="text-sm font-bold text-[#071f52]">ZIP Code <span className="text-[#e92935]">*</span></label>
-                    <input id="admin-booking-zip-code" required value={completeAddress.zipCode} onChange={(e) => setCompleteAddress({ ...completeAddress, zipCode: e.target.value })} placeholder="1309" className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60" />
+                    <input id="admin-booking-zip-code" required value={completeAddress.zipCode} onChange={(e) => setCompleteAddress({ ...completeAddress, zipCode: e.target.value.replace(/\D/g, '').slice(0, 4) })} inputMode="numeric" maxLength={4} pattern="[0-9]{4}" aria-invalid={invalidSelfDriveZip} placeholder="1309" className={`block w-full rounded-2xl border bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:bg-white focus:outline-none focus:ring-2 ${invalidSelfDriveZip ? 'border-[#e92935] focus:border-[#e92935] focus:ring-[#e92935]/30' : 'border-[#071f52]/14 focus:border-[#071f52] focus:ring-[#ffd923]/60'}`} />
                   </div>
                   <div className="space-y-1.5">
                     <label htmlFor="admin-booking-country" className="text-sm font-bold text-[#071f52]">Country <span className="text-[#e92935]">*</span></label>
-                    <select id="admin-booking-country" required value={completeAddress.country} onChange={(e) => setCompleteAddress({ ...completeAddress, country: e.target.value })} className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60">
-                      <option value="Philippines">Philippines</option>
-                    </select>
+                    <CountrySelect value={completeAddress.country} onChange={(country) => setCompleteAddress({ ...completeAddress, country })} required className="[&_button]:rounded-2xl [&_button]:px-4 [&_button]:py-3 [&_button]:text-base" />
                   </div>
                 </div>
               </div>
