@@ -1,9 +1,7 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { useAdminBookings, useDeleteBooking } from '@/hooks/use-bookings'
+import { useAdminBookings } from '@/hooks/use-bookings'
 import type { AdminBookingSortField } from '@/services/booking-service'
 import { cn } from '@/lib/utils'
-import { toast } from '@/lib/toast'
-import { showError } from '@/lib/errors'
 import { formatBookingStatus, isRefundIneligible, type RefundStatus } from '@/lib/booking-utils'
 import { ChevronLeft, ChevronRight, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { STATUS_COLORS } from '@/config/constants'
@@ -96,23 +94,10 @@ export default function AdminBookings() {
     sortField,
     sortDirection,
   })
-  const deleteBooking = useDeleteBooking()
   const bookings = data?.items || []
   const totalPages = Math.max(1, Math.ceil((data?.total || 0) / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
   const loading = isLoading || isFetching
-
-  const handleDeleteBooking = async (bookingId: string, bookingNumber: string) => {
-    const confirmed = window.confirm(`Delete booking ${bookingNumber}? This cannot be undone.`)
-    if (!confirmed) return
-
-    try {
-      await deleteBooking.mutateAsync({ id: bookingId })
-      toast.success(`Booking ${bookingNumber} deleted.`)
-    } catch (error) {
-      toast.error(showError(error as Error))
-    }
-  }
 
   return (
     <div className="py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
@@ -311,8 +296,11 @@ export default function AdminBookings() {
                      <button
                        type="button"
                        aria-label={`Delete booking ${b.booking_number}`}
-                       onClick={() => handleDeleteBooking(b.id, b.booking_number)}
-                       disabled={deleteBooking.isPending}
+                       onClick={() => {
+                         const params = new URLSearchParams(searchParams)
+                         params.set('modal', 'delete')
+                         navigate(`/admin/bookings/${b.booking_number}?${params.toString()}`)
+                       }}
                        className="rounded-full bg-white p-2 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
                      >
                        <Trash2 size={16} />

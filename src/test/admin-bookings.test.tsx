@@ -1,24 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, useLocation } from 'react-router-dom'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import AdminBookings from '@/pages/admin/bookings'
 
 const useAdminBookings = vi.fn()
-const deleteMutateAsync = vi.fn()
 
 vi.mock('@/hooks/use-bookings', () => ({
   useAdminBookings: (...args: unknown[]) => useAdminBookings(...args),
-  useDeleteBooking: () => ({ mutateAsync: deleteMutateAsync, isPending: false }),
-}))
-
-vi.mock('@/lib/toast', () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
 }))
 
 describe('AdminBookings', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubGlobal('confirm', vi.fn(() => true))
     useAdminBookings.mockReturnValue({
       data: { items: [
         {
@@ -51,21 +44,24 @@ describe('AdminBookings', () => {
       ], total: 3 },
       isLoading: false,
     })
-    deleteMutateAsync.mockResolvedValue(undefined)
   })
 
-  it('opens confirmation and deletes a booking without navigating', async () => {
+  it('opens the delete modal on the booking details page', () => {
+    function LocationProbe() {
+      const location = useLocation()
+      return <output data-testid="location">{location.pathname}{location.search}</output>
+    }
+
     render(
       <MemoryRouter>
         <AdminBookings />
+        <LocationProbe />
       </MemoryRouter>,
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete booking CR-260723-ABCD' }))
 
-    await waitFor(() => {
-      expect(deleteMutateAsync).toHaveBeenCalledWith({ id: 'booking-1' })
-    })
+    expect(screen.getByTestId('location')).toHaveTextContent('/admin/bookings/CR-260723-ABCD?modal=delete')
   })
 
   it('navigates to booking details when a row is clicked', () => {

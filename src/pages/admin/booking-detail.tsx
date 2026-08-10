@@ -54,7 +54,9 @@ export default function BookingDetail() {
   const { bookingNumber } = useParams<{ bookingNumber: string }>()
   const location = useLocation()
   const navigate = useNavigate()
-  const bookingsUrl = `/admin/bookings${location.search}`
+  const bookingListParams = new URLSearchParams(location.search)
+  bookingListParams.delete('modal')
+  const bookingsUrl = `/admin/bookings${bookingListParams.toString() ? `?${bookingListParams.toString()}` : ''}`
   const { data, isLoading, error } = useAdminBooking(bookingNumber)
   const { data: paymentMethods = [] } = usePaymentMethods()
   const { data: appSettings } = useAppSettings()
@@ -62,7 +64,9 @@ export default function BookingDetail() {
   const { viewing, openingId, openFile, closeViewer } = useFileViewer((viewError) => {
     toast.error(showError(viewError))
   })
-  const [activeModal, setActiveModal] = useState<AdminActionType | null>(null)
+  const [activeModal, setActiveModal] = useState<AdminActionType | null>(() => (
+    new URLSearchParams(location.search).get('modal') === 'delete' ? 'delete' : null
+  ))
   const [modalError, setModalError] = useState('')
   const [modalForm, setModalForm] = useState({
     reason: '',
