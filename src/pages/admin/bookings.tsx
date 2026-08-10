@@ -5,7 +5,7 @@ import type { AdminBookingSortDirection, AdminBookingSortField } from '@/service
 import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
-import { formatBookingStatus } from '@/lib/booking-utils'
+import { formatBookingStatus, type RefundStatus } from '@/lib/booking-utils'
 import { ChevronLeft, ChevronRight, Search, Trash2 } from 'lucide-react'
 import { STATUS_COLORS } from '@/config/constants'
 
@@ -29,9 +29,20 @@ const statuses = [
   { value: 'completed', label: 'Completed' },
 ]
 
+const refundStatuses: Array<{ value: RefundStatus; label: string }> = [
+  { value: 'pending_refund', label: 'Refund Pending' },
+  { value: 'refund_processed', label: 'Refund Processed' },
+  { value: 'refund_cancelled', label: 'Refund Cancelled' },
+]
+
+function formatRefundStatus(status: string) {
+  return status.split('_').join(' ').replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
 export default function AdminBookings() {
   const navigate = useNavigate()
   const [status, setStatus] = useState('')
+  const [refundStatus, setRefundStatus] = useState<RefundStatus | undefined>()
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [sortField, setSortField] = useState<AdminBookingSortField>('created_at')
@@ -39,6 +50,7 @@ export default function AdminBookings() {
 
   const { data, isLoading, isFetching } = useAdminBookings({
     status: status || undefined,
+    refundStatus,
     search: search || undefined,
     page,
     pageSize: PAGE_SIZE,
@@ -97,11 +109,31 @@ export default function AdminBookings() {
             type="button"
             onClick={() => {
               setStatus(s.value)
+              setRefundStatus(undefined)
               setPage(1)
             }}
             className={cn(
               'rounded-full px-3 py-1.5 text-xs font-bold transition-colors',
               status === s.value
+                ? 'bg-[#071f52] text-white'
+                : 'bg-white text-[#071f52]/58 border border-[#071f52]/10 hover:bg-[#071f52]/8',
+            )}
+          >
+            {s.label}
+          </button>
+         ))}
+        {refundStatuses.map((s) => (
+          <button
+            key={s.value}
+            type="button"
+            onClick={() => {
+              setStatus('')
+              setRefundStatus(s.value)
+              setPage(1)
+            }}
+            className={cn(
+              'rounded-full px-3 py-1.5 text-xs font-bold transition-colors',
+              refundStatus === s.value
                 ? 'bg-[#071f52] text-white'
                 : 'bg-white text-[#071f52]/58 border border-[#071f52]/10 hover:bg-[#071f52]/8',
             )}
@@ -216,11 +248,16 @@ export default function AdminBookings() {
                   <td className="px-5 py-3">
                     <span className="text-sm font-bold text-[#071f52]">{b.flagged_for_manual_pricing ? 'TBD' : `₱${b.total_amount?.toLocaleString()}.00`}</span>
                   </td>
-                  <td className="px-5 py-3" onClick={(event) => event.stopPropagation()}>
-                    <span className={cn('rounded-full px-3 py-1 text-[11px] font-bold', STATUS_COLORS[b.status])}>
-                      {formatBookingStatus(b.status)}
-                    </span>
-                  </td>
+                   <td className="px-5 py-3" onClick={(event) => event.stopPropagation()}>
+                     <span className={cn('rounded-full px-3 py-1 text-[11px] font-bold', STATUS_COLORS[b.status])}>
+                       {formatBookingStatus(b.status)}
+                     </span>
+                     {b.status === 'canceled' && b.cancellation?.[0]?.refund_status ? (
+                       <p className="mt-1 text-xs font-bold text-[#16a34a]">
+                         Refund Status: {formatRefundStatus(b.cancellation[0].refund_status)}
+                       </p>
+                     ) : null}
+                   </td>
                    <td className="px-5 py-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
                      <button
                        type="button"

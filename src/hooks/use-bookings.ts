@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import * as bookingService from '@/services/booking-service'
+import type { RefundStatus } from '@/lib/booking-utils'
 
 export function useBooking(id: string | undefined) {
   return useQuery({
@@ -16,9 +17,10 @@ export function useAdminBookings(params: {
   pageSize: number
   sortField?: bookingService.AdminBookingSortField
   sortDirection?: bookingService.AdminBookingSortDirection
+  refundStatus?: RefundStatus
 }) {
   return useQuery({
-    queryKey: ['admin', 'bookings', params.status, params.search, params.page, params.pageSize, params.sortField, params.sortDirection],
+    queryKey: ['admin', 'bookings', params.status, params.refundStatus, params.search, params.page, params.pageSize, params.sortField, params.sortDirection],
     queryFn: () => bookingService.getAdminBookings(params),
     placeholderData: keepPreviousData,
   })
@@ -63,10 +65,10 @@ export function useHomepageTestimonials() {
   })
 }
 
-export function useMyBookings(status?: string) {
+export function useMyBookings(status?: string, refundStatus?: RefundStatus) {
   return useQuery({
-    queryKey: ['customer', 'bookings', status],
-    queryFn: () => bookingService.getMyBookings(status),
+    queryKey: ['customer', 'bookings', status, refundStatus],
+    queryFn: () => bookingService.getMyBookings(status, refundStatus),
   })
 }
 

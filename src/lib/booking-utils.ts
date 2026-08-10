@@ -258,6 +258,17 @@ export function formatBookingStatus(status: string) {
   return status.replace(/_/g, ' ')
 }
 
+export function formatCancellationType(type: string) {
+  switch (type) {
+    case 'customer_request':
+      return 'Customer request'
+    case 'admin_no_refund':
+      return 'Admin cancellation without a refund'
+    default:
+      return type.replace(/_/g, ' ')
+  }
+}
+
 type BookingCadenceLike = {
   rental_model: 'all_in' | 'all_out' | 'self_drive'
   booking_mode?: 'dropoff' | 'keep'

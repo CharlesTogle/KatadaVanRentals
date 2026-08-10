@@ -95,6 +95,28 @@ describe('AdminBookings', () => {
     expect(screen.getByRole('link', { name: 'Create booking' })).toHaveAttribute('href', '/admin/bookings/create')
   })
 
+  it('shows refund status and filters canceled bookings by refund status', () => {
+    useAdminBookings.mockReturnValue({
+      data: { items: [{
+        id: 'booking-1',
+        booking_number: 'CR-260723-ABCD',
+        start_at: '2026-07-23T12:00:00Z',
+        total_amount: 4500,
+        status: 'canceled',
+        cancellation: [{ refund_status: 'refund_processed' }],
+        profiles: { first_name: 'Alex', last_name: 'Customer', email: 'alex@example.com' },
+        vehicles: { name: 'Toyota Commuter', plate_number: 'ABC123' },
+      }], total: 1 },
+      isLoading: false,
+    })
+
+    render(<MemoryRouter><AdminBookings /></MemoryRouter>)
+
+    expect(screen.getByText('Refund Status: Refund Processed')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Refund Processed' }))
+    expect(useAdminBookings).toHaveBeenLastCalledWith(expect.objectContaining({ refundStatus: 'refund_processed', status: undefined }))
+  })
+
   it('passes the selected sort and resets pagination when sorting changes', () => {
     render(
       <MemoryRouter>

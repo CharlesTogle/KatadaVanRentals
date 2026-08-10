@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import type { Booking } from '@/types/booking'
 import type { BookingStatus } from '@/types/booking'
+import type { RefundStatus } from '@/lib/booking-utils'
 
 export interface CustomerBookingDetail {
   booking: Booking
@@ -79,13 +80,19 @@ export async function getBookingById(id: string): Promise<CustomerBookingDetail>
   }
 }
 
-export async function getMyBookings(status?: string) {
+export async function getMyBookings(status?: string, refundStatus?: RefundStatus) {
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError) throw authError
+  if (!user) return []
+
   let query = supabase
     .from('bookings')
-    .select('id, booking_number, vehicle_id, start_at, end_at, duration_days, distance_km, booking_mode, total_amount, paid_amount, remaining_amount, status, created_at, rental_model, flagged_for_manual_pricing, price_approval_source, vehicles!vehicle_id(name,slug,image_paths)')
+    .select('id, booking_number, vehicle_id, start_at, end_at, duration_days, distance_km, booking_mode, total_amount, paid_amount, remaining_amount, status, created_at, rental_model, flagged_for_manual_pricing, price_approval_source, vehicles!vehicle_id(name,slug,image_paths), cancellation:booking_cancellations(refund_status,created_at)')
+    .eq('customer_id', user.id)
     .order('created_at', { ascending: false })
 
   if (status) query = query.eq('status', status)
+  if (refundStatus) query = query.eq('status', 'canceled').eq('booking_cancellations.refund_status', refundStatus)
 
   const { data, error } = await query
   if (error) throw error
@@ -102,6 +109,7 @@ export type AdminBookingSortDirection = 'asc' | 'desc'
 
 export async function getAdminBookings(params: {
   status?: string
+  refundStatus?: RefundStatus
   search?: string
   page: number
   pageSize: number
@@ -141,11 +149,12 @@ export async function getAdminBookings(params: {
 
   let query = supabase
     .from('bookings')
-    .select('*, profiles!customer_id(first_name,last_name,email), vehicles!vehicle_id(name,plate_number)', { count: 'exact' })
+    .select('*, profiles!customer_id(first_name,last_name,email), vehicles!vehicle_id(name,plate_number), cancellation:booking_cancellations(refund_status,created_at)', { count: 'exact' })
     .order(sortField, { ascending: sortDirection === 'asc' })
     .range(offset, offset + params.pageSize - 1)
 
   if (params.status) query = query.eq('status', params.status)
+  if (params.refundStatus) query = query.eq('status', 'canceled').eq('booking_cancellations.refund_status', params.refundStatus)
   if (matchingIds) query = query.in('id', matchingIds)
 
   const { data, count, error } = await query

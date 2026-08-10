@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { useMyBookings } from '@/hooks/use-bookings'
 import { STATUS_COLORS } from '@/config/constants'
 import { cn } from '@/lib/utils'
-import { formatBookingStatus, getBookingCadenceValue } from '@/lib/booking-utils'
+import { formatBookingStatus, getBookingCadenceValue, type RefundStatus } from '@/lib/booking-utils'
 import { CalendarDays, ChevronRight } from 'lucide-react'
 
 const statuses = [
@@ -19,9 +19,20 @@ const statuses = [
   { label: 'Completed', value: 'completed' },
 ]
 
+const refundStatuses: Array<{ label: string; value: RefundStatus }> = [
+  { label: 'Refund Pending', value: 'pending_refund' },
+  { label: 'Refund Processed', value: 'refund_processed' },
+  { label: 'Refund Cancelled', value: 'refund_cancelled' },
+]
+
+function formatRefundStatus(status: string) {
+  return status.split('_').join(' ').replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
 export default function MyBookings() {
   const [filter, setFilter] = useState('')
-  const { data: bookings = [], isLoading, isError, refetch } = useMyBookings(filter || undefined)
+  const [refundFilter, setRefundFilter] = useState<RefundStatus | undefined>()
+  const { data: bookings = [], isLoading, isError, refetch } = useMyBookings(filter || undefined, refundFilter)
 
   return (
     <div className="w-full px-3 py-4 sm:px-5 sm:py-6">
@@ -40,9 +51,28 @@ export default function MyBookings() {
           {statuses.map((s) => (
             <button
               key={s.value}
-              onClick={() => setFilter(s.value)}
+               onClick={() => {
+                 setFilter(s.value)
+                 setRefundFilter(undefined)
+               }}
               className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-bold transition-all sm:px-4 sm:py-2 sm:text-xs ${
                 filter === s.value
+                  ? 'bg-[#071f52] text-white shadow-sm'
+                  : 'border border-[#071f52]/14 bg-white text-[#071f52]/58 hover:border-[#071f52]/30 hover:text-[#071f52]'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+          {refundStatuses.map((s) => (
+            <button
+              key={s.value}
+              onClick={() => {
+                setFilter('')
+                setRefundFilter(s.value)
+              }}
+              className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-bold transition-all sm:px-4 sm:py-2 sm:text-xs ${
+                refundFilter === s.value
                   ? 'bg-[#071f52] text-white shadow-sm'
                   : 'border border-[#071f52]/14 bg-white text-[#071f52]/58 hover:border-[#071f52]/30 hover:text-[#071f52]'
               }`}
@@ -94,9 +124,14 @@ export default function MyBookings() {
                     {new Date(booking.start_at).toLocaleDateString()} {booking.end_at ? `to ${new Date(booking.end_at).toLocaleDateString()}` : ''} · {getBookingCadenceValue(booking)}
                   </p>
                 </div>
-                <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold sm:px-3 sm:py-1 sm:text-[11px]', STATUS_COLORS[booking.status])}>
-                  {formatBookingStatus(booking.status)}
-                </span>
+                 <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold sm:px-3 sm:py-1 sm:text-[11px]', STATUS_COLORS[booking.status])}>
+                   {formatBookingStatus(booking.status)}
+                 </span>
+                 {booking.status === 'canceled' && booking.cancellation?.[0]?.refund_status ? (
+                   <p className="mt-1 text-right text-[10px] font-bold text-[#16a34a] sm:text-xs">
+                     Refund Status: {formatRefundStatus(booking.cancellation[0].refund_status)}
+                   </p>
+                 ) : null}
               </div>
               <div className={cn('mt-3 grid gap-2 text-xs sm:mt-4 sm:gap-3 sm:text-sm', booking.status === 'for_review' ? 'sm:grid-cols-1' : 'sm:grid-cols-3')}>
                 <div>

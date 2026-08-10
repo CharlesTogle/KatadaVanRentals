@@ -57,7 +57,7 @@ describe('MyBookings', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Confirmed' }))
 
-    expect(useMyBookings).toHaveBeenLastCalledWith('confirmed')
+    expect(useMyBookings).toHaveBeenLastCalledWith('confirmed', undefined)
   })
 
   it('shows distance instead of duration for with-driver dropoff cards', () => {
@@ -90,5 +90,28 @@ describe('MyBookings', () => {
 
     expect(screen.getByText(/42 km/)).toBeInTheDocument()
     expect(screen.queryByText(/2 days/)).not.toBeInTheDocument()
+  })
+
+  it('shows refund status and requests refund filters', () => {
+    useMyBookings.mockReturnValue({
+      data: [{
+        id: 'booking-1',
+        booking_number: 'CR-260723-ABCD',
+        start_at: '2026-07-25T08:00:00.000Z',
+        total_amount: 4500,
+        paid_amount: 450,
+        remaining_amount: 4050,
+        status: 'canceled',
+        cancellation: [{ refund_status: 'pending_refund' }],
+        vehicles: { name: 'Toyota Commuter' },
+      }],
+      isLoading: false,
+    })
+
+    render(<MemoryRouter><MyBookings /></MemoryRouter>)
+
+    expect(screen.getByText('Refund Status: Pending Refund')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Refund Pending' }))
+    expect(useMyBookings).toHaveBeenLastCalledWith(undefined, 'pending_refund')
   })
 })

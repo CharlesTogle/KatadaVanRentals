@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { canCustomerCancelBooking, getAdminBookingActions, getAdminBookingDetailActions, getBookingPriceBreakdown, getCustomerCancellationRefundStatus, hasRequiredSelfDriveDocuments } from '@/lib/booking-utils'
+import { canCustomerCancelBooking, formatCancellationType, getAdminBookingActions, getAdminBookingDetailActions, getBookingPriceBreakdown, getCustomerCancellationRefundStatus, hasRequiredSelfDriveDocuments } from '@/lib/booking-utils'
 
 describe('booking-utils', () => {
+  it('uses human-readable cancellation type labels', () => {
+    expect(formatCancellationType('customer_request')).toBe('Customer request')
+    expect(formatCancellationType('admin_no_refund')).toBe('Admin cancellation without a refund')
+  })
+
   it('requires all self-drive documents', () => {
     expect(hasRequiredSelfDriveDocuments([
       {

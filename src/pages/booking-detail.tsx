@@ -29,7 +29,7 @@ import { logError } from '@/lib/logger'
 import { getBookingAdjustmentSummary } from '@/lib/booking-adjustment'
 import { getBookingExpiryDeadline, getBookingExpiryMessage } from '@/lib/booking-expiry'
 import { getDisplayBookingNote } from '@/lib/booking-notes'
-import { canCustomerCancelBooking, canDownloadInvoice, formatBookingStatus, getBookingCadenceLabel, getBookingCadenceValue } from '@/lib/booking-utils'
+import { canCustomerCancelBooking, canDownloadInvoice, formatBookingStatus, formatCancellationType, getBookingCadenceLabel, getBookingCadenceValue } from '@/lib/booking-utils'
 import { downloadBookingInvoicePdf } from '@/lib/invoice-pdf'
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
@@ -930,7 +930,7 @@ function formatCancellationReason(note?: string | null) {
       case 'admin_no_refund':
         return 'Canceled by admin without a refund'
       default:
-        return `Canceled: ${toLabel(type)}`
+        return `Canceled: ${formatCancellationType(type)}`
     }
   })()
 

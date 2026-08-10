@@ -5,7 +5,7 @@ import { useFileViewer } from '@/hooks/use-file-viewer'
 import { getCustomerDocumentSignedUrl } from '@/services/document-service'
 import { usePaymentMethods } from '@/hooks/use-payment-methods'
 import { useAppSettings } from '@/hooks/use-app-settings'
-import { canDownloadInvoice, formatBookingStatus, getAdminBookingDetailActions, getBookingCadenceLabel, getBookingCadenceValue, type AdminAction, type AdminActionType } from '@/lib/booking-utils'
+import { canDownloadInvoice, formatBookingStatus, formatCancellationType, getAdminBookingDetailActions, getBookingCadenceLabel, getBookingCadenceValue, type AdminAction, type AdminActionType } from '@/lib/booking-utils'
 import { STATUS_COLORS } from '@/config/constants'
 import { getBookingAdjustmentSummary } from '@/lib/booking-adjustment'
 import { getBookingExpiryDeadline, getBookingExpiryMessage } from '@/lib/booking-expiry'
@@ -1185,7 +1185,7 @@ function CancelModal({ open, onClose, reason, setReason, onSubmit, isPending }: 
 
   const options = [
     { value: 'admin_no_refund', label: 'Admin cancellation - no refund' },
-    { value: 'customer_request', label: 'Customer requested - no refund' },
+    { value: 'customer_request', label: `${formatCancellationType('customer_request')} - no refund` },
   ]
 
   return (
@@ -1360,7 +1360,7 @@ function formatCancellationReason(note?: string | null) {
       case 'admin_no_refund':
         return 'Canceled by admin without a refund'
       default:
-        return `Canceled: ${toLabel(type)}`
+        return `Canceled: ${formatCancellationType(type)}`
     }
   })()
 
