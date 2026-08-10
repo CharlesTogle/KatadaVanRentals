@@ -110,7 +110,7 @@ export function CustomerPicker({ value, onChange }: CustomerPickerProps) {
       ) : (
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelClass}>First name *</label>
+            <label className={labelClass}>First name <span className="text-[#e92935]">*</span></label>
             <input
               value={value.newCustomer.firstName}
               onChange={(e) => onChange({ ...value, newCustomer: { ...value.newCustomer, firstName: e.target.value } })}
@@ -119,7 +119,7 @@ export function CustomerPicker({ value, onChange }: CustomerPickerProps) {
             />
           </div>
           <div>
-            <label className={labelClass}>Last name *</label>
+            <label className={labelClass}>Last name <span className="text-[#e92935]">*</span></label>
             <input
               value={value.newCustomer.lastName}
               onChange={(e) => onChange({ ...value, newCustomer: { ...value.newCustomer, lastName: e.target.value } })}
@@ -128,7 +128,7 @@ export function CustomerPicker({ value, onChange }: CustomerPickerProps) {
             />
           </div>
           <div className="col-span-2">
-            <label className={labelClass}>Email *</label>
+            <label className={labelClass}>Email <span className="text-[#e92935]">*</span></label>
             <input
               type="email"
               value={value.newCustomer.email}
