@@ -169,7 +169,11 @@ export function useAdminBookingAction() {
     mutationFn: (input: bookingService.AdminBookingActionInput) => bookingService.runAdminBookingAction(input),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'bookings'] })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'booking'] })
+      if (variables.type === 'delete') {
+        queryClient.removeQueries({ queryKey: ['admin', 'booking'] })
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['admin', 'booking'] })
+      }
       queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] })
       queryClient.invalidateQueries({ queryKey: ['customer', 'bookings'] })
       queryClient.invalidateQueries({ queryKey: ['booking', variables.bookingId] })
