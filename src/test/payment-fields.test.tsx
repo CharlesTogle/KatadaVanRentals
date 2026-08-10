@@ -49,6 +49,20 @@ describe('PaymentFields', () => {
     })
   })
 
+  it('does not mark a valid receipt size warning as an error', () => {
+    render(
+      <MemoryRouter initialEntries={['/admin/bookings/create']}>
+        <PaymentFields depositAmount={8400} receiptRequired={false} />
+      </MemoryRouter>,
+    )
+
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, {
+      target: { files: [new File(['receipt'], 'receipt.pdf', { type: 'application/pdf' })] },
+    })
+
+    expect(screen.getByText('Uploaded images must not exceed 5 MB.')).not.toHaveClass('text-[#e92935]')
+  })
+
   it('rejects an unsupported receipt before storing it', () => {
     render(
       <MemoryRouter initialEntries={['/dashboard/book/vehicle-1?type=self-drive']}>
