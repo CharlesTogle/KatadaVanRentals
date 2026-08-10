@@ -16,4 +16,18 @@ describe('booking confirmed email', () => {
     expect(email.html).toContain('Booking confirmed')
     expect(email.html).not.toContain('border-radius')
   })
+
+  it('normalizes integer durations', () => {
+    const email = renderBookingConfirmedEmail({
+      firstName: 'Vivrelavie',
+      bookingNumber: 'CR-260806-ABCD',
+      dates: 'Aug 10, 2026 — Aug 11, 2026',
+      duration: '1.00 days',
+      total: '₱4,000.00',
+    })
+
+    expect(email.text).toContain('Duration: 1 day')
+    expect(email.text).not.toContain('1.00')
+    expect(email.html).toContain('>1 day</td>')
+  })
 })

@@ -47,6 +47,12 @@ function json(req: Request, body: unknown, status = 200) {
   })
 }
 
+function getEmailContent(email: { html?: unknown; text?: unknown }) {
+  if (typeof email.html === 'string' && email.html.trim()) return { html: email.html }
+  if (typeof email.text === 'string' && email.text.trim()) return { text: email.text }
+  return null
+}
+
 serve(async (req) => {
   if (!ALLOWED_URLS) {
     log('ERROR', 'ALLOWED_URLS is not configured')
@@ -123,13 +129,16 @@ serve(async (req) => {
             })
       : { subject: String(item.subject || ''), text: String(item.text || ''), html: item.html as string | undefined }
 
+    const content = getEmailContent(email)
+    if (!content) return null
+
     return {
       from: (item.from as string) || `${SENDER_NAME} <${SENDER_EMAIL}>`,
       to: Array.isArray(item.to) ? item.to : [item.to as string],
       subject: email.subject,
-      ...(email.html ? { html: email.html } : { text: email.text }),
+      ...content,
     }
-  })
+  }).filter((email): email is Record<string, unknown> => email !== null)
 
   if (body.template === 'booking_canceled') {
     const email = renderBookingCanceledEmail({
@@ -189,6 +198,12 @@ serve(async (req) => {
   }
 
   const isBatch = Boolean(batchEmails)
+  const singleContent = isBatch ? null : getEmailContent({ html: body.html, text: body.text })
+  if ((isBatch && batchEmails!.length !== batch!.length) || (!isBatch && !singleContent)) {
+    log('WARN', 'Email content is missing')
+    return json(req, { errorCode: 'INVALID_INPUT' }, 400)
+  }
+
   const res = await fetch(isBatch ? 'https://api.resend.com/emails/batch' : 'https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -202,7 +217,7 @@ serve(async (req) => {
       from: (body.from as string) || `${SENDER_NAME} <${SENDER_EMAIL}>`,
       to: (body.to as string) || DEVELOPER_EMAIL,
       subject: body.subject,
-      ...(body.html ? { html: body.html } : { text: body.text }),
+      ...singleContent!,
     }),
   })
 

@@ -373,7 +373,7 @@ serve(async (req) => {
     .single()
 
   if (customerProfile?.email) {
-    const confirmHtml = renderBookingConfirmedEmail({
+    const confirmationEmail = renderBookingConfirmedEmail({
       firstName: customerProfile.first_name ?? 'there',
       bookingNumber: booking.booking_number,
       dates: `${new Date(startAt).toLocaleDateString()}${normalizedEndAt ? ` — ${new Date(normalizedEndAt).toLocaleDateString()}` : ''}`,
@@ -384,8 +384,8 @@ serve(async (req) => {
     await supabase.functions.invoke('send-email', {
       body: {
         to: customerProfile.email,
-        subject: `Booking Confirmed — ${booking.booking_number}`,
-        html: confirmHtml,
+        subject: confirmationEmail.subject,
+        html: confirmationEmail.html,
       },
     })
   }

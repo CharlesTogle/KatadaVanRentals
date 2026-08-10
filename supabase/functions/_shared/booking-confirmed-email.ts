@@ -10,6 +10,7 @@ export interface BookingConfirmedEmailInput {
 
 export function renderBookingConfirmedEmail(input: BookingConfirmedEmailInput) {
   const name = escapeHtml(input.firstName || 'there')
+  const duration = normalizeDuration(input.duration)
   const text = [
     `Hi ${input.firstName || 'there'},`,
     '',
@@ -17,7 +18,7 @@ export function renderBookingConfirmedEmail(input: BookingConfirmedEmailInput) {
     '',
     `Booking Number: ${input.bookingNumber}`,
     `Dates: ${input.dates}`,
-    `Duration: ${input.duration}`,
+    `Duration: ${duration}`,
     `Total: ${input.total}`,
     '',
     'Thank you for choosing Katada Van Rentals.',
@@ -25,7 +26,7 @@ export function renderBookingConfirmedEmail(input: BookingConfirmedEmailInput) {
   const rows = detailRows([
     ['Booking number', input.bookingNumber],
     ['Dates', input.dates],
-    ['Duration', input.duration],
+    ['Duration', duration],
     ['Total', input.total],
   ])
 
@@ -39,4 +40,12 @@ export function renderBookingConfirmedEmail(input: BookingConfirmedEmailInput) {
   })
 
   return { subject: `Booking Confirmed — ${input.bookingNumber}`, text, html }
+}
+
+function normalizeDuration(value: string) {
+  return value.replace(/(\d+(?:\.\d+)?)\s+(day|days)\b/i, (_, rawValue: string) => {
+    const numericValue = Number(rawValue)
+    if (!Number.isInteger(numericValue)) return `${rawValue} days`
+    return `${numericValue} ${numericValue === 1 ? 'day' : 'days'}`
+  })
 }
