@@ -22,7 +22,7 @@ interface DateTimePickerProps {
   triggerClassName?: string
   disabled?: boolean
   minDateTime?: Date
-  disabledDates?: Date[]
+  disabledDates?: Date[] | ((date: Date) => boolean)
 }
 
 function parseDateTimeValue(value: string) {
@@ -87,11 +87,13 @@ export function DateTimePicker({
   const displayValue = selectedDate ? format(selectedDate, "MMM d, yyyy 'at' h:mm aa") : placeholder
   const disabledDay = (date: Date) => (
     (minDateTime ? date < minDateTime : false)
-    || disabledDates.some((disabledDate) => (
-      date.getFullYear() === disabledDate.getFullYear()
-      && date.getMonth() === disabledDate.getMonth()
-      && date.getDate() === disabledDate.getDate()
-    ))
+    || (typeof disabledDates === 'function'
+      ? disabledDates(date)
+      : disabledDates.some((disabledDate) => (
+        date.getFullYear() === disabledDate.getFullYear()
+        && date.getMonth() === disabledDate.getMonth()
+        && date.getDate() === disabledDate.getDate()
+      )))
   )
 
   const updateValue = (nextDate: Date) => {

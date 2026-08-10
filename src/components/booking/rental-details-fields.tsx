@@ -5,8 +5,9 @@ import { saveBookingDateSelection } from '@/lib/booking-date-storage'
 import { normalizeCustomerRentalType, type CustomerRentalType } from '@/lib/booking-utils'
 import { useBookingStore } from '@/store/booking-store'
 import { cn } from '@/lib/utils'
+import { isUnavailableDate } from '@/lib/vehicle-availability'
 import { useVehicleUnavailableRanges } from '@/hooks/use-vehicles'
-import type { Vehicle, VehicleUnavailableRange } from '@/types/vehicle'
+import type { Vehicle } from '@/types/vehicle'
 
 interface RentalDetailsFieldsProps {
   vehicle?: Pick<Vehicle, 'supports_self_drive' | 'supports_all_in' | 'supports_all_out'> | null
@@ -35,23 +36,6 @@ function mergeDateTimeValue(date: string, time: string) {
   if (!date || !time) return ''
 
   return `${date}T${time}`
-}
-
-function getUnavailableDays(ranges: VehicleUnavailableRange[], horizon: Date) {
-  const days: Date[] = []
-
-  for (const range of ranges) {
-    const day = new Date(range.start_at)
-    const end = range.end_at ? new Date(range.end_at) : new Date(horizon)
-    day.setHours(0, 0, 0, 0)
-    end.setHours(0, 0, 0, 0)
-
-    for (; day <= end; day.setDate(day.getDate() + 1)) {
-      days.push(new Date(day))
-    }
-  }
-
-  return days
 }
 
 export function RentalDetailsFields({ vehicle }: RentalDetailsFieldsProps) {
@@ -170,12 +154,6 @@ export function RentalDetailsFields({ vehicle }: RentalDetailsFieldsProps) {
     pickup.setHours(0, 0, 0, 0)
     return pickup
   }, [minPickup, startParam])
-  const unavailableDays = useMemo(() => {
-    const horizon = new Date()
-    horizon.setFullYear(horizon.getFullYear() + 2)
-    return getUnavailableDays(unavailableRanges, horizon)
-  }, [unavailableRanges])
-
   const withDriver = rentalType !== 'self-drive'
 
   return (
@@ -271,9 +249,9 @@ export function RentalDetailsFields({ vehicle }: RentalDetailsFieldsProps) {
         <DateTimePicker
           id="booking-start-at"
           label="Pick-up Date & Time"
-          required
-           minDateTime={minPickup}
-           disabledDates={unavailableDays}
+            required
+            minDateTime={minPickup}
+            disabledDates={(date) => isUnavailableDate(date, unavailableRanges)}
           value={mergeDateTimeValue(startDatePart, startTimePart)}
           placeholder="Select date & time"
           onChange={(value) => {
@@ -289,8 +267,8 @@ export function RentalDetailsFields({ vehicle }: RentalDetailsFieldsProps) {
             id="booking-end-at"
             label="Return Date & Time"
             required
-             minDateTime={minReturn}
-             disabledDates={unavailableDays}
+            minDateTime={minReturn}
+            disabledDates={(date) => isUnavailableDate(date, unavailableRanges)}
             value={mergeDateTimeValue(endDatePart, endTimePart)}
             placeholder="Select date & time"
             onChange={(value) => {
