@@ -441,7 +441,7 @@ export default function BookingDetail() {
                   <div>
                       <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#071f52]/46 sm:text-xs">{statusMessage.title}</p>
                       <p className={`mt-0.5 text-xs font-medium leading-5 sm:text-sm ${statusTone.text}`}>{statusMessage.body}</p>
-                      {booking.status === 'canceled' && cancellation?.refund_status ? <p className="mt-2 text-xs font-bold leading-5 text-[#16a34a]">Refund status: {customerCanceledConfirmedBooking ? 'Not eligible for refund' : formatRefundStatus(cancellation.refund_status)}</p> : null}
+                      {booking.status === 'canceled' && cancellation?.refund_status ? <p className="mt-2 text-xs font-bold leading-5 text-[#16a34a]">{booking.rental_model === 'self_drive' ? 'Refund Status: Self Drive bookings are not eligible for refund' : `Refund status: ${customerCanceledConfirmedBooking ? 'Not eligible for refund' : formatRefundStatus(cancellation.refund_status)}`}</p> : null}
                       {expiryMessage ? <p className="mt-2 text-xs font-semibold leading-5 text-[#6f5a32] sm:text-sm">{expiryMessage}</p> : null}
                   </div>
                 </div>
