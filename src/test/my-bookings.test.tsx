@@ -102,7 +102,7 @@ describe('MyBookings', () => {
         paid_amount: 450,
         remaining_amount: 4050,
         status: 'canceled',
-        cancellation: [{ refund_status: 'pending_refund' }],
+        cancellation: [{ cancellation_type: 'customer_request', refund_status: 'pending_refund' }],
         vehicles: { name: 'Toyota Commuter' },
       }],
       isLoading: false,
@@ -110,7 +110,8 @@ describe('MyBookings', () => {
 
     render(<MemoryRouter><MyBookings /></MemoryRouter>)
 
-    expect(screen.getByText('Refund Status: Pending Refund')).toBeInTheDocument()
+    expect(screen.getByText('Pending Refund')).toBeInTheDocument()
+    expect(screen.queryByText('canceled')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Refund Pending' }))
     expect(useMyBookings).toHaveBeenLastCalledWith(undefined, 'pending_refund')
   })

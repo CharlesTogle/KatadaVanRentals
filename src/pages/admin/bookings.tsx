@@ -39,6 +39,14 @@ function formatRefundStatus(status: string) {
   return status.split('_').join(' ').replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
+function getDisplayedRefundStatus(cancellation: { cancellation_type?: string; refund_status?: string } | undefined) {
+  if (cancellation?.cancellation_type === 'customer_request' && cancellation.refund_status === 'refund_cancelled') {
+    return 'Not eligible for refund'
+  }
+
+  return cancellation?.refund_status ? formatRefundStatus(cancellation.refund_status) : null
+}
+
 export default function AdminBookings() {
   const navigate = useNavigate()
   const [status, setStatus] = useState('')
@@ -248,16 +256,17 @@ export default function AdminBookings() {
                   <td className="px-5 py-3">
                     <span className="text-sm font-bold text-[#071f52]">{b.flagged_for_manual_pricing ? 'TBD' : `₱${b.total_amount?.toLocaleString()}.00`}</span>
                   </td>
-                   <td className="px-5 py-3" onClick={(event) => event.stopPropagation()}>
-                     <span className={cn('rounded-full px-3 py-1 text-[11px] font-bold', STATUS_COLORS[b.status])}>
-                       {formatBookingStatus(b.status)}
-                     </span>
-                     {b.status === 'canceled' && b.cancellation?.[0]?.refund_status ? (
-                       <p className="mt-1 text-xs font-bold text-[#16a34a]">
-                         Refund Status: {formatRefundStatus(b.cancellation[0].refund_status)}
-                       </p>
-                     ) : null}
-                   </td>
+                    <td className="px-5 py-3" onClick={(event) => event.stopPropagation()}>
+                      {b.status === 'canceled' && getDisplayedRefundStatus(b.cancellation?.[0]) ? (
+                        <p className="mt-1 text-xs font-bold text-[#16a34a]">
+                          {getDisplayedRefundStatus(b.cancellation[0])}
+                        </p>
+                      ) : (
+                        <span className={cn('rounded-full px-3 py-1 text-[11px] font-bold', STATUS_COLORS[b.status])}>
+                          {formatBookingStatus(b.status)}
+                        </span>
+                      )}
+                    </td>
                    <td className="px-5 py-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
                      <button
                        type="button"

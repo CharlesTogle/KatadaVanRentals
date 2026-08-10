@@ -103,7 +103,7 @@ describe('AdminBookings', () => {
         start_at: '2026-07-23T12:00:00Z',
         total_amount: 4500,
         status: 'canceled',
-        cancellation: [{ refund_status: 'refund_processed' }],
+         cancellation: [{ cancellation_type: 'customer_request', refund_status: 'refund_cancelled' }],
         profiles: { first_name: 'Alex', last_name: 'Customer', email: 'alex@example.com' },
         vehicles: { name: 'Toyota Commuter', plate_number: 'ABC123' },
       }], total: 1 },
@@ -112,7 +112,10 @@ describe('AdminBookings', () => {
 
     render(<MemoryRouter><AdminBookings /></MemoryRouter>)
 
-    expect(screen.getByText('Refund Status: Refund Processed')).toBeInTheDocument()
+    expect(screen.getByText('Not eligible for refund')).toBeInTheDocument()
+    const bookingRow = screen.getByRole('row', { name: /View booking CR-260723-ABCD/ })
+    expect(bookingRow).not.toHaveTextContent('Refund Cancelled')
+    expect(bookingRow).not.toHaveTextContent('canceled')
     fireEvent.click(screen.getByRole('button', { name: 'Refund Processed' }))
     expect(useAdminBookings).toHaveBeenLastCalledWith(expect.objectContaining({ refundStatus: 'refund_processed', status: undefined }))
   })

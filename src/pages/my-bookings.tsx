@@ -29,6 +29,14 @@ function formatRefundStatus(status: string) {
   return status.split('_').join(' ').replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
+function getDisplayedRefundStatus(cancellation: { cancellation_type?: string; refund_status?: string } | undefined) {
+  if (cancellation?.cancellation_type === 'customer_request' && cancellation.refund_status === 'refund_cancelled') {
+    return 'Not eligible for refund'
+  }
+
+  return cancellation?.refund_status ? formatRefundStatus(cancellation.refund_status) : null
+}
+
 export default function MyBookings() {
   const [filter, setFilter] = useState('')
   const [refundFilter, setRefundFilter] = useState<RefundStatus | undefined>()
@@ -124,14 +132,15 @@ export default function MyBookings() {
                     {new Date(booking.start_at).toLocaleDateString()} {booking.end_at ? `to ${new Date(booking.end_at).toLocaleDateString()}` : ''} · {getBookingCadenceValue(booking)}
                   </p>
                 </div>
-                 <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold sm:px-3 sm:py-1 sm:text-[11px]', STATUS_COLORS[booking.status])}>
-                   {formatBookingStatus(booking.status)}
-                 </span>
-                 {booking.status === 'canceled' && booking.cancellation?.[0]?.refund_status ? (
-                   <p className="mt-1 text-right text-[10px] font-bold text-[#16a34a] sm:text-xs">
-                     Refund Status: {formatRefundStatus(booking.cancellation[0].refund_status)}
-                   </p>
-                 ) : null}
+                  {booking.status === 'canceled' && getDisplayedRefundStatus(booking.cancellation?.[0]) ? (
+                    <p className="mt-1 text-right text-[10px] font-bold text-[#16a34a] sm:text-xs">
+                      {getDisplayedRefundStatus(booking.cancellation[0])}
+                    </p>
+                  ) : (
+                    <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold sm:px-3 sm:py-1 sm:text-[11px]', STATUS_COLORS[booking.status])}>
+                      {formatBookingStatus(booking.status)}
+                    </span>
+                  )}
               </div>
               <div className={cn('mt-3 grid gap-2 text-xs sm:mt-4 sm:gap-3 sm:text-sm', booking.status === 'for_review' ? 'sm:grid-cols-1' : 'sm:grid-cols-3')}>
                 <div>
