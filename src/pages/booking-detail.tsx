@@ -409,7 +409,8 @@ export default function BookingDetail() {
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
             placeholder="Share your experience with this trip..."
-              className="mt-2 block w-full resize-none rounded-lg border border-[#071f52]/14 bg-[#f7f9ff] px-3 py-2 text-xs font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60 sm:text-sm"
+            maxLength={150}
+            className="mt-2 block w-full resize-none rounded-lg border border-[#071f52]/14 bg-[#f7f9ff] px-3 py-2 text-xs font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60 sm:text-sm"
             rows={3}
           />
           <Button onClick={handleSubmitFeedback} disabled={!rating} className="mt-2 w-full gap-1.5 bg-[#071f52] text-xs text-white hover:bg-[#112458]" size="sm">

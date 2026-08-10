@@ -2,6 +2,10 @@ import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Quote, Star } from 'lucide-react'
 import { useHomepageTestimonials } from '@/hooks/use-bookings'
 
+function truncateFeedback(feedback: string) {
+  return feedback.length > 150 ? `${feedback.slice(0, 147)}...` : feedback
+}
+
 export function TestimonialsSection() {
   const { data: testimonials = [], isLoading } = useHomepageTestimonials()
   const [activeIndex, setActiveIndex] = useState(0)
@@ -40,7 +44,7 @@ export function TestimonialsSection() {
                 ))}
               </div>
               <blockquote className="mt-6 text-xl font-bold leading-8 tracking-[-0.02em] sm:text-2xl">
-                {active.feedback ? `“${active.feedback}”` : `Rated this trip ${active.rating}/5.`}
+                {active.feedback ? `“${truncateFeedback(active.feedback)}”` : `Rated this trip ${active.rating}/5.`}
               </blockquote>
               <div className="mt-8 flex items-center gap-3">
                 {active.profile_image_path ? (
