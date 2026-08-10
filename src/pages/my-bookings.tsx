@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { useMyBookings } from '@/hooks/use-bookings'
 import { STATUS_COLORS } from '@/config/constants'
 import { cn } from '@/lib/utils'
-import { formatBookingStatus, getBookingCadenceValue, type RefundStatus } from '@/lib/booking-utils'
+import { formatBookingStatus, getBookingCadenceValue, isRefundIneligible, type RefundStatus } from '@/lib/booking-utils'
 import { CalendarDays, ChevronRight } from 'lucide-react'
 
 const statuses = [
@@ -29,12 +29,24 @@ function formatRefundStatus(status: string) {
   return status.split('_').join(' ').replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
-function getDisplayedRefundStatus(cancellation: { cancellation_type?: string; refund_status?: string } | undefined) {
-  if (cancellation?.cancellation_type === 'customer_request' && cancellation.refund_status === 'refund_cancelled') {
+function getDisplayedRefundStatus(booking: { rental_model?: string; status_events?: Array<{ from_status?: string; to_status?: string }> }, cancellation: { refund_status?: string } | undefined) {
+  if (cancellation?.refund_status === 'refund_cancelled' && isRefundIneligible(booking.rental_model, booking.status_events)) {
     return 'Not eligible for refund'
   }
 
   return cancellation?.refund_status ? formatRefundStatus(cancellation.refund_status) : null
+}
+
+function getRefundStatusColor(booking: { rental_model?: string; status_events?: Array<{ from_status?: string; to_status?: string }> }, cancellation: { refund_status?: string } | undefined) {
+  if (cancellation?.refund_status === 'refund_cancelled' && isRefundIneligible(booking.rental_model, booking.status_events)) {
+    return 'bg-[#e92935]/10 text-[#c91f2a]'
+  }
+
+  return cancellation?.refund_status === 'refund_processed'
+    ? 'bg-[#16a34a]/10 text-[#16a34a]'
+    : cancellation?.refund_status === 'pending_refund'
+      ? 'bg-[#ffd923]/20 text-[#b8860b]'
+      : 'bg-[#e92935]/10 text-[#c91f2a]'
 }
 
 export default function MyBookings() {
@@ -64,7 +76,7 @@ export default function MyBookings() {
                  setRefundFilter(undefined)
                }}
               className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-bold transition-all sm:px-4 sm:py-2 sm:text-xs ${
-                filter === s.value
+                 filter === s.value && !refundFilter
                   ? 'bg-[#071f52] text-white shadow-sm'
                   : 'border border-[#071f52]/14 bg-white text-[#071f52]/58 hover:border-[#071f52]/30 hover:text-[#071f52]'
               }`}
@@ -132,10 +144,10 @@ export default function MyBookings() {
                     {new Date(booking.start_at).toLocaleDateString()} {booking.end_at ? `to ${new Date(booking.end_at).toLocaleDateString()}` : ''} · {getBookingCadenceValue(booking)}
                   </p>
                 </div>
-                  {booking.status === 'canceled' && getDisplayedRefundStatus(booking.cancellation?.[0]) ? (
-                    <p className="mt-1 text-right text-[10px] font-bold text-[#16a34a] sm:text-xs">
-                      {getDisplayedRefundStatus(booking.cancellation[0])}
-                    </p>
+                  {booking.status === 'canceled' && getDisplayedRefundStatus(booking, booking.cancellation?.[0]) ? (
+                    <span className={cn('inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold sm:px-3 sm:py-1 sm:text-[11px]', getRefundStatusColor(booking, booking.cancellation[0]))}>
+                      {getDisplayedRefundStatus(booking, booking.cancellation[0])}
+                    </span>
                   ) : (
                     <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold sm:px-3 sm:py-1 sm:text-[11px]', STATUS_COLORS[booking.status])}>
                       {formatBookingStatus(booking.status)}

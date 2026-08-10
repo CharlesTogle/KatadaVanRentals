@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canCustomerCancelBooking, formatCancellationType, getAdminBookingActions, getAdminBookingDetailActions, getBookingPriceBreakdown, getCustomerCancellationRefundStatus, hasRequiredSelfDriveDocuments } from '@/lib/booking-utils'
+import { canCustomerCancelBooking, formatCancellationType, getAdminBookingActions, getAdminBookingDetailActions, getBookingPriceBreakdown, getCustomerCancellationRefundStatus, hasRequiredSelfDriveDocuments, isRefundIneligible } from '@/lib/booking-utils'
 
 describe('booking-utils', () => {
   it('uses human-readable cancellation type labels', () => {
@@ -54,12 +54,18 @@ describe('booking-utils', () => {
     expect(canCustomerCancelBooking('on_trip')).toBe(false)
   })
 
-  it('only queues refunds for pre-confirmation with-driver bookings', () => {
+  it('queues refunds for adjustment declines on with-driver bookings', () => {
     expect(getCustomerCancellationRefundStatus('for_review', 'all_in')).toBe('pending_refund')
     expect(getCustomerCancellationRefundStatus('awaiting_documents', 'all_out')).toBe('pending_refund')
-    expect(getCustomerCancellationRefundStatus('pending_price_approval', 'all_in')).toBe('refund_cancelled')
+    expect(getCustomerCancellationRefundStatus('pending_price_approval', 'all_in')).toBe('pending_refund')
     expect(getCustomerCancellationRefundStatus('confirmed', 'all_in')).toBe('refund_cancelled')
     expect(getCustomerCancellationRefundStatus('for_review', 'self_drive')).toBe('refund_cancelled')
+  })
+
+  it('marks only confirmed and self-drive cancellations as ineligible', () => {
+    expect(isRefundIneligible('all_in', [{ from_status: 'for_review', to_status: 'canceled' }])).toBe(false)
+    expect(isRefundIneligible('all_in', [{ from_status: 'confirmed', to_status: 'canceled' }])).toBe(true)
+    expect(isRefundIneligible('self_drive', [{ from_status: 'for_review', to_status: 'canceled' }])).toBe(true)
   })
 
   it('returns admin actions for live bookings', () => {

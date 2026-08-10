@@ -153,6 +153,66 @@ describe('BookingDetail', () => {
     expect(screen.queryByText('Actions')).not.toBeInTheDocument()
   })
 
+  it('shows refund cancellation reason for a customer cancellation', async () => {
+    useBooking.mockReturnValue({
+      data: {
+        booking: {
+          id: 'booking-1',
+          booking_number: 'CR-260723-ABCD',
+          customer_id: 'user-1',
+          guest_name: null,
+          guest_email: null,
+          guest_mobile: null,
+          vehicle_id: 'veh-1',
+          rental_model: 'all_out',
+          booking_mode: 'keep',
+          status: 'canceled',
+          start_at: '2026-07-25T08:00:00Z',
+          end_at: '2026-07-27T08:00:00Z',
+          duration_days: 2,
+          pickup_location: 'Manila',
+          dropoff_location: 'Batangas',
+          destination: 'Taal',
+          purpose_of_travel: 'Leisure',
+          notes: null,
+          distance_km: null,
+          duration_minutes: null,
+          toll_estimate_amount: 0,
+          toll_segments: [],
+          fuel_estimate_liters: 0,
+          fuel_estimate_amount: 0,
+          delivery_fee: 0,
+          recovery_fee: 0,
+          discount_amount: 0,
+          deposit_amount: 900,
+          subtotal_amount: 9000,
+          total_amount: 9000,
+          paid_amount: 2000,
+          remaining_amount: 7000,
+          price_line_items: [{ label: 'Base Rate', detail: '2 days × ₱4,500', amount: 9000 }],
+          idempotency_key: null,
+          created_by: 'user-1',
+          created_at: '2026-07-23T10:00:00Z',
+          updated_at: '2026-07-23T10:00:00Z',
+        },
+        vehicle: { id: 'veh-1', name: 'Toyota Commuter', plate_number: 'ABC123', image_paths: [] },
+        payments: [],
+        cancellation: { id: 'cancellation-1', cancellation_type: 'customer_request', reason: 'Changed plans', refund_status: 'refund_cancelled', refund_cancel_reason: 'Invalid refund claim', refund_receipt_path: null, created_at: '2026-07-24T10:00:00Z' },
+        status_events: [{ id: 'event-1', from_status: 'for_review', to_status: 'canceled', note: 'Type: customer_request. Reason: Changed plans', created_at: '2026-07-24T10:00:00Z' }],
+        extensions: [],
+        invoice: null,
+        feedback: null,
+      },
+      isLoading: false,
+    })
+
+    renderDetail()
+
+    expect(await screen.findByText('Refund status: Refund Cancelled')).toBeInTheDocument()
+    expect(screen.getByText('Reason: Invalid refund claim')).toBeInTheDocument()
+    expect(screen.queryByText(/Not eligible for refund/)).not.toBeInTheDocument()
+  })
+
   it('shows distance instead of duration for with-driver dropoff bookings', async () => {
     useBooking.mockReturnValue({
       data: {

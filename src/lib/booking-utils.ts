@@ -136,9 +136,13 @@ export function canCustomerCancelBooking(status: BookingStatus, priceApprovalSou
 }
 
 export function getCustomerCancellationRefundStatus(status: BookingStatus, rentalModel: 'all_in' | 'all_out' | 'self_drive'): RefundStatus {
-  return (status === 'for_review' || status === 'awaiting_documents') && rentalModel !== 'self_drive'
+  return (status === 'for_review' || status === 'awaiting_documents' || status === 'pending_price_approval') && rentalModel !== 'self_drive'
     ? 'pending_refund'
     : 'refund_cancelled'
+}
+
+export function isRefundIneligible(rentalModel: string | undefined, statusEvents: Array<{ from_status?: string; to_status?: string }> = []) {
+  return rentalModel === 'self_drive' || statusEvents.find((event) => event.to_status === 'canceled')?.from_status === 'confirmed'
 }
 
 export function canDownloadInvoice(status: BookingStatus) {
