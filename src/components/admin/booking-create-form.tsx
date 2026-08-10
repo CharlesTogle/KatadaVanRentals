@@ -14,6 +14,7 @@ import { BookingFormSkeleton } from '@/components/booking/booking-form-skeleton'
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
 import { getBookingPriceBreakdown, normalizeCustomerRentalType, toBookingRentalModel, type CustomerRentalType } from '@/lib/booking-utils'
+import { saveBookingDateSelection } from '@/lib/booking-date-storage'
 import { calculateToll, getNearestTollPlazas, getRouteQuote, suggestLocations } from '@/services/location-service'
 import { UPLOAD_POLICIES } from '@/config/constants'
 import { removeUploadedFileWithQueue, uploadFile } from '@/services/upload-service'
@@ -468,6 +469,11 @@ export function BookingCreateForm() {
       const result = await createBooking.mutateAsync(input)
 
       localStorage.removeItem(ADMIN_BOOKING_IDEMPOTENCY_KEY)
+      saveBookingDateSelection({
+        start: startParam.split('T')[0],
+        end: endParam.split('T')[0],
+        availableVehicleIds: [],
+      })
       reset()
       toast.success(`Booking ${result.bookingNumber} confirmed.`)
       navigate('/admin/bookings')

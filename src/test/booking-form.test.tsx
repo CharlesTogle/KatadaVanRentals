@@ -117,6 +117,17 @@ function fillPaymentProof() {
   fireEvent.change(input, { target: { files: [file] } })
 }
 
+function selectBookingLocations() {
+  useBookingStore.getState().setLocations({
+    pickup: 'Makati City',
+    dropoff: 'Pasay City',
+    destination: 'NAIA Terminal 3',
+  })
+  useBookingStore.getState().setRouteSelection('pickup', { address: 'Makati City', lat: 14.5547, lng: 121.0244 })
+  useBookingStore.getState().setRouteSelection('dropoff', { address: 'Pasay City', lat: 14.5378, lng: 121.0014 })
+  useBookingStore.getState().setRouteSelection('destination', { address: 'NAIA Terminal 3', lat: 14.5191, lng: 121.0136 })
+}
+
 describe('BookingForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -260,6 +271,8 @@ describe('BookingForm', () => {
       error: null,
     })
 
+    selectBookingLocations()
+
     renderBookingForm('/dashboard/book/vehicle-1?type=self-drive&start=2030-08-05T08:00:00.000Z&end=2030-08-06T08:00:00.000Z')
 
     expect(screen.queryByLabelText(/Address Line 1/i)).not.toBeInTheDocument()
@@ -282,7 +295,31 @@ describe('BookingForm', () => {
         subject: expect.stringContaining('CR-260723-ABCD'),
       }),
     })
+    expect(JSON.parse(window.localStorage.getItem('booking-date-selection') || '{}')).toEqual({
+      start: '2030-08-05',
+      end: '2030-08-06',
+      availableVehicleIds: [],
+    })
     expect(navigate).toHaveBeenCalledWith('/bookings')
+  })
+
+  it('blocks self-drive booking when locations are not selected from the picker', () => {
+    useCustomerDocuments.mockReturnValue({
+      data: [
+        { document_type: 'driver_license', status: 'submitted', file_path: 'driver' },
+        { document_type: 'valid_id', status: 'verified', file_path: 'valid' },
+        { document_type: 'proof_of_billing', status: 'submitted', file_path: 'billing' },
+      ],
+      isLoading: false,
+    })
+
+    renderBookingForm('/dashboard/book/vehicle-1?type=self-drive&start=2030-08-05T08:00:00.000Z&end=2030-08-06T08:00:00.000Z')
+    fireEvent.change(screen.getByLabelText(/Delivery & Return Location/i), { target: { value: '123' } })
+    fireEvent.change(screen.getByLabelText(/Destination/i), { target: { value: '123' } })
+    fillPaymentProof()
+
+    expect(screen.getByRole('button', { name: 'Submit Booking' })).toBeDisabled()
+    expect(screen.getByText(/Pick suggested locations to continue/i)).toBeInTheDocument()
   })
 
   it('submits all-in with a computed route quote and payment proof', async () => {
@@ -436,6 +473,8 @@ describe('BookingForm', () => {
       ],
       isLoading: false,
     })
+
+    selectBookingLocations()
 
     renderBookingForm('/dashboard/book/vehicle-1?type=with-driver&start=2026-08-05T08:00:00.000Z&end=2026-08-06T08:00:00.000Z')
     fireEvent.click(screen.getByRole('button', { name: /Keep the Car/i }))

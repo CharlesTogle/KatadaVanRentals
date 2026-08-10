@@ -124,8 +124,8 @@ export function LocationsFields() {
             </div>
           </>
         ) : null}
-        {(rentalType === 'all-in' || (mode === 'dropoff' && rentalType !== 'self-drive')) && (routeSelections.pickup.lat == null || (rentalType === 'all-in' && mode === 'keep' && routeSelections.destination.lat == null) || routeSelections.dropoff.lat == null) ? (
-          <p className="text-sm font-semibold text-[#e92935]">{mode === 'keep' ? 'Choose suggested pickup, drop-off, and destination locations so we can compute the route estimate.' : 'Choose suggested pickup and drop-off locations so we can compute the route estimate.'}</p>
+        {(routeSelections.pickup.lat == null || routeSelections.dropoff.lat == null || ((mode === 'keep' || rentalType === 'self-drive') && routeSelections.destination.lat == null)) ? (
+          <p className="text-sm font-semibold text-[#e92935]">{mode === 'keep' || rentalType === 'self-drive' ? 'Choose suggested pickup, drop-off, and destination locations to continue.' : 'Choose suggested pickup and drop-off locations to continue.'}</p>
         ) : null}
       </div>
     </>

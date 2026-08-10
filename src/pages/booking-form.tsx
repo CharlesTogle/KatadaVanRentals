@@ -15,7 +15,7 @@ import { BookingFormSkeleton } from '@/components/booking/booking-form-skeleton'
 import { showError } from '@/lib/errors'
 import { getBookingPriceBreakdown, getMissingSelfDriveDocuments, hasRequiredSelfDriveDocuments, normalizeCustomerRentalType, toBookingRentalModel, type CustomerRentalType } from '@/lib/booking-utils'
 import { loadBookingDateSelection, saveBookingDateSelection } from '@/lib/booking-date-storage'
-import { calculateToll, getNearestTollPlazas, getRouteQuote, suggestLocations } from '@/services/location-service'
+import { calculateToll, getNearestTollPlazas, getRouteQuote } from '@/services/location-service'
 import { supabase } from '@/lib/supabase'
 import { UPLOAD_POLICIES } from '@/config/constants'
 import { removeUploadedFileWithQueue, uploadFile } from '@/services/upload-service'
@@ -150,7 +150,6 @@ export default function BookingForm() {
   const setSubmitting = useBookingStore((s) => s.setSubmitting)
   const setError = useBookingStore((s) => s.setError)
   const setNotes = useBookingStore((s) => s.setNotes)
-  const setRouteSelection = useBookingStore((s) => s.setRouteSelection)
   const setRouteQuote = useBookingStore((s) => s.setRouteQuote)
   const setTollCandidates = useBookingStore((s) => s.setTollCandidates)
   const setTollRfidBreakdown = useBookingStore((s) => s.setTollRfidBreakdown)
@@ -215,35 +214,9 @@ export default function BookingForm() {
     const hasDestination = !needsDestination || (routeSelections.destination.lat != null && routeSelections.destination.lng != null)
     const hasDropoff = routeSelections.dropoff.lat != null && routeSelections.dropoff.lng != null
     if (!hasPickup || !hasDestination || !hasDropoff) {
-      let cancelled = false
-      const canResolvePickup = !hasPickup && locations.pickup.trim().length >= 3
-      const canResolveDestination = needsDestination && !hasDestination && locations.destination.trim().length >= 3
-      const canResolveDropoff = !hasDropoff && locations.dropoff.trim().length >= 3
-      setRouteLoading(canResolvePickup || canResolveDestination || canResolveDropoff)
-
-      const autoResolveTimeout = window.setTimeout(() => {
-        void Promise.all([
-          canResolvePickup ? suggestLocations(locations.pickup).then((results) => results[0] ?? null) : null,
-          canResolveDestination ? suggestLocations(locations.destination).then((results) => results[0] ?? null) : null,
-          canResolveDropoff ? suggestLocations(locations.dropoff).then((results) => results[0] ?? null) : null,
-        ]).then(([pickup, destination, dropoff]) => {
-          if (cancelled) return
-          if (pickup) setRouteSelection('pickup', pickup)
-          if (destination) setRouteSelection('destination', destination)
-          if (dropoff) setRouteSelection('dropoff', dropoff)
-          if (!pickup && !destination && !dropoff) setRouteLoading(false)
-          if (pickup || destination || dropoff) setRouteError('')
-        }).catch((error) => {
-          logError('booking', 'Automatic location resolution failed', error, { requestId: getRequestId() })
-          if (!cancelled) setRouteLoading(false)
-        })
-      }, 300)
-
+      setRouteLoading(false)
       setRouteQuote(null)
-      return () => {
-        cancelled = true
-        window.clearTimeout(autoResolveTimeout)
-      }
+      return
     }
 
     let cancelled = false
@@ -275,15 +248,11 @@ export default function BookingForm() {
     }
   }, [
     rentalType,
-    locations.dropoff,
-    locations.destination,
-    locations.pickup,
     mode,
     routeSelections.dropoff,
     routeSelections.destination,
     routeSelections.pickup,
     setRouteQuote,
-    setRouteSelection,
     userId,
     vehicleId,
   ])
@@ -448,9 +417,12 @@ export default function BookingForm() {
   const selectedPaymentMethod = paymentMethodsQuery.data?.find((method) => method.id === payment.method)
 
   const routeIncomplete = needsRouteQuote && (routeSelections.pickup.lat == null || (rentalType === 'all-in' && mode === 'keep' && routeSelections.destination.lat == null) || routeSelections.dropoff.lat == null || !routeQuote)
+  const locationSelectionIncomplete = routeSelections.pickup.lat == null
+    || routeSelections.dropoff.lat == null
+    || ((mode === 'keep' || rentalType === 'self-drive') && routeSelections.destination.lat == null)
   const paymentIncomplete = requiresPayment && (!payment.method || !payment.reference.trim() || !receiptFile)
   const isWithDriverDropoff = rentalType !== 'self-drive' && mode === 'dropoff'
-  const formIncomplete = !startParam || (!endParam && !isWithDriverDropoff) || profileBlocked || selfDriveBlocked || documentsQuery.isLoading || (requiresPayment && paymentMethodsQuery.isLoading) || routeIncomplete || needsTollEstimate || tollLoading || Boolean(tollError) || paymentIncomplete
+  const formIncomplete = !startParam || (!endParam && !isWithDriverDropoff) || profileBlocked || selfDriveBlocked || documentsQuery.isLoading || (requiresPayment && paymentMethodsQuery.isLoading) || locationSelectionIncomplete || routeIncomplete || needsTollEstimate || tollLoading || Boolean(tollError) || paymentIncomplete
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -482,6 +454,11 @@ export default function BookingForm() {
 
     if (selfDriveBlocked) {
       setError('Self Drive requires your driver\'s license, valid ID, and proof of billing before submission.')
+      return
+    }
+
+    if (locationSelectionIncomplete) {
+      setError('Choose suggested pickup, destination, and drop-off locations so we can use the selected locations for this booking.')
       return
     }
 
@@ -623,6 +600,11 @@ export default function BookingForm() {
     }
 
     localStorage.removeItem(idempotencyStorageKey)
+    saveBookingDateSelection({
+      start: startParam.split('T')[0],
+      end: endParam.split('T')[0],
+      availableVehicleIds: [],
+    })
     queryClient.invalidateQueries({ queryKey: ['customer', 'bookings'] })
     useBookingStore.getState().reset()
     if (emailDeliveryFailed) toast.warning('Booking received; confirmation email could not be sent.')
@@ -755,7 +737,7 @@ export default function BookingForm() {
               submitting={submitting}
               disabled={formIncomplete}
               flaggedForManualPricing={routeQuote?.inServiceArea === false}
-               disabledMessage={profileBlocked ? 'Complete your profile to enable booking.' : selfDriveBlocked ? 'Complete your profile documents to enable booking.' : (!startParam || !endParam) ? 'Pick-up and drop-off dates are required.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : paymentIncomplete ? 'Complete payment details to enable booking.' : undefined))}
+               disabledMessage={profileBlocked ? 'Complete your profile to enable booking.' : selfDriveBlocked ? 'Complete your profile documents to enable booking.' : (!startParam || !endParam) ? 'Pick-up and drop-off dates are required.' : locationSelectionIncomplete ? 'Pick suggested locations to continue.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : paymentIncomplete ? 'Complete payment details to enable booking.' : undefined))}
               error={error}
             />
           </div>
