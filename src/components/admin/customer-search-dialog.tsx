@@ -12,19 +12,30 @@ interface CustomerSearchDialogProps {
 
 export function CustomerSearchDialog({ open, onClose, onSelect }: CustomerSearchDialogProps) {
   const [query, setQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const listRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
-  const { data, hasNextPage, isFetchingNextPage, fetchNextPage } = useAdminCustomerSearch(query)
+  const { data, hasNextPage, isFetchingNextPage, fetchNextPage } = useAdminCustomerSearch(debouncedQuery, open)
   const items = data?.pages.flatMap((page) => page.items) ?? []
 
   useEffect(() => {
-    if (!open) setQuery('')
+    if (!open) {
+      setQuery('')
+      setDebouncedQuery('')
+    }
   }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const timeout = window.setTimeout(() => setDebouncedQuery(query), 300)
+    return () => window.clearTimeout(timeout)
+  }, [open, query])
 
   useEffect(() => {
     if (!hasNextPage || isFetchingNextPage || !sentinelRef.current) return
     const observer = new IntersectionObserver((entries) => {
       if (entries[0]?.isIntersecting) fetchNextPage()
-    })
+    }, { root: listRef.current })
     observer.observe(sentinelRef.current)
     return () => observer.disconnect()
   }, [fetchNextPage, hasNextPage, isFetchingNextPage])
@@ -42,7 +53,7 @@ export function CustomerSearchDialog({ open, onClose, onSelect }: CustomerSearch
         />
       </div>
 
-      <div className="max-h-80 divide-y divide-[#071f52]/6 overflow-y-auto">
+      <div ref={listRef} className="max-h-80 divide-y divide-[#071f52]/6 overflow-y-auto">
         {items.length === 0 && !isFetchingNextPage && (
           <p className="py-6 text-center text-sm font-semibold text-[#071f52]/48">No customers found.</p>
         )}
@@ -53,9 +64,13 @@ export function CustomerSearchDialog({ open, onClose, onSelect }: CustomerSearch
             onClick={() => { onSelect(customer); onClose() }}
             className="flex w-full items-center gap-3 px-2 py-3 text-left transition-colors hover:bg-[#f7f9ff]"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#071f52]/8 text-xs font-bold text-[#071f52]">
-              {customer.first_name?.[0] ?? customer.email[0].toUpperCase()}
-            </div>
+            {customer.profile_image_path ? (
+              <img src={customer.profile_image_path} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+            ) : (
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#071f52]/8 text-xs font-bold text-[#071f52]">
+                {customer.first_name?.[0] ?? customer.email[0].toUpperCase()}
+              </div>
+            )}
             <div className="min-w-0">
               <p className="text-sm font-bold text-[#071f52]">
                 {customer.first_name} {customer.last_name}

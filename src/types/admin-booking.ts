@@ -4,6 +4,7 @@ export interface AdminCustomerOption {
   last_name: string | null
   email: string
   mobile: string | null
+  profile_image_path: string | null
   hasRequiredSelfDriveDocuments: boolean
 }
 

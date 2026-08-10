@@ -580,7 +580,7 @@ export default function BookingDetail() {
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="text-base font-black text-[#1f2a44] tabular-nums">{formatCurrency(payment.amount)}</p>
                               <span className="rounded-full bg-[#eef2ff] px-3 py-1 text-[11px] font-bold text-[#4f46e5]">
-                                {payment.status}
+                                {formatBookingStatus(payment.status)}
                               </span>
                             </div>
 
@@ -1365,7 +1365,8 @@ function toLabel(value: string) {
 }
 
 function formatRefundStatus(status: string) {
-  return toLabel(status)
+  const label = status.split('_').join(' ').toLowerCase()
+  return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
 function formatCancellationReason(note?: string | null) {

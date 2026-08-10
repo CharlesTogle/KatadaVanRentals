@@ -110,9 +110,9 @@ describe('MyBookings', () => {
 
     render(<MemoryRouter><MyBookings /></MemoryRouter>)
 
-    expect(screen.getByText('Pending Refund')).toHaveClass('rounded-full', 'text-[#b8860b]')
+    expect(screen.getByText('Pending refund')).toHaveClass('rounded-full', 'text-[#b8860b]')
     expect(screen.queryByText('canceled')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Refund Pending' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Refund pending' }))
     expect(useMyBookings).toHaveBeenLastCalledWith(undefined, 'pending_refund')
     expect(screen.getByRole('button', { name: 'All' })).not.toHaveClass('bg-[#071f52]')
   })

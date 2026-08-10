@@ -208,7 +208,7 @@ describe('BookingDetail', () => {
 
     renderDetail()
 
-    expect(await screen.findByText('Refund status: Refund Cancelled')).toBeInTheDocument()
+    expect(await screen.findByText('Refund status: Refund cancelled')).toBeInTheDocument()
     expect(screen.getByText('Reason: Invalid refund claim')).toBeInTheDocument()
     expect(screen.queryByText(/Not eligible for refund/)).not.toBeInTheDocument()
   })

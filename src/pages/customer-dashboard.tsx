@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
+import { useProfile } from '@/hooks/use-profile'
 import { Button } from '@/components/ui/button'
 import { useMyBookings } from '@/hooks/use-bookings'
 import { STATUS_COLORS } from '@/config/constants'
@@ -9,7 +10,8 @@ import { ChevronRight, CalendarDays, CheckCircle2, Clock, XCircle } from 'lucide
 
 export default function CustomerDashboard() {
   const { user } = useAuth()
-  const name = user?.user_metadata?.full_name?.split(' ')[0] || user?.email || 'there'
+  const { data: profile } = useProfile(user?.id)
+  const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'there'
   const { data: bookings = [] } = useMyBookings()
 
   const kpis = [
@@ -25,7 +27,7 @@ export default function CustomerDashboard() {
     <div className="w-full px-3 py-4 sm:px-5 sm:py-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-lg font-black tracking-[-0.02em] text-[#071f52] sm:text-2xl sm:tracking-[-0.03em]">
+          <h1 className="text-lg font-black tracking-[-0.02em] text-[#071f52] sm:text-3xl sm:tracking-[-0.03em]">
             Welcome back, {name}
           </h1>
           <p className="mt-0.5 text-xs font-medium text-[#071f52]/58 sm:text-sm">

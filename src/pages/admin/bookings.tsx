@@ -18,24 +18,25 @@ const sortFields: Array<{ value: AdminBookingSortField; label: string }> = [
 
 const statuses = [
   { value: '', label: 'All' },
-  { value: 'for_review', label: 'For Review' },
-  { value: 'awaiting_documents', label: 'Awaiting Docs' },
-  { value: 'pending_price_approval', label: 'Pending Price' },
+  { value: 'for_review', label: 'For review' },
+  { value: 'awaiting_documents', label: 'Awaiting docs' },
+  { value: 'pending_price_approval', label: 'Pending price' },
   { value: 'confirmed', label: 'Confirmed' },
   { value: 'rejected', label: 'Rejected' },
   { value: 'canceled', label: 'Canceled' },
-  { value: 'on_trip', label: 'On Trip' },
+  { value: 'on_trip', label: 'On trip' },
   { value: 'completed', label: 'Completed' },
 ]
 
 const refundStatuses: Array<{ value: RefundStatus; label: string }> = [
-  { value: 'pending_refund', label: 'Refund Pending' },
-  { value: 'refund_processed', label: 'Refund Processed' },
-  { value: 'refund_cancelled', label: 'Refund Cancelled' },
+  { value: 'pending_refund', label: 'Refund pending' },
+  { value: 'refund_processed', label: 'Refund processed' },
+  { value: 'refund_cancelled', label: 'Refund cancelled' },
 ]
 
 function formatRefundStatus(status: string) {
-  return status.split('_').join(' ').replace(/\b\w/g, (char) => char.toUpperCase())
+  const label = status.split('_').join(' ').toLowerCase()
+  return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
 function getDisplayedRefundStatus(booking: { rental_model?: string; status_events?: Array<{ from_status?: string; to_status?: string }> }, cancellation: { refund_status?: string } | undefined) {

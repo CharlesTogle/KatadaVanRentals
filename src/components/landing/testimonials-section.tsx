@@ -29,7 +29,7 @@ export function TestimonialsSection() {
           </p>
         </div>
 
-        <div aria-live="polite" className="relative min-h-[260px] rounded-[30px] bg-white p-7 text-[#071f52] shadow-[0_20px_60px_rgba(0,0,0,0.18)] sm:p-10">
+        <div aria-live="polite" className="relative h-[420px] overflow-y-auto rounded-[30px] bg-white p-7 text-[#071f52] shadow-[0_20px_60px_rgba(0,0,0,0.18)] sm:h-[400px] sm:p-10">
           {isLoading ? (
             <div className="animate-pulse space-y-5">
               <div className="h-5 w-32 rounded bg-[#071f52]/10" />
@@ -37,7 +37,7 @@ export function TestimonialsSection() {
               <div className="h-5 w-40 rounded bg-[#071f52]/10" />
             </div>
           ) : (
-            <>
+            <div className="flex h-full flex-col">
               <div className="flex gap-1 text-[#ffd923]" aria-label={`${active.rating} out of 5 stars`}>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Star key={star} size={17} fill={star <= active.rating ? 'currentColor' : 'none'} aria-hidden="true" />
@@ -46,7 +46,7 @@ export function TestimonialsSection() {
               <blockquote className="mt-6 text-xl font-bold leading-8 tracking-[-0.02em] sm:text-2xl">
                 {active.feedback ? `“${truncateFeedback(active.feedback)}”` : `Rated this trip ${active.rating}/5.`}
               </blockquote>
-              <div className="mt-8 flex items-center gap-3">
+              <div className="mt-auto flex items-center gap-3 pt-8">
                 {active.profile_image_path ? (
                   <img src={active.profile_image_path} alt="" className="h-11 w-11 rounded-full object-cover" />
                 ) : (
@@ -81,7 +81,7 @@ export function TestimonialsSection() {
                   </div>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>

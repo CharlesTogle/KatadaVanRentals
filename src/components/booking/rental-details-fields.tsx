@@ -11,6 +11,7 @@ import type { Vehicle } from '@/types/vehicle'
 
 interface RentalDetailsFieldsProps {
   vehicle?: Pick<Vehicle, 'supports_self_drive' | 'supports_all_in' | 'supports_all_out'> | null
+  vehicleId?: string
 }
 
 function formatDateTimeInput(value: string) {
@@ -38,8 +39,8 @@ function mergeDateTimeValue(date: string, time: string) {
   return `${date}T${time}`
 }
 
-export function RentalDetailsFields({ vehicle }: RentalDetailsFieldsProps) {
-  const { vehicleId } = useParams<{ vehicleId: string }>()
+export function RentalDetailsFields({ vehicle, vehicleId: selectedVehicleId }: RentalDetailsFieldsProps) {
+  const { vehicleId: routeVehicleId } = useParams<{ vehicleId: string }>()
   const [searchParams, setSearchParams] = useSearchParams()
   const rentalType = normalizeCustomerRentalType(searchParams.get('type'))
   const startParam = searchParams.get('start') || ''
@@ -48,6 +49,7 @@ export function RentalDetailsFields({ vehicle }: RentalDetailsFieldsProps) {
   const initialEnd = splitDateTimeValue(endParam)
   const mode = useBookingStore((s) => s.mode)
   const setMode = useBookingStore((s) => s.setMode)
+  const vehicleId = selectedVehicleId ?? routeVehicleId
   const { data: unavailableRanges = [], isLoading: isAvailabilityLoading, isError: isAvailabilityError } = useVehicleUnavailableRanges(vehicleId)
   const [startDatePart, setStartDatePart] = useState(initialStart.date)
   const [startTimePart, setStartTimePart] = useState(initialStart.time)

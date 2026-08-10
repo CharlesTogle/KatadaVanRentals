@@ -174,7 +174,7 @@ describe('AdminBookingDetail', () => {
 
     await waitFor(() => {
       expect(screen.getAllByText('CR-260723-ABCD').length).toBeGreaterThanOrEqual(1)
-      expect(screen.getAllByText('confirmed').length).toBeGreaterThanOrEqual(1)
+      expect(screen.getAllByText('Confirmed').length).toBeGreaterThanOrEqual(1)
       expect(screen.getAllByText(/Toyota Commuter/).length).toBeGreaterThanOrEqual(1)
       expect(screen.getAllByText(/Alex Santos/).length).toBeGreaterThanOrEqual(1)
     })
@@ -998,7 +998,7 @@ describe('AdminBookingDetail', () => {
 
     renderDetail()
 
-    expect(screen.getByText('Refund Status: Refund Cancelled')).toBeInTheDocument()
+    expect(screen.getByText('Refund Status: Refund cancelled')).toBeInTheDocument()
     expect(screen.getByText('Reason: Invalid refund claim')).toBeInTheDocument()
   })
 

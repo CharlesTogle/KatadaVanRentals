@@ -35,7 +35,7 @@ export async function searchAdminCustomers(params: { search?: string; page: numb
 export async function paginateAdminCustomers(params: { query?: string; offset: number; limit: number }): Promise<AdminCustomerSearchPage> {
   let query = supabase
     .from('profiles')
-    .select('id,first_name,last_name,email,mobile', { count: 'exact' })
+    .select('id,first_name,last_name,email,mobile,profile_image_path', { count: 'exact' })
     .eq('role', 'customer')
     .order('created_at', { ascending: false })
     .range(params.offset, params.offset + params.limit - 1)
@@ -77,6 +77,7 @@ export async function paginateAdminCustomers(params: { query?: string; offset: n
       last_name: item.last_name,
       email: item.email,
       mobile: item.mobile,
+      profile_image_path: item.profile_image_path,
       hasRequiredSelfDriveDocuments: hasRequiredSelfDriveDocuments(documentsByCustomerId.get(item.id) || []),
     })) as AdminCustomerSearchPage['items'],
     nextOffset,

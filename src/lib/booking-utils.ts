@@ -259,7 +259,8 @@ export function getAdminBookingActions(status: BookingStatus) {
 }
 
 export function formatBookingStatus(status: string) {
-  return status.replace(/_/g, ' ')
+  const label = status.replace(/_/g, ' ').toLowerCase()
+  return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
 export function formatCancellationType(type: string) {

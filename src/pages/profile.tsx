@@ -254,7 +254,7 @@ export default function Profile() {
 
   return (
     <div className="w-full px-3 py-4 sm:px-5 sm:py-6">
-      <h1 className="text-lg font-black tracking-[-0.02em] text-[#071f52] sm:text-2xl sm:tracking-[-0.03em]">My Profile</h1>
+      <h1 className="text-lg font-black tracking-[-0.02em] text-[#071f52] sm:text-3xl sm:tracking-[-0.03em]">My Profile</h1>
       <p className="mt-0.5 text-xs font-medium text-[#071f52]/58 sm:text-sm">Manage your personal information and password.</p>
 
       <div className="mt-4 grid gap-4 sm:mt-6 sm:gap-6 lg:grid-cols-[1fr_1fr]">

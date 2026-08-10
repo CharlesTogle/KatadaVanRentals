@@ -737,7 +737,7 @@ export default function BookingForm() {
               submitting={submitting}
               disabled={formIncomplete}
               flaggedForManualPricing={routeQuote?.inServiceArea === false}
-               disabledMessage={profileBlocked ? 'Complete your profile to enable booking.' : selfDriveBlocked ? 'Complete your profile documents to enable booking.' : (!startParam || !endParam) ? 'Pick-up and drop-off dates are required.' : locationSelectionIncomplete ? 'Pick suggested locations to continue.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : paymentIncomplete ? 'Complete payment details to enable booking.' : undefined))}
+               disabledMessage={profileBlocked ? 'Complete your profile to enable booking.' : selfDriveBlocked ? 'Complete your profile documents to enable booking.' : (!startParam || (!endParam && !isWithDriverDropoff)) ? 'Pick-up and return dates are required unless this is a drop-off booking.' : locationSelectionIncomplete ? 'Pick suggested locations to continue.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : paymentIncomplete ? 'Complete payment details to enable booking.' : undefined))}
               error={error}
             />
           </div>

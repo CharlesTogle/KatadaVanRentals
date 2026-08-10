@@ -2,12 +2,13 @@ import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-q
 import { paginateAdminCustomers } from '@/services/profile-service'
 import { createAdminBooking } from '@/services/admin-booking-service'
 
-export function useAdminCustomerSearch(query: string) {
+export function useAdminCustomerSearch(query: string, enabled = true) {
   return useInfiniteQuery({
     queryKey: ['admin', 'booking-create', 'customers', query],
     initialPageParam: 0,
     queryFn: ({ pageParam }) => paginateAdminCustomers({ query: query || undefined, offset: pageParam, limit: 20 }),
     getNextPageParam: (lastPage) => lastPage.nextOffset,
+    enabled,
   })
 }
 

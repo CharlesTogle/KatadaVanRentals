@@ -118,7 +118,7 @@ export default function Documents() {
 
   return (
     <div className="w-full px-3 py-4 sm:px-5 sm:py-6">
-      <h1 className="text-lg font-black tracking-[-0.02em] text-[#071f52] sm:text-2xl sm:tracking-[-0.03em]">Documents</h1>
+      <h1 className="text-lg font-black tracking-[-0.02em] text-[#071f52] sm:text-3xl sm:tracking-[-0.03em]">Documents</h1>
       <p className="mt-0.5 text-xs font-medium text-[#071f52]/58 sm:text-sm">Upload your IDs and billing proof for Self Drive bookings.</p>
 
       <input

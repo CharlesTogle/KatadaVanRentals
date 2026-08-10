@@ -101,7 +101,7 @@ describe('AdminBookingsCreate', () => {
 
   it('shows empty price summary before required fields are chosen', () => {
     renderPage()
-    expect(screen.getByText(/select a vehicle to continue/i)).toBeInTheDocument()
+    expect(screen.getByText(/select a customer to continue/i)).toBeInTheDocument()
   })
 
   it('defaults to existing customer mode', () => {

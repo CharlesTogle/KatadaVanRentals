@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useBookingStore } from '@/store/booking-store'
 import { usePaymentMethods } from '@/hooks/use-payment-methods'
 import { cn } from '@/lib/utils'
@@ -27,11 +27,14 @@ export function PaymentFields({ depositAmount, methodRequired = true, receiptReq
   const receiptFile = useBookingStore((s) => s.receiptFile)
   const setReceiptFile = useBookingStore((s) => s.setReceiptFile)
   const { data: paymentMethods = [] } = usePaymentMethods()
+  const [qrLoading, setQrLoading] = useState(false)
+  const [receiptUploadAttempted, setReceiptUploadAttempted] = useState(false)
   const customerPaymentMethods = useMemo(
     () => paymentMethods.filter((method) => method.channel !== 'cash'),
     [paymentMethods],
   )
   const handleReceiptChange = (file: File | undefined) => {
+    setReceiptUploadAttempted(true)
     if (!file) return
     try {
       validateFile(file, UPLOAD_POLICIES.paymentReceipts)
@@ -46,6 +49,10 @@ export function PaymentFields({ depositAmount, methodRequired = true, receiptReq
     () => customerPaymentMethods.find((m) => m.id === payment.method) ?? null,
     [customerPaymentMethods, payment.method],
   )
+
+  useEffect(() => {
+    setQrLoading(Boolean(selectedMethod?.qr_image_path))
+  }, [selectedMethod?.id, selectedMethod?.qr_image_path])
 
   useEffect(() => {
     if (autoSelectMethod && customerPaymentMethods.length && !customerPaymentMethods.some((method) => method.id === payment.method)) {
@@ -130,7 +137,16 @@ export function PaymentFields({ depositAmount, methodRequired = true, receiptReq
 
           {selectedMethod.qr_image_path && (
             <div className="flex justify-center">
-              <img src={selectedMethod.qr_image_path} alt="QR Code" className="h-36 w-36 rounded-xl border border-[#071f52]/10 object-contain" />
+              <div className="relative h-36 w-36">
+                {qrLoading ? <div className="absolute inset-0 animate-pulse rounded-xl border border-[#071f52]/10 bg-[#071f52]/8" aria-label="Loading QR code" /> : null}
+                <img
+                  key={selectedMethod.qr_image_path}
+                  src={selectedMethod.qr_image_path}
+                  alt="QR Code"
+                  onLoad={() => setQrLoading(false)}
+                  className={cn('h-36 w-36 rounded-xl border border-[#071f52]/10 object-contain transition-opacity duration-200', qrLoading ? 'opacity-0' : 'opacity-100')}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -171,6 +187,7 @@ export function PaymentFields({ depositAmount, methodRequired = true, receiptReq
           <span className="text-xs font-medium">JPG, PNG, WEBP, PDF - max 5 MiB</span>
           <input type="file" accept={getAcceptedMimeTypes(UPLOAD_POLICIES.paymentReceipts)} onChange={(e) => handleReceiptChange(e.target.files?.[0])} className="hidden" />
         </label>
+        <p className={cn('text-xs font-medium', receiptUploadAttempted ? 'text-[#e92935]' : 'text-[#071f52]/48')}>Uploaded images must not exceed 5 MB.</p>
         {!receiptRequired ? <p className="text-xs font-medium text-[#071f52]/48">Receipt is optional for admin-created bookings.</p> : null}
       </div>
     </div>

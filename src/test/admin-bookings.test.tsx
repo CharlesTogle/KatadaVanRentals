@@ -99,7 +99,7 @@ describe('AdminBookings', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('button', { name: 'For Review' })).toHaveClass('bg-[#071f52]')
+    expect(screen.getByRole('button', { name: 'For review' })).toHaveClass('bg-[#071f52]')
     expect(screen.getByRole('textbox', { name: 'Search bookings' })).toHaveValue('Alex')
     expect(screen.getByRole('combobox', { name: 'Sort bookings by' })).toHaveValue('start_at')
     expect(screen.getByRole('combobox', { name: 'Sort direction' })).toHaveValue('asc')
@@ -138,12 +138,12 @@ describe('AdminBookings', () => {
     render(<MemoryRouter><AdminBookings /></MemoryRouter>)
 
     const bookingRow = screen.getByRole('row', { name: /View booking CR-260723-ABCD/ })
-    expect(bookingRow).toHaveTextContent('Refund Cancelled')
-    const refundBadge = [...bookingRow.querySelectorAll('span')].find((element) => element.textContent === 'Refund Cancelled')
+    expect(bookingRow).toHaveTextContent('Refund cancelled')
+    const refundBadge = [...bookingRow.querySelectorAll('span')].find((element) => element.textContent === 'Refund cancelled')
     expect(refundBadge).toHaveClass('rounded-full', 'text-[#c91f2a]')
     expect(bookingRow).not.toHaveTextContent('Not eligible for refund')
     expect(bookingRow).not.toHaveTextContent('canceled')
-    fireEvent.click(screen.getByRole('button', { name: 'Refund Processed' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Refund processed' }))
     expect(useAdminBookings).toHaveBeenLastCalledWith(expect.objectContaining({ refundStatus: 'refund_processed', status: undefined }))
     expect(screen.getByRole('button', { name: 'All' })).not.toHaveClass('bg-[#071f52]')
   })

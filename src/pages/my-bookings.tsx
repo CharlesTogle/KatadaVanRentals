@@ -9,24 +9,25 @@ import { CalendarDays, ChevronRight } from 'lucide-react'
 
 const statuses = [
   { label: 'All', value: '' },
-  { label: 'For Review', value: 'for_review' },
-  { label: 'Awaiting Documents', value: 'awaiting_documents' },
-  { label: 'Pending Price', value: 'pending_price_approval' },
+  { label: 'For review', value: 'for_review' },
+  { label: 'Awaiting documents', value: 'awaiting_documents' },
+  { label: 'Pending price', value: 'pending_price_approval' },
   { label: 'Confirmed', value: 'confirmed' },
   { label: 'Rejected', value: 'rejected' },
   { label: 'Canceled', value: 'canceled' },
-  { label: 'On Trip', value: 'on_trip' },
+  { label: 'On trip', value: 'on_trip' },
   { label: 'Completed', value: 'completed' },
 ]
 
 const refundStatuses: Array<{ label: string; value: RefundStatus }> = [
-  { label: 'Refund Pending', value: 'pending_refund' },
-  { label: 'Refund Processed', value: 'refund_processed' },
-  { label: 'Refund Cancelled', value: 'refund_cancelled' },
+  { label: 'Refund pending', value: 'pending_refund' },
+  { label: 'Refund processed', value: 'refund_processed' },
+  { label: 'Refund cancelled', value: 'refund_cancelled' },
 ]
 
 function formatRefundStatus(status: string) {
-  return status.split('_').join(' ').replace(/\b\w/g, (char) => char.toUpperCase())
+  const label = status.split('_').join(' ').toLowerCase()
+  return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
 function getDisplayedRefundStatus(booking: { rental_model?: string; status_events?: Array<{ from_status?: string; to_status?: string }> }, cancellation: { refund_status?: string } | undefined) {

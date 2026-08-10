@@ -415,14 +415,19 @@ export default function BookingDetail() {
               </button>
             ))}
           </div>
-          <textarea
-            value={feedback}
-            onChange={(e) => setFeedback(e.target.value)}
-            placeholder="Share your experience with this trip..."
-            maxLength={150}
-            className="mt-2 block w-full resize-none rounded-lg border border-[#071f52]/14 bg-[#f7f9ff] px-3 py-2 text-xs font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60 sm:text-sm"
-            rows={3}
-          />
+          <div className="relative mt-2">
+            <textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="Share your experience with this trip..."
+              maxLength={150}
+              className="block w-full resize-none rounded-lg border border-[#071f52]/14 bg-[#f7f9ff] px-3 py-2 pb-6 text-xs font-semibold text-[#071f52] placeholder:text-[#071f52]/38 transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60 sm:text-sm"
+              rows={3}
+            />
+            <span aria-live="polite" className="pointer-events-none absolute bottom-2 right-3 text-[10px] font-bold tabular-nums text-[#071f52]/38">
+              {feedback.length}/150
+            </span>
+          </div>
           <Button onClick={handleSubmitFeedback} disabled={!rating} className="mt-2 w-full gap-1.5 bg-[#071f52] text-xs text-white hover:bg-[#112458]" size="sm">
             <Send size={12} /> Submit Review
           </Button>
@@ -556,7 +561,7 @@ export default function BookingDetail() {
                           <div className="flex flex-wrap items-center gap-1.5">
                             <p className="text-sm font-black text-[#1f2a44] tabular-nums sm:text-base">{formatCurrency(payment.amount)}</p>
                               <span className="rounded-full bg-[#eef2ff] px-2 py-0.5 text-[10px] font-bold text-[#4f46e5] sm:text-xs">
-                              {payment.status}
+                              {formatBookingStatus(payment.status)}
                             </span>
                           </div>
 
@@ -965,7 +970,8 @@ function formatCancellationReason(note?: string | null) {
 }
 
 function formatRefundStatus(status: string) {
-  return status.split('_').join(' ').replace(/\b\w/g, (char) => char.toUpperCase())
+  const label = status.split('_').join(' ').toLowerCase()
+  return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
 function getStatusTone(status: string) {

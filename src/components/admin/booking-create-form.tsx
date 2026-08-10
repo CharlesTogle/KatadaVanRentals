@@ -15,7 +15,7 @@ import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
 import { getBookingPriceBreakdown, normalizeCustomerRentalType, toBookingRentalModel, type CustomerRentalType } from '@/lib/booking-utils'
 import { saveBookingDateSelection } from '@/lib/booking-date-storage'
-import { calculateToll, getNearestTollPlazas, getRouteQuote, suggestLocations } from '@/services/location-service'
+import { calculateToll, getNearestTollPlazas, getRouteQuote } from '@/services/location-service'
 import { UPLOAD_POLICIES } from '@/config/constants'
 import { removeUploadedFileWithQueue, uploadFile } from '@/services/upload-service'
 import { useBookingStore } from '@/store/booking-store'
@@ -141,35 +141,10 @@ export function BookingCreateForm() {
     const hasDropoff = routeSelections.dropoff.lat != null && routeSelections.dropoff.lng != null
 
     if (!hasPickup || !hasDestination || !hasDropoff) {
-      let cancelled = false
-      const canResolvePickup = !hasPickup && locations.pickup.trim().length >= 3
-      const canResolveDestination = needsDestination && !hasDestination && locations.destination.trim().length >= 3
-      const canResolveDropoff = !hasDropoff && locations.dropoff.trim().length >= 3
-      setRouteLoading(canResolvePickup || canResolveDestination || canResolveDropoff)
-
-      const autoResolveTimeout = window.setTimeout(() => {
-        void Promise.all([
-          canResolvePickup ? suggestLocations(locations.pickup).then((results) => results[0] ?? null) : null,
-          canResolveDestination ? suggestLocations(locations.destination).then((results) => results[0] ?? null) : null,
-          canResolveDropoff ? suggestLocations(locations.dropoff).then((results) => results[0] ?? null) : null,
-        ]).then(([pickup, destination, dropoff]) => {
-          if (cancelled) return
-          if (pickup) setRouteSelection('pickup', pickup)
-          if (destination) setRouteSelection('destination', destination)
-          if (dropoff) setRouteSelection('dropoff', dropoff)
-          if (!pickup && !destination && !dropoff) setRouteLoading(false)
-          if (pickup || destination || dropoff) setRouteError('')
-        }).catch((error) => {
-          logError('admin-booking', 'Automatic location resolution failed', error, { requestId: getRequestId() })
-          if (!cancelled) setRouteLoading(false)
-        })
-      }, 300)
-
+      setRouteLoading(false)
+      setRouteError('')
       setRouteQuote(null)
-      return () => {
-        cancelled = true
-        window.clearTimeout(autoResolveTimeout)
-      }
+      return
     }
 
     let cancelled = false
@@ -335,10 +310,16 @@ export function BookingCreateForm() {
     && routeQuote.tollVehicleClass === tollSelections.vehicleClass
   const needsTollEstimate = rentalType === 'all-in' && routeQuote?.inServiceArea !== false && !tollQuoteReady
   const selfDriveAddressIncomplete = rentalType === 'self-drive' && !formatSelfDriveAddress(completeAddress)
+  const locationSelectionIncomplete = routeSelections.pickup.lat == null
+    || routeSelections.dropoff.lat == null
+    || ((mode === 'keep' || rentalType === 'self-drive') && routeSelections.destination.lat == null)
+  const customerSelectionIncomplete = customer.mode === 'existing'
+    ? !customer.existingCustomer?.id
+    : !customer.newCustomer.firstName.trim() || !customer.newCustomer.lastName.trim() || !customer.newCustomer.email.trim()
   const routeIncomplete = needsRouteQuote && (routeSelections.pickup.lat == null || (rentalType === 'all-in' && mode === 'keep' && routeSelections.destination.lat == null) || routeSelections.dropoff.lat == null || !routeQuote)
   const paymentIncomplete = !payment.reference.trim()
   const isWithDriverDropoff = rentalType !== 'self-drive' && mode === 'dropoff'
-  const formIncomplete = !vehicleId || !startParam || (!endParam && !isWithDriverDropoff) || selfDriveAddressIncomplete || routeIncomplete || needsTollEstimate || tollLoading || paymentIncomplete || createBooking.isPending || paymentMethodsQuery.isLoading
+  const formIncomplete = customerSelectionIncomplete || locationSelectionIncomplete || !vehicleId || !startParam || (!endParam && !isWithDriverDropoff) || selfDriveAddressIncomplete || routeIncomplete || needsTollEstimate || tollLoading || paymentIncomplete || createBooking.isPending || paymentMethodsQuery.isLoading
   const selectedPaymentMethod = paymentMethodsQuery.data?.find((method) => method.id === payment.method)
 
   const uploadReceipt = async (paymentIdempotencyKey: string) => {
@@ -371,6 +352,10 @@ export function BookingCreateForm() {
     }
     if (!selectedVehicle) {
       setError('Please select a vehicle.')
+      return
+    }
+    if (locationSelectionIncomplete) {
+      setError('Choose suggested pickup, destination, and drop-off locations so we can use the selected locations for this booking.')
       return
     }
     if (!startParam && !endParam) {
@@ -501,7 +486,13 @@ export function BookingCreateForm() {
                 <label htmlFor="admin-booking-vehicle" className="text-sm font-bold text-[#071f52]">Vehicle <span className="text-[#e92935]">*</span></label>
                 <select id="admin-booking-vehicle" value={vehicleId} onChange={(e) => setVehicleId(e.target.value)} className="block w-full rounded-2xl border border-[#071f52]/14 bg-[#f7f9ff] px-4 py-3 text-base font-semibold text-[#071f52] transition-colors focus:border-[#071f52] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#ffd923]/60">
                   <option value="">Select vehicle...</option>
-                  {vehicles.filter((vehicle) => vehicle.is_available).map((vehicle) => (
+                  {vehicles.filter((vehicle) => {
+                    if (!vehicle.is_available) return false
+                    if (rentalType === 'self-drive' && vehicle.supports_self_drive === false) return false
+                    if (rentalType === 'all-in' && vehicle.supports_all_in === false) return false
+                    if (rentalType === 'all-out' && vehicle.supports_all_out === false) return false
+                    return mode !== 'dropoff' || vehicle.supports_pickup_dropoff !== false
+                  }).map((vehicle) => (
                     <option key={vehicle.id} value={vehicle.id}>{vehicle.name} ({vehicle.plate_number})</option>
                   ))}
                 </select>
@@ -522,7 +513,7 @@ export function BookingCreateForm() {
           </BookingSection>
 
           <BookingSection title="3. RENTAL DETAILS">
-            <RentalDetailsFields vehicle={selectedVehicle} />
+            <RentalDetailsFields vehicle={selectedVehicle} vehicleId={vehicleId} />
             {rentalType === 'self-drive' ? (
               <div className="mt-6 space-y-4">
                 <div className="space-y-1.5">
@@ -612,7 +603,7 @@ export function BookingCreateForm() {
               remaining={pricing.remaining}
               submitting={submitting}
               disabled={formIncomplete}
-              disabledMessage={!vehicleId ? 'Select a vehicle to continue.' : (!startParam || (!endParam && !isWithDriverDropoff)) ? 'Pick-up and return dates are required unless this is a drop-off booking.' : selfDriveAddressIncomplete ? 'Enter the full self-drive address.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : paymentIncomplete ? 'Reference number is required.' : undefined))}
+               disabledMessage={customerSelectionIncomplete ? 'Select a customer to continue.' : !vehicleId ? 'Select a vehicle to continue.' : (!startParam || (!endParam && !isWithDriverDropoff)) ? 'Pick-up and return dates are required unless this is a drop-off booking.' : locationSelectionIncomplete ? 'Pick suggested locations to continue.' : selfDriveAddressIncomplete ? 'Enter the full self-drive address.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : paymentIncomplete ? 'Reference number is required.' : undefined))}
               error={error}
               submitLabel="Confirm Booking"
               footerNote="Admin bookings are confirmed immediately after creation."
