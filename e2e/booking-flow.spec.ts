@@ -288,8 +288,8 @@ test.describe('Booking flows', () => {
 
     await expect(page.getByText('non-refundable')).not.toBeVisible()
     await page.getByRole('button', { name: 'Process Refund', exact: true }).last().click()
-    await expect(page.getByText('Maximum refundable amount: ₱500.00')).toBeVisible()
-    await page.getByPlaceholder('Enter the amount refunded').fill('500')
+    await expect(page.getByText('Amount refunded: ₱500.00')).toBeVisible()
+    await expect(page.getByPlaceholder('Enter the amount refunded')).not.toBeVisible()
     await page.getByRole('button', { name: 'Process Refund', exact: true }).last().click()
 
     await expect.poll(() => refundRequest).toEqual(expect.objectContaining({
@@ -301,19 +301,4 @@ test.describe('Booking flows', () => {
     }))
   })
 
-  test('admin cannot process a refund above the security deposit', async ({ page }) => {
-    let refundRequest = false
-    await mockAdminBookingDetail(page, 'canceled', 'pending_refund')
-    await page.route('**/rest/v1/rpc/admin_process_booking_refund', async (route) => {
-      refundRequest = true
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(null) })
-    })
-
-    await page.getByRole('button', { name: 'Process Refund', exact: true }).last().click()
-    await page.getByPlaceholder('Enter the amount refunded').fill('500.01')
-
-    await expect(page.getByText('Refund cannot exceed ₱500.00.')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Process Refund', exact: true }).last()).toBeDisabled()
-    expect(refundRequest).toBe(false)
-  })
 })
