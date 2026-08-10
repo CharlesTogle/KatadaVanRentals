@@ -67,6 +67,12 @@ export function usesDriver(rentalType: CustomerRentalType) {
   return rentalType === 'all-in' || rentalType === 'all-out'
 }
 
+export function isSameBookingLocation(pickup: string, dropoff: string) {
+  const normalizedPickup = pickup.trim().toLowerCase()
+  const normalizedDropoff = dropoff.trim().toLowerCase()
+  return Boolean(normalizedPickup && normalizedDropoff && normalizedPickup === normalizedDropoff)
+}
+
 export function getBookingPriceBreakdown({ rentalType, mode = 'keep', startAt, endAt, basePricePerDay, distanceRatePerKm, driverRatePerDay, carWashFee = 0, deliveryFee = 0, securityDeposit = 0, securityDepositType = 'fixed', excessRatePerHour = 0, autoFullDayAfterHours = 12, twelveHourRate = null, routeQuote }: BookingPriceBreakdownInput) {
   const startDate = startAt ? new Date(startAt) : null
   const endDate = endAt ? new Date(endAt) : null

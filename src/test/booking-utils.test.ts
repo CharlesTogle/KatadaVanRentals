@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canCustomerCancelBooking, formatCancellationType, getAdminBookingActions, getAdminBookingDetailActions, getBookingPriceBreakdown, getCustomerCancellationRefundStatus, hasRequiredSelfDriveDocuments, isRefundIneligible } from '@/lib/booking-utils'
+import { canCustomerCancelBooking, formatCancellationType, getAdminBookingActions, getAdminBookingDetailActions, getBookingPriceBreakdown, getCustomerCancellationRefundStatus, hasRequiredSelfDriveDocuments, isRefundIneligible, isSameBookingLocation } from '@/lib/booking-utils'
 
 describe('booking-utils', () => {
   it('uses human-readable cancellation type labels', () => {
@@ -42,6 +42,11 @@ describe('booking-utils', () => {
         updated_at: '',
       },
     ])).toBe(false)
+  })
+
+  it('detects equal pickup and drop-off locations', () => {
+    expect(isSameBookingLocation('  Makati City ', 'makati city')).toBe(true)
+    expect(isSameBookingLocation('Makati City', 'Pasay City')).toBe(false)
   })
 
   it('allows customer cancel for the four cancellable statuses', () => {

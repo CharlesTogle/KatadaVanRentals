@@ -13,7 +13,7 @@ import { PaymentFields } from '@/components/booking/payment-fields'
 import { PriceSummary } from '@/components/booking/price-summary'
 import { BookingFormSkeleton } from '@/components/booking/booking-form-skeleton'
 import { showError } from '@/lib/errors'
-import { getBookingPriceBreakdown, getMissingSelfDriveDocuments, hasRequiredSelfDriveDocuments, normalizeCustomerRentalType, toBookingRentalModel, type CustomerRentalType } from '@/lib/booking-utils'
+import { getBookingPriceBreakdown, getMissingSelfDriveDocuments, hasRequiredSelfDriveDocuments, isSameBookingLocation, normalizeCustomerRentalType, toBookingRentalModel, type CustomerRentalType } from '@/lib/booking-utils'
 import { loadBookingDateSelection, saveBookingDateSelection } from '@/lib/booking-date-storage'
 import { calculateToll, getNearestTollPlazas, getRouteQuote } from '@/services/location-service'
 import { supabase } from '@/lib/supabase'
@@ -422,7 +422,8 @@ export default function BookingForm() {
     || ((mode === 'keep' || rentalType === 'self-drive') && routeSelections.destination.lat == null)
   const paymentIncomplete = requiresPayment && (!payment.method || !payment.reference.trim() || !receiptFile)
   const isWithDriverDropoff = rentalType !== 'self-drive' && mode === 'dropoff'
-  const formIncomplete = !startParam || (!endParam && !isWithDriverDropoff) || profileBlocked || selfDriveBlocked || documentsQuery.isLoading || (requiresPayment && paymentMethodsQuery.isLoading) || locationSelectionIncomplete || routeIncomplete || needsTollEstimate || tollLoading || Boolean(tollError) || paymentIncomplete
+  const sameDropoffLocation = isWithDriverDropoff && isSameBookingLocation(locations.pickup, locations.dropoff)
+  const formIncomplete = !startParam || (!endParam && !isWithDriverDropoff) || profileBlocked || selfDriveBlocked || documentsQuery.isLoading || (requiresPayment && paymentMethodsQuery.isLoading) || locationSelectionIncomplete || sameDropoffLocation || routeIncomplete || needsTollEstimate || tollLoading || Boolean(tollError) || paymentIncomplete
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -459,6 +460,11 @@ export default function BookingForm() {
 
     if (locationSelectionIncomplete) {
       setError('Choose suggested pickup, destination, and drop-off locations so we can use the selected locations for this booking.')
+      return
+    }
+
+    if (sameDropoffLocation) {
+      setError('Pickup and drop-off locations must be different for a drop-off booking.')
       return
     }
 
@@ -737,7 +743,7 @@ export default function BookingForm() {
               submitting={submitting}
               disabled={formIncomplete}
               flaggedForManualPricing={routeQuote?.inServiceArea === false}
-               disabledMessage={profileBlocked ? 'Complete your profile to enable booking.' : selfDriveBlocked ? 'Complete your profile documents to enable booking.' : (!startParam || (!endParam && !isWithDriverDropoff)) ? 'Pick-up and return dates are required unless this is a drop-off booking.' : locationSelectionIncomplete ? 'Pick suggested locations to continue.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : paymentIncomplete ? 'Complete payment details to enable booking.' : undefined))}
+                disabledMessage={profileBlocked ? 'Complete your profile to enable booking.' : selfDriveBlocked ? 'Complete your profile documents to enable booking.' : (!startParam || (!endParam && !isWithDriverDropoff)) ? 'Pick-up and return dates are required unless this is a drop-off booking.' : locationSelectionIncomplete ? 'Pick suggested locations to continue.' : sameDropoffLocation ? 'Pickup and drop-off locations must be different.' : routeLoading ? 'Computing route estimate...' : routeError || (needsRouteQuote && !routeQuote ? 'Pick suggested locations to compute the route estimate.' : tollLoading ? 'Computing toll estimate...' : tollError || (needsTollEstimate ? 'Computing toll estimate...' : paymentIncomplete ? 'Complete payment details to enable booking.' : undefined))}
               error={error}
             />
           </div>

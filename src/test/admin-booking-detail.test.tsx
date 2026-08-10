@@ -919,6 +919,23 @@ describe('AdminBookingDetail', () => {
     })
   })
 
+  it('shows completion errors inside the return modal', async () => {
+    useAdminBooking.mockReturnValue({
+      data: { booking: { ...mockBooking, status: 'on_trip', rental_model: 'self_drive' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],
+        documents: [], status_events: [], extensions: [], invoice: null },
+      isLoading: false,
+      error: null,
+    })
+    mutateAsync.mockRejectedValueOnce({ code: 'P0001', message: 'Collected amount exceeds the outstanding balance' })
+
+    renderDetail()
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as Returned' }))
+    fireEvent.change(screen.getByPlaceholderText('Enter the amount collected'), { target: { value: '29999' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Complete' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Collected amount exceeds the outstanding balance')
+  })
+
   it('requires actual toll and gas to complete an all-in keep trip', () => {
     useAdminBooking.mockReturnValue({
       data: { booking: { ...mockBooking, status: 'on_trip' }, customer: mockCustomer, vehicle: mockVehicle, payments: [], requested_document_types: [],

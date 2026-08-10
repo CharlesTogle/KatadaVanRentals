@@ -290,6 +290,11 @@ test.describe('Booking flows', () => {
     await page.getByRole('button', { name: 'Process Refund', exact: true }).last().click()
     await expect(page.getByText('Amount refunded: ₱500.00')).toBeVisible()
     await expect(page.getByPlaceholder('Enter the amount refunded')).not.toBeVisible()
+    await expect(page.getByRole('button', { name: 'Process Refund', exact: true }).last()).toBeDisabled()
+    await page.route('**/storage/v1/object/payment-receipts/**', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ Key: 'booking-1/refund-proof.png' }) })
+    })
+    await page.locator('input[type="file"]').setInputFiles({ name: 'refund-proof.png', mimeType: 'image/png', buffer: Buffer.from('proof') })
     await page.getByRole('button', { name: 'Process Refund', exact: true }).last().click()
 
     await expect.poll(() => refundRequest).toEqual(expect.objectContaining({
