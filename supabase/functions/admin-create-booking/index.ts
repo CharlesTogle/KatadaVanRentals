@@ -6,9 +6,8 @@ import { escapeHtml, renderEmailLayout } from '../_shared/email-layout.ts'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const SITE_URL = Deno.env.get('SITE_URL') ?? 'https://katadavanrentals.com'
+const LOGO_URL = `${SITE_URL.replace(/\/$/, '')}/logo.jpg`
 const SENDER_NAME = Deno.env.get('SENDER_NAME') ?? 'Katada Van Rentals'
-const SENDER_EMAIL = Deno.env.get('SENDER_EMAIL') ?? ''
-const DEVELOPER_EMAIL = Deno.env.get('DEVELOPER_EMAIL') ?? ''
 
 const ALLOWED_URLS = Deno.env.get('ALLOWED_URLS')?.trim() ?? ''
 const ALLOWED_ORIGINS = ALLOWED_URLS.split(',').map(s => s.trim()).filter(Boolean)
@@ -428,6 +427,7 @@ serve(async (req) => {
           to: newCustomer!.email,
           subject: `Set your ${SENDER_NAME} password`,
           html: renderEmailLayout({
+            logoUrl: LOGO_URL,
             preheader: `Set your ${SENDER_NAME} password to access your account.`,
             label: 'Account setup',
             title: `Welcome to ${escapeHtml(SENDER_NAME)}.`,
@@ -449,6 +449,7 @@ serve(async (req) => {
 
   if (customerProfile?.email) {
     const confirmationEmail = renderBookingConfirmedEmail({
+      logoUrl: LOGO_URL,
       firstName: customerProfile.first_name ?? 'there',
       bookingNumber: booking.booking_number,
       dates: `${new Date(startAt).toLocaleDateString()}${normalizedEndAt ? ` — ${new Date(normalizedEndAt).toLocaleDateString()}` : ''}`,

@@ -590,7 +590,12 @@ export function SettingsContactForm({ user, saving, setSaving, showMessage }: Se
       e.preventDefault()
       setSaving(true)
       const { error } = await supabase.functions.invoke('send-email', {
-        body: { subject: `[Admin] ${subject}`, text: `From: ${user?.email}\n\n${body}` },
+        body: {
+          template: 'contact_message',
+          subject,
+          message: body,
+          senderEmail: user?.email || '',
+        },
       })
       if (error) showMessage(showError(error) || 'Message could not be sent.', 'error')
       else { showMessage('Message sent successfully.', 'success'); setSubject(''); setBody('') }

@@ -6,6 +6,7 @@ export interface BookingConfirmedEmailInput {
   dates: string
   duration: string
   total: string
+  logoUrl?: string
 }
 
 export function renderBookingConfirmedEmail(input: BookingConfirmedEmailInput) {
@@ -31,11 +32,12 @@ export function renderBookingConfirmedEmail(input: BookingConfirmedEmailInput) {
   ])
 
   const html = renderEmailLayout({
+    logoUrl: input.logoUrl,
     preheader: `Your booking ${input.bookingNumber} is confirmed.`,
     label: 'Booking confirmed',
     title: `You're all set, ${name}.`,
     intro: 'Your van rental has been confirmed. Keep this email handy for your trip details.',
-    content: `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top:2px solid #101c32;">${rows}</table><p style="margin:22px 0 0; color:#5f5b54; font-size:12px; line-height:1.7;">Thank you for choosing Katada Van Rentals. We look forward to getting you on the road.</p>`,
+    content: `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top:2px solid #071f52;">${rows}</table><p style="margin:22px 0 0; color:#52627d; font-size:12px; line-height:1.7;">Thank you for choosing Katada Van Rentals. We look forward to getting you on the road.</p>`,
     footer: 'Need help with your booking? Reply to this email or contact our team.',
   })
 

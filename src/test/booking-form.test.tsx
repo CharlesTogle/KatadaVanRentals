@@ -292,7 +292,8 @@ describe('BookingForm', () => {
     expect(functionsInvoke).toHaveBeenCalledWith('send-email', {
       body: expect.objectContaining({
         to: 'customer@example.com',
-        subject: expect.stringContaining('CR-260723-ABCD'),
+        template: 'booking_received',
+        bookingNumber: 'CR-260723-ABCD',
       }),
     })
     expect(JSON.parse(window.localStorage.getItem('booking-date-selection') || '{}')).toEqual({

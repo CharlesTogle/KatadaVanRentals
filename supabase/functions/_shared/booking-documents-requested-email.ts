@@ -5,6 +5,7 @@ export interface BookingDocumentsRequestedEmailInput {
   bookingNumber: string
   requestedDocuments: string
   bookingUrl: string
+  logoUrl?: string
 }
 
 export function renderBookingDocumentsRequestedEmail(input: BookingDocumentsRequestedEmailInput) {
@@ -27,11 +28,12 @@ export function renderBookingDocumentsRequestedEmail(input: BookingDocumentsRequ
     ['Requested documents', requestedDocuments],
   ])
   const html = renderEmailLayout({
+    logoUrl: input.logoUrl,
     preheader: `Documents are needed for booking ${input.bookingNumber}.`,
     label: 'Action needed / booking documents',
     title: 'A few documents are needed.',
     intro: `Hi ${escapeHtml(greetingName)}, we need the following documents to continue reviewing your booking.`,
-    content: `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top:2px solid #101c32;">${rows}</table><p style="margin:22px 0 0; color:#5f5b54; font-size:12px; line-height:1.7;">Please do not reply to this email. Upload the requested documents directly in your booking.</p><p style="margin:20px 0 0;"><a href="${escapeHtml(input.bookingUrl)}" style="display:inline-block; padding:13px 18px; background:#e92935; color:#ffffff; font-size:12px; font-weight:800; text-decoration:none;">Open your booking</a></p>`,
+    content: `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-top:2px solid #071f52;">${rows}</table><p style="margin:22px 0 0; color:#52627d; font-size:12px; line-height:1.7;">Please do not reply to this email. Upload the requested documents directly in your booking.</p><p style="margin:20px 0 0;"><a href="${escapeHtml(input.bookingUrl)}" style="display:inline-block; padding:13px 18px; background:#e92935; color:#ffffff; font-size:12px; font-weight:800; text-decoration:none;">Open your booking</a></p>`,
     footer: `Booking number <strong>${escapeHtml(input.bookingNumber)}</strong> - Upload documents directly in your booking.`,
   })
 

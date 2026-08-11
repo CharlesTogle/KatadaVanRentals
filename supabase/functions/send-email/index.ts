@@ -4,11 +4,15 @@ import { renderBookingRefundPendingEmail } from '../_shared/booking-refund-pendi
 import { renderBookingConfirmedEmail } from '../_shared/booking-confirmed-email.ts'
 import { renderBookingRejectedEmail } from '../_shared/booking-rejected-email.ts'
 import { renderBookingDocumentsRequestedEmail } from '../_shared/booking-documents-requested-email.ts'
+import { renderBookingReceivedEmail } from '../_shared/booking-received-email.ts'
+import { renderContactMessageEmail } from '../_shared/contact-message-email.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const DEVELOPER_EMAIL = Deno.env.get('DEVELOPER_EMAIL')!
 const SENDER_NAME = Deno.env.get('SENDER_NAME') ?? 'Katada Van Rentals'
 const SENDER_EMAIL = Deno.env.get('SENDER_EMAIL')!
+const APP_URL = Deno.env.get('APP_URL')?.replace(/\/$/, '') ?? ''
+const LOGO_URL = APP_URL ? `${APP_URL}/logo.jpg` : undefined
 
 const RATE_LIMIT = 10
 const RATE_WINDOW = 60_000
@@ -98,19 +102,22 @@ serve(async (req) => {
     const email = item.template === 'booking_refund_pending'
       ? renderBookingRefundPendingEmail({
           bookingNumber: String(item.bookingNumber || ''),
-          reason: String(item.reason || 'Customer cancellation requires refund review.'),
+           reason: String(item.reason || 'Customer cancellation requires refund review.'),
+           logoUrl: LOGO_URL,
         })
       : item.template === 'booking_canceled'
       ? renderBookingCanceledEmail({
           firstName: String(item.firstName || 'there'),
           bookingNumber: String(item.bookingNumber || ''),
-          reason: String(item.reason || 'Booking deadline passed.'),
+           reason: String(item.reason || 'Booking deadline passed.'),
+           logoUrl: LOGO_URL,
         })
       : item.template === 'booking_rejected'
         ? renderBookingRejectedEmail({
             firstName: String(item.firstName || 'there'),
             bookingNumber: String(item.bookingNumber || ''),
             reason: String(item.reason || 'Booking request was not accepted.'),
+            logoUrl: LOGO_URL,
           })
       : item.template === 'booking_documents_requested'
         ? renderBookingDocumentsRequestedEmail({
@@ -118,6 +125,7 @@ serve(async (req) => {
             bookingNumber: String(item.bookingNumber || ''),
             requestedDocuments: String(item.reason || ''),
             bookingUrl: String(item.bookingUrl || ''),
+            logoUrl: LOGO_URL,
           })
         : item.template === 'booking_confirmed'
           ? renderBookingConfirmedEmail({
@@ -126,6 +134,23 @@ serve(async (req) => {
               dates: String(item.dates || 'To be confirmed'),
               duration: String(item.duration || '1 day'),
               total: String(item.total || 'PHP 0'),
+              logoUrl: LOGO_URL,
+            })
+      : item.template === 'booking_received'
+          ? renderBookingReceivedEmail({
+              firstName: String(item.firstName || 'Customer'),
+              bookingNumber: String(item.bookingNumber || ''),
+              details: Array.isArray(item.details) ? item.details as Array<[string, string]> : [],
+              fuelEstimate: typeof item.fuelEstimate === 'string' ? item.fuelEstimate : undefined,
+              tollEstimate: typeof item.tollEstimate === 'string' ? item.tollEstimate : undefined,
+              logoUrl: LOGO_URL,
+            })
+        : item.template === 'contact_message'
+          ? renderContactMessageEmail({
+              subject: String(item.subject || 'Admin message'),
+              message: String(item.message || ''),
+              senderEmail: String(item.senderEmail || ''),
+              logoUrl: LOGO_URL,
             })
       : { subject: String(item.subject || ''), text: String(item.text || ''), html: item.html as string | undefined }
 
@@ -145,6 +170,7 @@ serve(async (req) => {
       firstName: String(body.firstName || 'there'),
       bookingNumber: String(body.bookingNumber || ''),
       reason: String(body.reason || 'Booking deadline passed.'),
+      logoUrl: LOGO_URL,
     })
     body.subject = email.subject
     body.text = email.text
@@ -155,6 +181,7 @@ serve(async (req) => {
     const email = renderBookingRefundPendingEmail({
       bookingNumber: String(body.bookingNumber || ''),
       reason: String(body.reason || 'Customer cancellation requires refund review.'),
+      logoUrl: LOGO_URL,
     })
     body.subject = email.subject
     body.text = email.text
@@ -166,6 +193,7 @@ serve(async (req) => {
       firstName: String(body.firstName || 'there'),
       bookingNumber: String(body.bookingNumber || ''),
       reason: String(body.reason || 'Booking request was not accepted.'),
+      logoUrl: LOGO_URL,
     })
     body.subject = email.subject
     body.text = email.text
@@ -179,6 +207,7 @@ serve(async (req) => {
       dates: String(body.dates || 'To be confirmed'),
       duration: String(body.duration || '1 day'),
       total: String(body.total || 'PHP 0'),
+      logoUrl: LOGO_URL,
     })
     body.subject = email.subject
     body.text = email.text
@@ -191,6 +220,33 @@ serve(async (req) => {
       bookingNumber: String(body.bookingNumber || ''),
       requestedDocuments: String(body.reason || ''),
       bookingUrl: String(body.bookingUrl || ''),
+      logoUrl: LOGO_URL,
+    })
+    body.subject = email.subject
+    body.text = email.text
+    body.html = email.html
+  }
+
+  if (body.template === 'booking_received') {
+    const email = renderBookingReceivedEmail({
+      firstName: String(body.firstName || 'Customer'),
+      bookingNumber: String(body.bookingNumber || ''),
+      details: Array.isArray(body.details) ? body.details as Array<[string, string]> : [],
+      fuelEstimate: typeof body.fuelEstimate === 'string' ? body.fuelEstimate : undefined,
+      tollEstimate: typeof body.tollEstimate === 'string' ? body.tollEstimate : undefined,
+      logoUrl: LOGO_URL,
+    })
+    body.subject = email.subject
+    body.text = email.text
+    body.html = email.html
+  }
+
+  if (body.template === 'contact_message') {
+    const email = renderContactMessageEmail({
+      subject: String(body.subject || 'Admin message'),
+      message: String(body.message || ''),
+      senderEmail: String(body.senderEmail || ''),
+      logoUrl: LOGO_URL,
     })
     body.subject = email.subject
     body.text = email.text
