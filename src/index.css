@@ -78,9 +78,112 @@ html {
   }
 }
 
+@utility responsive-admin-table {
+  @media (max-width: 767.98px) {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+
+    & table {
+      display: block;
+      min-width: 0;
+      font-size: 0.75rem;
+    }
+
+    & thead {
+      display: none;
+    }
+
+    & tbody {
+      display: grid;
+      gap: 0.75rem;
+      padding: 0.75rem;
+    }
+
+    & tbody > tr {
+      display: block;
+      overflow: hidden;
+      border: 1px solid color-mix(in oklab, var(--color-brand-navy) 10%, transparent);
+      border-radius: 0.9rem;
+      background: white;
+      box-shadow: 0 8px 24px rgba(7, 31, 82, 0.06);
+    }
+
+    & tbody > tr + tr {
+      border-top: 1px solid color-mix(in oklab, var(--color-brand-navy) 10%, transparent);
+    }
+
+    & td {
+      display: grid;
+      grid-template-columns: 6.25rem minmax(0, 1fr);
+      gap: 0.75rem;
+      align-items: start;
+      padding: 0.7rem 0.85rem;
+      border-bottom: 1px solid color-mix(in oklab, var(--color-brand-navy) 8%, transparent);
+    }
+
+    & td::before {
+      content: attr(data-label);
+      color: color-mix(in oklab, var(--color-brand-navy) 52%, transparent);
+      font-size: 0.6875rem;
+      font-weight: 700;
+    }
+
+    & td:first-child {
+      display: flex;
+      align-items: center;
+      min-height: 3rem;
+      padding-top: 0.85rem;
+      padding-bottom: 0.85rem;
+      border-bottom-color: color-mix(in oklab, var(--color-brand-navy) 12%, transparent);
+    }
+
+    & td:first-child::before {
+      content: attr(data-label);
+      flex: 0 0 6.25rem;
+      color: color-mix(in oklab, var(--color-brand-navy) 52%, transparent);
+      font-size: 0.6875rem;
+      font-weight: 700;
+    }
+
+    & td:last-child {
+      display: flex;
+      justify-content: flex-end;
+      min-height: 3rem;
+      border-bottom: 0;
+    }
+
+    & td:last-child::before {
+      content: attr(data-label);
+      margin-right: auto;
+      align-self: center;
+    }
+
+    & td[colspan] {
+      display: block !important;
+      text-align: center;
+    }
+
+    & td[colspan]::before {
+      content: none !important;
+    }
+
+    & td.desktop-table-actions {
+      display: none;
+    }
+
+    & tbody.divide-y > :not(:last-child) {
+      border-top-width: 0;
+    }
+  }
+}
+
 @utility admin-content {
-  max-width: 100vw;
-  overflow-x: clip;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
   padding-left: 1rem;
   padding-right: 1rem;
   @media (min-width: 640px) {

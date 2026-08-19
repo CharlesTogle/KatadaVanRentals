@@ -14,11 +14,11 @@ import {
   type TooltipItem,
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
-import { useRevenueReport } from '@/hooks/use-bookings'
+import { useRevenueReport, useRevenueReportPage } from '@/hooks/use-bookings'
 import type { SubmittedPaymentRow } from '@/services/booking-service'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/lib/supabase'
-import { Download, Table, BarChart3, X, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, RefreshCw, Table, BarChart3, X, Check } from 'lucide-react'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Filler, Title, Tooltip, Legend)
 
@@ -37,6 +37,7 @@ const CURRENCY_FORMATTER = new Intl.NumberFormat('en-PH', { style: 'currency', c
 const CURRENCY_FORMATTER_DECIMAL = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const CHART_FONT = { family: "'Plus Jakarta Sans', sans-serif" }
 const COLORS = ['#071f52', '#e92935', '#ffd923', '#16a34a', '#7c3aed', '#db2777', '#0891b2', '#ea580c']
+const PAGE_SIZE = 20
 
 function channelLabel(channel: string, provider?: string | null): string {
   if (provider) return provider
@@ -105,7 +106,7 @@ const LINE_OPTIONS = (formatValue: (v: number) => string) => ({
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="card">
+    <div className="card min-w-0">
       <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#071f52]/48">{label}</p>
       <p className="mt-2 text-2xl font-black text-[#071f52]">{value}</p>
       {sub && <p className="mt-1 text-xs font-medium text-[#071f52]/40">{sub}</p>}
@@ -205,6 +206,8 @@ export default function RevenueReport() {
   const [selectedFields, setSelectedFields] = useState<CsvField[]>([
     'date', 'booking_number', 'customer_name', 'vehicle', 'method', 'amount',
   ])
+  const [transactionPage, setTransactionPage] = useState(1)
+  const [dailyPage, setDailyPage] = useState(1)
   const [grossSales, setGrossSales] = useState(0)
   const [taxMode, setTaxMode] = useState('unregistered')
 
@@ -222,7 +225,16 @@ export default function RevenueReport() {
 
   const dateRange = useMemo(() => getPeriodRange(period, customFrom, customTo), [period, customFrom, customTo])
 
-  const { data: payments = [], isLoading, isFetching } = useRevenueReport(dateRange.from, dateRange.to)
+  const { data: payments = [], isLoading, isFetching, refetch: refetchRevenue } = useRevenueReport(dateRange.from, dateRange.to)
+  const { data: transactionPageData, isLoading: isTransactionLoading, isFetching: isTransactionFetching, refetch: refetchTransactions } = useRevenueReportPage(
+    dateRange.from,
+    dateRange.to,
+    transactionPage,
+    PAGE_SIZE,
+  )
+  const totalTransactionPages = Math.max(1, Math.ceil((transactionPageData?.total || 0) / PAGE_SIZE))
+  const currentTransactionPage = Math.min(transactionPage, totalTransactionPages)
+  const transactionPayments = transactionPageData?.items || []
 
   const {
     totalRevenue,
@@ -232,9 +244,9 @@ export default function RevenueReport() {
     dailyData,
     paymentMethods,
     topVehicles,
-    topCustomers,
-    chartData,
-  } = useMemo(() => {
+      topCustomers,
+      chartData,
+    } = useMemo(() => {
     const totalRevenue = payments.reduce((s, p) => s + p.amount, 0)
     const totalTransactions = payments.length
     const avgPerTransaction = totalTransactions > 0 ? totalRevenue / totalTransactions : 0
@@ -325,6 +337,10 @@ export default function RevenueReport() {
     }
   }, [payments])
 
+  const totalDailyPages = Math.max(1, Math.ceil(dailyData.length / PAGE_SIZE))
+  const currentDailyPage = Math.min(dailyPage, totalDailyPages)
+  const paginatedDailyData = dailyData.slice((currentDailyPage - 1) * PAGE_SIZE, currentDailyPage * PAGE_SIZE)
+
   const toggleField = (key: CsvField) => {
     setSelectedFields((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key])
   }
@@ -360,7 +376,7 @@ export default function RevenueReport() {
           <Fragment key={p}>
             {p === 'custom' && <span className="mx-1 h-5 w-px bg-[#071f52]/12" />}
             <button
-              onClick={() => setPeriod(p)}
+              onClick={() => { setPeriod(p); setTransactionPage(1); setDailyPage(1) }}
               className={cn(
                 'rounded-lg px-3 py-1.5 text-xs font-bold transition-colors',
                 period === p
@@ -377,14 +393,14 @@ export default function RevenueReport() {
             <input
               type="date"
               value={customFrom}
-              onChange={(e) => setCustomFrom(e.target.value)}
+              onChange={(e) => { setCustomFrom(e.target.value); setTransactionPage(1); setDailyPage(1) }}
               className="rounded-lg border border-[#071f52]/12 bg-white px-2.5 py-1.5 text-xs font-medium text-[#071f52] outline-none focus:border-[#071f52]/32"
             />
             <span className="text-xs text-[#071f52]/40">to</span>
             <input
               type="date"
               value={customTo}
-              onChange={(e) => setCustomTo(e.target.value)}
+              onChange={(e) => { setCustomTo(e.target.value); setTransactionPage(1); setDailyPage(1) }}
               className="rounded-lg border border-[#071f52]/12 bg-white px-2.5 py-1.5 text-xs font-medium text-[#071f52] outline-none focus:border-[#071f52]/32"
             />
           </div>
@@ -399,10 +415,10 @@ export default function RevenueReport() {
       </div>
 
       {/* ── summary cards ── */}
-      <div className="mt-6 relative grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 relative grid min-w-0 gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {isLoading ? (
           [...Array(4)].map((_, i) => (
-            <div key={i} className="card animate-pulse">
+            <div key={i} className="card min-w-0 animate-pulse">
               <div className="h-3 w-20 rounded bg-[#071f52]/10" />
               <div className="mt-3 h-7 w-28 rounded bg-[#071f52]/6" />
             </div>
@@ -463,7 +479,28 @@ export default function RevenueReport() {
             )}
           </div>
         ) : (
-          <div className="mt-4 overflow-x-auto">
+          <>
+            <div className="mt-4 flex items-center justify-between border-y border-[#071f52]/10 py-3">
+              <div className="flex items-center gap-3">
+                <p className="text-xs font-semibold text-[#071f52]/48">Show 20 per page</p>
+                <button
+                  type="button"
+                  aria-label="Refresh daily revenue"
+                  onClick={() => refetchRevenue()}
+                  disabled={isLoading || isFetching}
+                  className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  <RefreshCw size={16} className={isFetching ? 'animate-spin' : undefined} />
+                </button>
+              </div>
+              <PaginationControls
+                page={currentDailyPage}
+                totalPages={totalDailyPages}
+                setPage={setDailyPage}
+                disabled={isLoading || isFetching}
+              />
+            </div>
+            <div className="mt-4 overflow-x-auto responsive-admin-table">
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-[#071f52]/10 bg-[#f7f9ff]">
@@ -481,13 +518,13 @@ export default function RevenueReport() {
                   </tr>
                 ) : (
                   <>
-                    {dailyData.map((d) => (
+                    {paginatedDailyData.map((d) => (
                       <tr key={d.date} className="hover:bg-[#f7f9ff] transition-colors">
-                        <td className="px-5 py-3 font-bold text-[#071f52]">{d.label}</td>
-                        <td className="px-5 py-3 text-[#071f52]/64">{d.count}</td>
-                        <td className="px-5 py-3 font-semibold text-[#071f52]">{CURRENCY_FORMATTER.format(d.revenue)}</td>
-                        <td className="px-5 py-3 text-[#071f52]/56 hidden sm:table-cell">{CURRENCY_FORMATTER_DECIMAL.format(d.avg)}</td>
-                        <td className="px-5 py-3 hidden sm:table-cell">
+                         <td data-label="Day" className="px-5 py-3 font-bold text-[#071f52]">{d.label}</td>
+                         <td data-label="Transactions" className="px-5 py-3 text-[#071f52]/64">{d.count}</td>
+                         <td data-label="Revenue" className="px-5 py-3 font-semibold text-[#071f52]">{CURRENCY_FORMATTER.format(d.revenue)}</td>
+                         <td data-label="Avg / trans" className="px-5 py-3 text-[#071f52]/56 hidden sm:table-cell">{CURRENCY_FORMATTER_DECIMAL.format(d.avg)}</td>
+                         <td data-label="Change" className="px-5 py-3 hidden sm:table-cell">
                           <span className={cn('font-bold', d.change >= 0 ? 'text-[#16a34a]' : 'text-[#e92935]')}>
                             {d.change >= 0 ? '+' : ''}{d.change}%
                           </span>
@@ -495,25 +532,26 @@ export default function RevenueReport() {
                       </tr>
                     ))}
                     <tr className="border-t border-[#071f52]/10 bg-[#071f52]/3 font-black text-[#071f52]">
-                      <td className="px-5 py-3">TOTAL</td>
-                      <td className="px-5 py-3">{totalTransactions}</td>
-                      <td className="px-5 py-3">{CURRENCY_FORMATTER.format(totalRevenue)}</td>
-                      <td className="px-5 py-3 hidden sm:table-cell">{CURRENCY_FORMATTER_DECIMAL.format(avgPerTransaction)}</td>
-                      <td className="px-5 py-3 hidden sm:table-cell">—</td>
+                       <td data-label="Day" className="px-5 py-3">TOTAL</td>
+                       <td data-label="Transactions" className="px-5 py-3">{totalTransactions}</td>
+                       <td data-label="Revenue" className="px-5 py-3">{CURRENCY_FORMATTER.format(totalRevenue)}</td>
+                       <td data-label="Avg / trans" className="px-5 py-3 hidden sm:table-cell">{CURRENCY_FORMATTER_DECIMAL.format(avgPerTransaction)}</td>
+                       <td data-label="Change" className="px-5 py-3 hidden sm:table-cell">—</td>
                     </tr>
                   </>
                 )}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
       </div>
 
       {/* ── three-column row ── */}
-      <div className="mt-6 grid gap-6 xl:grid-cols-3">
+      <div className="admin-revenue-grid mt-6 grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2">
         {/* Payment Methods */}
-        <div className="card relative">
-          {(isFetching && !isLoading) && <SectionLoader />}
+        <div className="card relative min-w-0">
+          {(isTransactionFetching && !isTransactionLoading) && <SectionLoader />}
           <h2 className="text-base font-black text-[#071f52]">Payment Methods</h2>
           <p className="mt-1 text-sm text-[#071f52]/56">How customers paid.</p>
           {paymentMethods.length === 0 ? (
@@ -546,7 +584,7 @@ export default function RevenueReport() {
         </div>
 
         {/* Top Vehicles */}
-        <div className="card relative">
+        <div className="card relative min-w-0">
           {(isFetching && !isLoading) && <SectionLoader />}
           <h2 className="text-base font-black text-[#071f52]">Top Vehicles</h2>
           <p className="mt-1 text-sm text-[#071f52]/56">By submitted revenue.</p>
@@ -577,7 +615,7 @@ export default function RevenueReport() {
         </div>
 
         {/* Top Customers */}
-        <div className="card relative">
+        <div className="card relative min-w-0 md:col-span-2">
           {(isFetching && !isLoading) && <SectionLoader />}
           <h2 className="text-base font-black text-[#071f52]">Top Customers</h2>
           <p className="mt-1 text-sm text-[#071f52]/56">By submitted payments.</p>
@@ -617,10 +655,30 @@ export default function RevenueReport() {
             <p className="mt-1 text-sm text-[#071f52]/56">Submitted payments for the selected period.</p>
           </div>
           <span className="rounded-full bg-[#071f52]/6 px-3 py-1 text-xs font-bold text-[#071f52]/56">
-            {payments.length} transaction{payments.length !== 1 ? 's' : ''}
+            {transactionPageData?.total || 0} transaction{transactionPageData?.total !== 1 ? 's' : ''}
           </span>
         </div>
-        <div className="mt-4 overflow-x-auto">
+        <div className="mt-4 flex items-center justify-between border-y border-[#071f52]/10 py-3">
+          <div className="flex items-center gap-3">
+            <p className="text-xs font-semibold text-[#071f52]/48">Show 20 per page</p>
+            <button
+              type="button"
+              aria-label="Refresh payment transactions"
+              onClick={() => refetchTransactions()}
+              disabled={isTransactionLoading || isTransactionFetching}
+              className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+            >
+              <RefreshCw size={16} className={isTransactionFetching ? 'animate-spin' : undefined} />
+            </button>
+          </div>
+          <PaginationControls
+            page={currentTransactionPage}
+            totalPages={totalTransactionPages}
+            setPage={setTransactionPage}
+            disabled={isTransactionLoading || isTransactionFetching}
+          />
+        </div>
+        <div className="mt-4 overflow-x-auto responsive-admin-table">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-[#071f52]/10 bg-[#f7f9ff]">
@@ -634,28 +692,36 @@ export default function RevenueReport() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#071f52]/6">
-              {payments.length === 0 ? (
+              {isTransactionLoading || isTransactionFetching ? (
+                [...Array(5)].map((_, index) => (
+                  <tr key={index}>
+                    <td colSpan={7} className="px-5 py-4">
+                      <div className="h-4 animate-pulse rounded bg-[#071f52]/8" />
+                    </td>
+                  </tr>
+                ))
+              ) : transactionPayments.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-5 py-8 text-center text-sm text-[#071f52]/40">
                     No submitted payments for this period.
                   </td>
                 </tr>
               ) : (
-                payments.map((p) => (
+                transactionPayments.map((p) => (
                   <tr key={p.id} className="hover:bg-[#f7f9ff] transition-colors">
-                    <td className="px-5 py-3 text-[#071f52]/56 whitespace-nowrap">
+                   <td data-label="Date" className="px-5 py-3 text-[#071f52]/56 whitespace-nowrap">
                       {p.paid_at ? format(parseISO(p.paid_at), 'MMM d, yyyy') : '—'}
                     </td>
-                    <td className="px-5 py-3 font-bold text-[#071f52] whitespace-nowrap">{p.booking_number}</td>
-                    <td className="px-5 py-3 text-[#071f52]/64 hidden md:table-cell">
+                     <td data-label="Booking" className="px-5 py-3 font-bold text-[#071f52] whitespace-nowrap">{p.booking_number}</td>
+                     <td data-label="Customer" className="px-5 py-3 text-[#071f52]/64 hidden md:table-cell">
                       {[p.customer_first_name, p.customer_last_name].filter(Boolean).join(' ') || 'Guest'}
                     </td>
-                    <td className="px-5 py-3 text-[#071f52]/64 hidden lg:table-cell">{p.vehicle_name}</td>
-                    <td className="px-5 py-3 text-[#071f52]/64">{channelLabel(p.channel, p.payment_method_provider)}</td>
-                    <td className="px-5 py-3 text-[#071f52]/48 font-mono text-xs hidden sm:table-cell">
+                     <td data-label="Vehicle" className="px-5 py-3 text-[#071f52]/64 hidden lg:table-cell">{p.vehicle_name}</td>
+                     <td data-label="Method" className="px-5 py-3 text-[#071f52]/64">{channelLabel(p.channel, p.payment_method_provider)}</td>
+                     <td data-label="Reference" className="px-5 py-3 text-[#071f52]/48 font-mono text-xs hidden sm:table-cell">
                       {p.reference_number || '—'}
                     </td>
-                    <td className="px-5 py-3 text-right font-semibold text-[#071f52]">
+                     <td data-label="Amount" className="px-5 py-3 text-right font-semibold text-[#071f52]">
                       {CURRENCY_FORMATTER.format(p.amount)}
                     </td>
                   </tr>
@@ -727,6 +793,46 @@ export default function RevenueReport() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function PaginationControls({
+  page,
+  totalPages,
+  setPage,
+  disabled = false,
+}: {
+  page: number
+  totalPages: number
+  setPage: (page: number) => void
+  disabled?: boolean
+}) {
+  if (totalPages <= 1) return null
+
+  return (
+    <div className="flex items-center justify-end gap-3">
+      <p className="text-xs font-semibold text-[#071f52]/48">Page {page} of {totalPages}</p>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label="Previous page"
+          onClick={() => setPage(Math.max(1, page - 1))}
+          disabled={disabled || page === 1}
+          className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <button
+          type="button"
+          aria-label="Next page"
+          onClick={() => setPage(Math.min(totalPages, page + 1))}
+          disabled={disabled || page === totalPages}
+          className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
     </div>
   )
 }

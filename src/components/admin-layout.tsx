@@ -34,10 +34,6 @@ export default function AdminLayout() {
       {/* Mobile sticky bar - matches customer shell */}
       {/* Mobile sticky bar - matches customer shell */}
       <div className="sticky top-0 z-20 flex items-center justify-between border-b border-[#071f52]/10 bg-white px-6 py-3 md:hidden">
-          <a href="/" className="flex items-center gap-3">
-            <img src={settings?.logo_url || '/logo.jpg'} alt={settings?.business_name || 'Katada'} className="h-8 w-8 rounded-lg object-cover ring-1 ring-[#071f52]/10" />
-            <span className="text-sm font-extrabold text-[#071f52]">{settings?.business_name || 'Katada Van Rentals'}</span>
-          </a>
           <button
             type="button"
             aria-label="Toggle admin menu"
@@ -47,6 +43,10 @@ export default function AdminLayout() {
           >
             {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
+          <a href="/" className="ml-auto flex items-center gap-3">
+            <img src={settings?.logo_url || '/logo.jpg'} alt={settings?.business_name || 'Katada'} className="h-8 w-8 rounded-lg object-cover ring-1 ring-[#071f52]/10" />
+            <span className="text-sm font-extrabold text-[#071f52]">{settings?.business_name || 'Katada Van Rentals'}</span>
+          </a>
       </div>
 
       {/* Mobile backdrop */}
@@ -58,7 +58,7 @@ export default function AdminLayout() {
       )}
 
       {/* Mobile sidebar - slides from right */}
-      <aside className={`fixed bottom-0 right-0 top-0 z-40 w-[min(320px,100vw)] transition-transform duration-300 md:hidden ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <aside className={`fixed bottom-0 left-0 top-0 z-40 w-[min(320px,100vw)] transition-transform duration-300 md:hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-[#071f52]/10 bg-white shadow-[0_18px_48px_rgba(7,31,82,0.08)]">
           <div className="flex items-center justify-between border-b border-[#071f52]/10 px-5 py-4">
             <a href="/" className="flex items-center gap-3">

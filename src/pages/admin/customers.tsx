@@ -6,7 +6,7 @@ import { deactivateCustomer, reactivateCustomer, deleteCustomer } from '@/servic
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
 import { cn } from '@/lib/utils'
-import { ChevronLeft, ChevronRight, Download, MoreHorizontal, RefreshCw, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Eye, MoreHorizontal, RefreshCw, Search, Trash2, UserCheck, UserX } from 'lucide-react'
 import type { AdminCustomerRow } from '@/types/admin-customer'
 
 function formatCurrency(amount: number) {
@@ -54,6 +54,10 @@ function exportCsv(rows: AdminCustomerRow[]) {
 
 const PAGE_SIZE = 20
 
+function isMobileViewport() {
+  return typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767.98px)').matches
+}
+
 export default function Customers() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
@@ -71,6 +75,7 @@ export default function Customers() {
   const customers = data?.items || []
   const totalPages = Math.max(1, Math.ceil((data?.total || 0) / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
+  const mobileViewport = isMobileViewport()
 
   const handleDeactivate = async (customer: AdminCustomerRow) => {
     setOpenMenuId(null)
@@ -188,7 +193,7 @@ export default function Customers() {
           No customers found.
         </div>
       ) : (
-        <div className="-mt-1 admin-table-wrap">
+         <div className="-mt-1 admin-table-wrap responsive-admin-table">
           <table className="text-left">
             <thead>
               <tr className="border-b border-[#071f52]/10 bg-[#f7f9ff]">
@@ -211,85 +216,99 @@ export default function Customers() {
                   key={c.id}
                   tabIndex={0}
                   aria-label={`View customer ${c.first_name} ${c.last_name}`}
-                  onClick={() => navigate(`/admin/customers/${c.id}`)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
+                   onClick={() => {
+                     if (!mobileViewport) navigate(`/admin/customers/${c.id}`)
+                   }}
+                   onKeyDown={(event) => {
+                     if (!mobileViewport && (event.key === 'Enter' || event.key === ' ')) {
                       event.preventDefault()
                       navigate(`/admin/customers/${c.id}`)
                     }
                   }}
                   className="cursor-pointer hover:bg-[#f7f9ff] transition-colors focus:bg-[#f7f9ff] focus:outline-none"
                 >
-                  <td className="px-5 py-3">
-                    <div>
-                      <p className="text-sm font-bold text-[#071f52]">{c.first_name} {c.last_name}</p>
-                      <p className="text-xs text-[#071f52]/48">{c.email}</p>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 whitespace-nowrap">
+                   <td data-label="Customer" className="px-5 py-3">
+                     <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                       <div>
+                         <p className="text-sm font-bold text-[#071f52]">{c.first_name} {c.last_name}</p>
+                         <p className="text-xs text-[#071f52]/48">{c.email}</p>
+                       </div>
+                        {mobileViewport ? (
+                          <div className="flex items-center gap-1.5 md:hidden">
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${c.is_active ? 'bg-[#16a34a]/10 text-[#16a34a]' : 'bg-[#e92935]/10 text-[#c91f2a]'}`}>
+                              {c.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                           <button
+                             type="button"
+                             aria-label={`View customer ${c.first_name} ${c.last_name}`}
+                             className="rounded-lg border border-[#071f52]/10 p-2 text-[#071f52]/62 transition-colors hover:bg-[#071f52]/8"
+                             onClick={(event) => {
+                               event.stopPropagation()
+                               navigate(`/admin/customers/${c.id}`)
+                             }}
+                           >
+                             <Eye size={16} />
+                           </button>
+                            <button
+                              type="button"
+                              aria-label={c.is_active ? `Deactivate ${c.first_name} ${c.last_name}` : `Reactivate ${c.first_name} ${c.last_name}`}
+                              title={c.is_active ? 'Deactivate account' : 'Reactivate account'}
+                              className="rounded-lg border border-[#071f52]/10 p-2 text-[#071f52]/62 transition-colors hover:bg-[#071f52]/8"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                handleDeactivate(c)
+                              }}
+                            >
+                              {c.is_active ? <UserX size={16} /> : <UserCheck size={16} />}
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`Delete ${c.first_name} ${c.last_name}`}
+                              title="Delete account"
+                              className="rounded-lg border border-red-200 p-2 text-red-600 transition-colors hover:bg-red-50"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                handleDelete(c)
+                              }}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                         </div>
+                       ) : null}
+                     </div>
+                   </td>
+                   <td data-label="Mobile" className="px-5 py-3 whitespace-nowrap">
                     <span className="text-sm text-[#071f52]/64">{c.mobile || '—'}</span>
                   </td>
-                  <td className="px-5 py-3">
+                   <td data-label="Bookings" className="px-5 py-3">
                     <span className="text-sm font-semibold text-[#071f52]">{c.bookings_count}</span>
                   </td>
-                  <td className="px-5 py-3">
+                   <td data-label="Total spend" className="px-5 py-3">
                     <span className="text-sm font-semibold text-[#071f52]">{formatCurrency(c.total_spend)}</span>
                   </td>
-                  <td className="px-5 py-3">
+                   <td data-label="Location" className="px-5 py-3">
                     <span className="text-sm text-[#071f52]/64">{locationDisplay(c)}</span>
                   </td>
-                  <td className="px-5 py-3">
+                   <td data-label="Joined" className="px-5 py-3">
                     <span className="text-sm text-[#071f52]/64">{formatDate(c.joined_at)}</span>
                   </td>
-                  <td className="px-5 py-3">
+                   <td data-label="Last login" className="px-5 py-3">
                     <span className="text-sm text-[#071f52]/64">{formatDate(c.last_login_at)}</span>
-                  </td>
-                  <td className="px-5 py-3" onClick={(event) => event.stopPropagation()}>
-                    <div className="flex items-center gap-3">
+                   </td>
+                    <td data-label="Actions" className="desktop-table-actions px-5 py-3" onClick={(event) => event.stopPropagation()}>
+                     {!mobileViewport ? <div className="flex items-center gap-3">
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${c.is_active ? 'bg-[#16a34a]/10 text-[#16a34a]' : 'bg-[#e92935]/10 text-[#c91f2a]'}`}>
                         {c.is_active ? 'Active' : 'Inactive'}
                       </span>
-                      <div className="relative flex justify-start">
-                        <button
-                          type="button"
-                          aria-label={`Open actions for ${c.first_name} ${c.last_name}`}
-                          aria-expanded={openMenuId === c.id}
-                          onClick={() => setOpenMenuId((current) => current === c.id ? null : c.id)}
-                          className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8"
-                        >
-                          <MoreHorizontal size={16} />
-                        </button>
-
-                        {openMenuId === c.id ? (
-                          <div className={cn(
-                            'absolute right-0 z-10 min-w-44 rounded-2xl border border-[#071f52]/10 bg-white p-1.5 shadow-xl',
-                            openUp ? 'bottom-11' : 'top-11',
-                          )}>
-                          <Link
-                            to={`/admin/customers/${c.id}`}
-                            onClick={() => setOpenMenuId(null)}
-                            className="block rounded-xl px-3 py-2 text-sm font-semibold text-[#071f52] transition-colors hover:bg-[#f7f9ff]"
-                          >
-                            View Profile
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => handleDeactivate(c)}
-                            className="block w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-[#071f52] transition-colors hover:bg-[#f7f9ff]"
-                          >
-                            {c.is_active ? 'Deactivate Account' : 'Reactivate Account'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(c)}
-                            className="block w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-[#e92935] transition-colors hover:bg-[#fff4f4]"
-                          >
-                            Delete Account
-                          </button>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
+                       <CustomerActions
+                         customer={c}
+                         openMenuId={openMenuId}
+                         setOpenMenuId={setOpenMenuId}
+                         openUp={openUp}
+                         onDeactivate={handleDeactivate}
+                         onDelete={handleDelete}
+                       />
+                     </div> : null}
                   </td>
                 </tr>
                 )
@@ -298,6 +317,68 @@ export default function Customers() {
           </table>
         </div>
       )}
+    </div>
+  )
+}
+
+function CustomerActions({
+  customer,
+  openMenuId,
+  setOpenMenuId,
+  openUp,
+  onDeactivate,
+  onDelete,
+}: {
+  customer: AdminCustomerRow
+  openMenuId: string | null
+  setOpenMenuId: (id: string | null) => void
+  openUp: boolean
+  onDeactivate: (customer: AdminCustomerRow) => void
+  onDelete: (customer: AdminCustomerRow) => void
+}) {
+  return (
+    <div className="relative flex justify-start">
+      <button
+        type="button"
+        aria-label={`Open actions for ${customer.first_name} ${customer.last_name}`}
+        aria-expanded={openMenuId === customer.id}
+        onClick={(event) => {
+          event.stopPropagation()
+          setOpenMenuId(openMenuId === customer.id ? null : customer.id)
+        }}
+        className="rounded-full border border-[#071f52]/12 bg-white p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8"
+      >
+        <MoreHorizontal size={16} />
+      </button>
+
+      {openMenuId === customer.id ? (
+        <div className={cn(
+          'absolute right-0 z-10 min-w-44 rounded-2xl border border-[#071f52]/10 bg-white p-1.5 shadow-xl',
+          openUp ? 'bottom-11' : 'top-11',
+        )}>
+          <Link
+            to={`/admin/customers/${customer.id}`}
+            onClick={() => setOpenMenuId(null)}
+            className="block rounded-xl px-3 py-2 text-sm font-semibold text-[#071f52] transition-colors hover:bg-[#f7f9ff]"
+          >
+            View Profile
+          </Link>
+          <button
+            type="button"
+            onClick={() => onDeactivate(customer)}
+            className="block w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-[#071f52] transition-colors hover:bg-[#f7f9ff]"
+          >
+            {customer.is_active ? 'Deactivate Account' : 'Reactivate Account'}
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(customer)}
+            className="block w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-[#e92935] transition-colors hover:bg-[#fff4f4]"
+          >
+            Delete Account
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }

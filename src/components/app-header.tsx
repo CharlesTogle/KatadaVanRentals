@@ -88,7 +88,17 @@ export function AppHeader({ onMenuClick, mobileMenuOpen = false }: AppHeaderProp
     <>
       <header className="sticky top-0 z-50 border-b border-[#071f52]/10 bg-white/92 backdrop-blur-md">
         <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6">
-          <Link to="/" className="flex min-w-0 flex-1 items-center gap-3 md:flex-none">
+          <button
+            type="button"
+            aria-label={usesExternalMenu ? 'Toggle navigation panel' : 'Toggle menu'}
+            aria-expanded={menuOpen}
+            onClick={usesExternalMenu ? onMenuClick : () => setMobileOpen((open) => !open)}
+            className="order-first rounded-full p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 md:hidden"
+          >
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+
+          <Link to="/" className="ml-auto flex min-w-0 items-center gap-3 md:ml-0 md:flex-none">
             <img src={settings?.logo_url || '/logo.jpg'} alt={settings?.business_name || 'Katada Transportation Services'} className="h-10 w-10 shrink-0 rounded-2xl object-cover ring-1 ring-[#071f52]/10" />
             <span className="min-w-0 truncate text-sm font-extrabold leading-tight tracking-[-0.02em] text-[#071f52] sm:text-base">
               {settings?.business_name || 'Katada Van Rentals'}
@@ -171,15 +181,6 @@ export function AppHeader({ onMenuClick, mobileMenuOpen = false }: AppHeaderProp
               </div>
             )}
   
-            <button
-              type="button"
-              aria-label={usesExternalMenu ? 'Toggle navigation panel' : 'Toggle menu'}
-              aria-expanded={menuOpen}
-              onClick={usesExternalMenu ? onMenuClick : () => setMobileOpen((open) => !open)}
-              className="rounded-full p-2 text-[#071f52] transition-colors hover:bg-[#071f52]/8 md:hidden"
-            >
-              {menuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
           </div>
         </div>
       </header>
@@ -194,7 +195,7 @@ export function AppHeader({ onMenuClick, mobileMenuOpen = false }: AppHeaderProp
   
         <aside
           aria-hidden={!menuOpen}
-          className={`fixed bottom-0 right-0 top-0 z-[60] w-[min(300px,100vw)] transition-transform duration-300 md:hidden ${menuOpen ? 'translate-x-0' : 'translate-x-full'}`}
+          className={`fixed bottom-0 left-0 top-0 z-[60] w-[min(300px,100vw)] transition-transform duration-300 md:hidden ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
           <div className="flex h-full flex-col overflow-hidden bg-white shadow-[0_12px_36px_rgba(7,31,82,0.06)]">
             <div className="flex items-center justify-between border-b border-[#071f52]/10 px-4 py-3">

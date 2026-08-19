@@ -39,6 +39,17 @@ const TIMELINE_STATUSES = ['for_review', 'awaiting_documents', 'confirmed', 'on_
 const PAYMENT_RECEIPT_BUCKET = 'payment-receipts'
 const MAX_BOOKING_ADJUSTMENT = 99999.99
 
+function truncateFilename(filename: string, maxNameLength = 25) {
+  const name = filename.split(/[\\/]/).pop() || filename
+  const extensionStart = name.lastIndexOf('.')
+  const extension = extensionStart > 0 ? name.slice(extensionStart) : ''
+  const baseName = extension ? name.slice(0, extensionStart) : name
+
+  return baseName.length > maxNameLength
+    ? `${baseName.slice(0, maxNameLength)}...${extension}`
+    : name
+}
+
 function getPaymentReceiptPathCandidates(filePath: string) {
   const trimmedPath = filePath.replace(/^\/+/, '')
   const strippedBucketPath = trimmedPath.replace(new RegExp(`^(?:${PAYMENT_RECEIPT_BUCKET}/)+`), '')
@@ -667,7 +678,7 @@ export default function BookingDetail() {
 
                       {requested_document_types.map((type) => (
                         <div key={type.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-[#071f52]/8 bg-[#fbfcfe] px-4 py-3">
-                          <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex min-w-0 flex-1 items-center gap-3">
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#4f46e5]">
                               <FileText className="h-4.5 w-4.5" />
                             </div>
@@ -675,7 +686,7 @@ export default function BookingDetail() {
                             <div className="min-w-0">
                               <p className="truncate text-sm font-bold text-[#1f2a44]">{type.label}</p>
                               {type.upload ? (
-                                <p className="truncate text-xs font-medium text-[#f59e0b]">{type.upload.original_filename || type.upload.file_path}</p>
+                                <p className="truncate text-xs font-medium text-[#f59e0b]" title={type.upload.original_filename || type.upload.file_path}>{truncateFilename(type.upload.original_filename || type.upload.file_path)}</p>
                               ) : (
                                 <p className="text-xs font-medium text-[#e92935]/70">Not uploaded</p>
                               )}
@@ -698,14 +709,14 @@ export default function BookingDetail() {
 
                       {documents.map((document) => (
                         <div key={document.id} className="flex items-center justify-between gap-3 rounded-[20px] border border-[#071f52]/8 bg-[#fbfcfe] px-4 py-3">
-                          <div className="flex min-w-0 items-center gap-3">
+                           <div className="flex min-w-0 flex-1 items-center gap-3">
                             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#ecfdf3] text-[#22c55e]">
                               <FileText className="h-4.5 w-4.5" />
                             </div>
 
                             <div className="min-w-0">
                               <p className="truncate text-sm font-bold text-[#1f2a44]">{toLabel(document.document_type)}</p>
-                              <p className="truncate text-xs font-medium text-[#f59e0b]">{document.original_filename || document.file_path}</p>
+                               <p className="truncate text-xs font-medium text-[#f59e0b]" title={document.original_filename || document.file_path}>{truncateFilename(document.original_filename || document.file_path)}</p>
                             </div>
                           </div>
 

@@ -291,10 +291,13 @@ export default function Dashboard() {
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => <div key={i} className="h-28 rounded-xl bg-[#071f52]/6" />)}
         </div>
-        <div className="grid gap-6 grid-cols-1 lg:grid-cols-[2fr_1fr] xl:grid-cols-[2fr_1fr_1fr]">
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           <div className="h-80 rounded-xl bg-[#071f52]/6" />
           <div className="h-80 rounded-xl bg-[#071f52]/6" />
-          <div className="h-80 hidden xl:block rounded-xl bg-[#071f52]/6" />
+          <div className="h-80 rounded-xl bg-[#071f52]/6" />
+          <div className="h-80 rounded-xl bg-[#071f52]/6" />
+          <div className="h-80 rounded-xl bg-[#071f52]/6" />
+          <div className="h-80 rounded-xl bg-[#071f52]/6" />
         </div>
       </div>
     )
@@ -343,12 +346,12 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* ── 3-column grid ── */}
-      <div className="mt-8 grid gap-6 grid-cols-1 lg:grid-cols-[2fr_1fr] xl:grid-cols-[2fr_1fr_1fr]">
+      {/* ── chart cards ── */}
+      <div className="mt-8 grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* ── MAIN ── */}
-        <div className="flex flex-col gap-6">
+        <div className="contents">
           {/* earnings summary */}
-          <div className="card flex-1 min-h-[280px] flex flex-col">
+          <div className="order-1 card min-w-0 min-h-[280px] flex flex-col">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base font-black text-[#071f52]">Earnings Summary</h2>
@@ -371,7 +374,7 @@ export default function Dashboard() {
           </div>
 
           {/* bookings overview */}
-          <div className="card flex-1 min-h-[280px] flex flex-col">
+          <div className="order-4 card min-w-0 min-h-[280px] flex flex-col">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base font-black text-[#071f52]">Bookings Overview</h2>
@@ -392,9 +395,9 @@ export default function Dashboard() {
         </div>
 
         {/* ── MIDDLE ── */}
-        <div className="flex flex-col gap-6">
+        <div className="contents">
           {/* rent status donut */}
-          <div className="card flex-1 min-h-[280px] flex flex-col">
+          <div className="order-2 card min-w-0 min-h-[280px] flex flex-col">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-black text-[#071f52]">Rent Status</h2>
               <span className="rounded-full bg-[#071f52]/6 px-3 py-1 text-xs font-bold text-[#071f52]/56">This week</span>
@@ -424,7 +427,7 @@ export default function Dashboard() {
           </div>
 
           {/* revenue by vehicle */}
-          <div className="card flex-1 min-h-[280px] flex flex-col">
+          <div className="order-5 card min-w-0 min-h-[280px] flex flex-col">
             <h2 className="text-base font-black text-[#071f52]">Revenue by Vehicle</h2>
             <p className="mt-1 text-sm text-[#071f52]/56">Top vehicles by total revenue.</p>
             {d.revenueByVehicle.length === 0 ? (
@@ -444,9 +447,9 @@ export default function Dashboard() {
         </div>
 
         {/* ── RIGHT ── */}
-        <div className="flex flex-col gap-6 lg:col-span-2 xl:col-span-1 lg:grid lg:grid-cols-2 xl:flex xl:flex-col">
+        <div className="contents">
           {/* daily bookings */}
-          <div className="card flex-1 min-h-[240px] flex flex-col">
+          <div className="order-3 card min-w-0 min-h-[240px] flex flex-col">
             <h2 className="text-base font-black text-[#071f52]">Daily Bookings</h2>
             <p className="mt-1 text-sm text-[#071f52]/56">Booking volume last 7 days.</p>
             {d.dailyBookings.every((p) => p.value === 0) ? (
@@ -465,7 +468,7 @@ export default function Dashboard() {
           </div>
 
           {/* car types */}
-          <div className="card flex-1 min-h-[240px] flex flex-col">
+          <div className="order-6 card min-w-0 min-h-[240px] flex flex-col">
             <h2 className="text-base font-black text-[#071f52]">Car Types</h2>
             <p className="mt-1 text-sm text-[#071f52]/56">Vehicle distribution by category.</p>
             <div className="mt-4 space-y-5">
@@ -508,7 +511,7 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
-        <div className="mt-4 overflow-x-auto">
+         <div className="mt-4 overflow-x-auto responsive-admin-table">
           <table className="w-full text-left text-sm min-w-[500px]">
             <thead>
               <tr className="border-b border-[#071f52]/8 text-xs font-bold text-[#071f52]/48 uppercase tracking-[0.08em]">
@@ -523,16 +526,16 @@ export default function Dashboard() {
             <tbody className="divide-y divide-[#071f52]/6">
               {d.filteredBookings.map((b) => (
                 <tr key={b.id} className="text-sm">
-                  <td className="py-2.5 pr-3 font-bold text-[#071f52]">{b.id.slice(0, 8)}</td>
-                  <td className="py-2.5 pr-3 text-[#071f52]/56">{new Date(b.created_at).toLocaleDateString()}</td>
-                  <td className="py-2.5 pr-3 text-[#071f52]/56 hidden sm:table-cell">
-                    {b.profiles ? `${b.profiles.first_name} ${b.profiles.last_name}` : '—'}
-                  </td>
-                  <td className="py-2.5 pr-3 text-[#071f52]/56 hidden md:table-cell">
-                    {b.vehicles?.name || '—'}
-                  </td>
-                  <td className="py-2.5 pr-3 font-semibold text-[#071f52]">{CURRENCY_FORMATTER.format(b.total_amount || 0)}</td>
-                  <td className="py-2.5">
+                   <td data-label="Booking #" className="py-2.5 pr-3 font-bold text-[#071f52]">{b.id.slice(0, 8)}</td>
+                   <td data-label="Date" className="py-2.5 pr-3 text-[#071f52]/56">{new Date(b.created_at).toLocaleDateString()}</td>
+                   <td data-label="Client" className="py-2.5 pr-3 text-[#071f52]/56 hidden sm:table-cell">
+                     {b.profiles ? `${b.profiles.first_name} ${b.profiles.last_name}` : '—'}
+                   </td>
+                   <td data-label="Vehicle" className="py-2.5 pr-3 text-[#071f52]/56 hidden md:table-cell">
+                     {b.vehicles?.name || '—'}
+                   </td>
+                   <td data-label="Amount" className="py-2.5 pr-3 font-semibold text-[#071f52]">{CURRENCY_FORMATTER.format(b.total_amount || 0)}</td>
+                   <td data-label="Status" className="py-2.5">
                     <span className={`inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold ${STATUS_COLORS[b.status] || 'bg-gray-100 text-gray-500'}`}>
                       {formatBookingStatus(b.status)}
                     </span>

@@ -3,7 +3,7 @@ import { useAdminBookings } from '@/hooks/use-bookings'
 import type { AdminBookingSortField } from '@/services/booking-service'
 import { cn } from '@/lib/utils'
 import { formatBookingStatus, isRefundIneligible, type RefundStatus } from '@/lib/booking-utils'
-import { ChevronLeft, ChevronRight, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Eye, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { STATUS_COLORS } from '@/config/constants'
 
 const PAGE_SIZE = 20
@@ -57,6 +57,10 @@ function getRefundStatusColor(booking: { rental_model?: string; status_events?: 
       : 'bg-[#e92935]/10 text-[#c91f2a]'
 }
 
+function isMobileViewport() {
+  return typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767.98px)').matches
+}
+
 export default function AdminBookings() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -98,6 +102,12 @@ export default function AdminBookings() {
   const totalPages = Math.max(1, Math.ceil((data?.total || 0) / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
   const loading = isLoading || isFetching
+  const mobileViewport = isMobileViewport()
+  const openDeleteModal = (bookingNumber: string) => {
+    const params = new URLSearchParams(searchParams)
+    params.set('modal', 'delete')
+    navigate(`/admin/bookings/${bookingNumber}?${params.toString()}`)
+  }
 
   return (
     <div className="py-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
@@ -225,7 +235,7 @@ export default function AdminBookings() {
           No bookings found.
         </div>
       ) : (
-        <div className="-mt-1 card-overflow">
+        <div className="-mt-1 card-overflow responsive-admin-table">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-[#071f52]/10 bg-[#f7f9ff]">
@@ -244,23 +254,59 @@ export default function AdminBookings() {
                 return (
                 <tr
                   key={b.id}
-                  tabIndex={0}
-                  aria-label={`View booking ${b.booking_number}`}
-                  onClick={() => navigate(`/admin/bookings/${b.booking_number}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault()
-                      navigate(`/admin/bookings/${b.booking_number}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`)
+                   tabIndex={0}
+                   aria-label={`View booking ${b.booking_number}`}
+                   onClick={() => {
+                     if (!mobileViewport) {
+                       navigate(`/admin/bookings/${b.booking_number}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`)
+                     }
+                   }}
+                   onKeyDown={(event) => {
+                     if (!mobileViewport && (event.key === 'Enter' || event.key === ' ')) {
+                       event.preventDefault()
+                       navigate(`/admin/bookings/${b.booking_number}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`)
                     }
                   }}
                   className="cursor-pointer transition-colors hover:bg-[#f7f9ff] focus:bg-[#f7f9ff] focus:outline-none"
                 >
-                  <td className="px-5 py-3">
-                    <Link to={`/admin/bookings/${b.booking_number}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`} className="text-sm font-bold text-[#071f52] hover:underline">
-                      {b.booking_number}
-                    </Link>
+                  <td data-label="Booking #" className="px-5 py-3">
+                    <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                      <Link
+                        to={`/admin/bookings/${b.booking_number}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`}
+                        className="text-sm font-bold text-[#071f52] hover:underline"
+                        onClick={(event) => {
+                          if (mobileViewport) event.preventDefault()
+                        }}
+                      >
+                        {b.booking_number}
+                      </Link>
+                      {mobileViewport ? <div className="flex items-center gap-1.5 md:hidden">
+                        <button
+                          type="button"
+                          aria-label={`View booking ${b.booking_number}`}
+                          className="rounded-lg border border-[#071f52]/10 p-2 text-[#071f52]/62 transition-colors hover:bg-[#071f52]/8"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            navigate(`/admin/bookings/${b.booking_number}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`)
+                          }}
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Delete booking ${b.booking_number}`}
+                          className="rounded-lg border border-red-200 p-2 text-red-600 transition-colors hover:bg-red-50"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            openDeleteModal(b.booking_number)
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div> : null}
+                    </div>
                   </td>
-                  <td className="px-5 py-3">
+                  <td data-label="Customer" className="px-5 py-3">
                     <div>
                       <p className="text-sm font-bold text-[#071f52]">
                         {b.profiles?.first_name} {b.profiles?.last_name}
@@ -268,20 +314,22 @@ export default function AdminBookings() {
                       <p className="text-xs text-[#071f52]/48">{b.profiles?.email}</p>
                     </div>
                   </td>
-                  <td className="px-5 py-3">
-                    <p className="text-sm font-semibold text-[#071f52]">{b.vehicles?.name}</p>
-                    <p className="text-xs text-[#071f52]/48">{b.vehicles?.plate_number}</p>
+                  <td data-label="Vehicle" className="px-5 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[#071f52]">{b.vehicles?.name}</p>
+                      <p className="text-xs text-[#071f52]/48">{b.vehicles?.plate_number}</p>
+                    </div>
                   </td>
-                  <td className="px-5 py-3 text-sm font-semibold text-[#071f52]">
+                  <td data-label="Start date" className="px-5 py-3 text-sm font-semibold text-[#071f52]">
                     {formatStartDate(b.start_at)}
                   </td>
-                  <td className="px-5 py-3 text-sm font-semibold text-[#071f52]">
+                  <td data-label="End date" className="px-5 py-3 text-sm font-semibold text-[#071f52]">
                     {formatStartDate(b.end_at)}
                   </td>
-                  <td className="px-5 py-3">
+                  <td data-label="Total" className="px-5 py-3">
                     <span className="text-sm font-bold text-[#071f52]">{b.flagged_for_manual_pricing ? 'TBD' : `₱${b.total_amount?.toLocaleString()}.00`}</span>
                   </td>
-                    <td className="px-5 py-3" onClick={(event) => event.stopPropagation()}>
+                    <td data-label="Status" className="px-5 py-3" onClick={(event) => event.stopPropagation()}>
                       {b.status === 'canceled' && getDisplayedRefundStatus(b, b.cancellation?.[0]) ? (
                         <span className={cn('inline-flex rounded-full px-3 py-1 text-[11px] font-bold', getRefundStatusColor(b, b.cancellation[0]))}>
                           {getDisplayedRefundStatus(b, b.cancellation[0])}
@@ -292,20 +340,16 @@ export default function AdminBookings() {
                         </span>
                       )}
                     </td>
-                   <td className="px-5 py-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-                     <button
-                       type="button"
-                       aria-label={`Delete booking ${b.booking_number}`}
-                       onClick={() => {
-                         const params = new URLSearchParams(searchParams)
-                         params.set('modal', 'delete')
-                         navigate(`/admin/bookings/${b.booking_number}?${params.toString()}`)
-                       }}
-                       className="rounded-full bg-white p-2 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
-                     >
-                       <Trash2 size={16} />
-                     </button>
-                   </td>
+                   <td data-label="Actions" className="desktop-table-actions px-5 py-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                      {!mobileViewport ? <button
+                          type="button"
+                          aria-label={`Delete booking ${b.booking_number}`}
+                          onClick={() => openDeleteModal(b.booking_number)}
+                          className="rounded-full bg-white p-2 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+                        >
+                          <Trash2 size={16} />
+                        </button> : null}
+                     </td>
                 </tr>
                 )
               })}
