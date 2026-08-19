@@ -591,6 +591,28 @@ export async function getSubmittedPayments(from?: string, to?: string): Promise<
   }))
 }
 
+export interface SubmittedPaymentsPage {
+  items: SubmittedPaymentRow[]
+  total: number
+}
+
+export async function getSubmittedPaymentsPage(from: string | undefined, to: string | undefined, offset: number, limit: number): Promise<SubmittedPaymentsPage> {
+  const { data, error } = await supabase.rpc('get_revenue_report_page', {
+    from_date: from || null,
+    to_date: to || null,
+    page_offset: offset,
+    page_limit: limit,
+  })
+
+  if (error) throw error
+
+  const rows = (data || []) as (SubmittedPaymentRow & { total_count: number })[]
+  return {
+    items: rows.map(({ total_count: _totalCount, ...row }) => row),
+    total: Number(rows[0]?.total_count || 0),
+  }
+}
+
 export async function runAdminBookingAction(input: AdminBookingActionInput): Promise<void> {
   const { type, bookingId, ...params } = input
 

@@ -162,6 +162,14 @@ export function useRevenueReport(from?: string, to?: string) {
   })
 }
 
+export function useRevenueReportPage(from: string | undefined, to: string | undefined, page: number, pageSize: number) {
+  return useQuery({
+    queryKey: ['admin', 'revenue-report-page', from, to, page, pageSize],
+    queryFn: () => bookingService.getSubmittedPaymentsPage(from, to, (page - 1) * pageSize, pageSize),
+    placeholderData: keepPreviousData,
+  })
+}
+
 export function useAdminBookingAction() {
   const queryClient = useQueryClient()
 
