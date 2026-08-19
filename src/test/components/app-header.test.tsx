@@ -53,11 +53,20 @@ describe('AppHeader', () => {
       </MemoryRouter>,
     )
 
+    const closedDrawer = document.querySelector('aside')
+    expect(closedDrawer).toHaveClass('left-0', '-translate-x-full')
+    expect(closedDrawer).not.toHaveClass('right-0', 'translate-x-full')
+
     fireEvent.click(screen.getByRole('button', { name: 'Toggle menu' }))
 
     expect(screen.getByRole('button', { name: 'Close menu' })).toBeDefined()
     expect(screen.getAllByRole('link', { name: 'Book Now' })).toHaveLength(2)
     expect(screen.getAllByRole('link', { name: 'Our Fleet' })).toHaveLength(2)
+
+    const drawer = screen.getByRole('button', { name: 'Close menu' }).closest('aside')
+    expect(drawer).not.toBeNull()
+    expect(drawer).toHaveClass('left-0', 'translate-x-0')
+    expect(drawer).not.toHaveClass('right-0', 'translate-x-full')
   })
 
   it('renders public nav plus customer account dropdown for signed-in customers', () => {
