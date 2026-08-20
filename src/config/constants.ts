@@ -11,12 +11,14 @@ export const DEFAULT_LOCALE = 'en-PH'
 const CUSTOMER_DOCUMENT_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] as const
 const VEHICLE_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
 const BUSINESS_ASSET_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const
+const PROFILE_PHOTO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
 
 export const UPLOAD_POLICIES = {
   customerDocuments: { maxBytes: 5 * 1024 * 1024, allowedMimeTypes: CUSTOMER_DOCUMENT_MIME_TYPES, accept: CUSTOMER_DOCUMENT_MIME_TYPES.join(',') },
   paymentReceipts: { maxBytes: 5 * 1024 * 1024, allowedMimeTypes: CUSTOMER_DOCUMENT_MIME_TYPES, accept: CUSTOMER_DOCUMENT_MIME_TYPES.join(',') },
   vehicleImages: { maxBytes: 10 * 1024 * 1024, allowedMimeTypes: VEHICLE_IMAGE_MIME_TYPES, accept: VEHICLE_IMAGE_MIME_TYPES.join(',') },
   businessAssets: { maxBytes: 5 * 1024 * 1024, allowedMimeTypes: BUSINESS_ASSET_MIME_TYPES, accept: BUSINESS_ASSET_MIME_TYPES.join(',') },
+  profilePhotos: { maxBytes: 5 * 1024 * 1024, allowedMimeTypes: PROFILE_PHOTO_MIME_TYPES, accept: PROFILE_PHOTO_MIME_TYPES.join(',') },
 } as const
 
 export const STATUS_COLORS: Record<string, string> = {

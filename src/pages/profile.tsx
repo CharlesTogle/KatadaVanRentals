@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/useAuth'
 import { useProfile, useUpdateProfile } from '@/hooks/use-profile'
 import { supabase } from '@/lib/supabase'
 import { showError } from '@/lib/errors'
-import { getAcceptedMimeTypes } from '@/lib/file-upload'
+import { getAcceptedMimeTypes, resizeImageToWebp, validateFile } from '@/lib/file-upload'
 import { UPLOAD_POLICIES } from '@/config/constants'
 import { removeUploadedFileWithQueue, removeUploadedFileByUrlWithQueue, uploadFile } from '@/services/upload-service'
 import { toast } from '@/lib/toast'
@@ -138,10 +138,11 @@ export default function Profile() {
     let uploadedPath: string | null = null
     const previousUrl = profile.profile_image_path
     try {
-      const ext = file.name.split('.').pop()
-      const path = `profile-photos/${user.id}-${crypto.randomUUID()}.${ext}`
+      validateFile(file, UPLOAD_POLICIES.profilePhotos)
+      const compressedFile = await resizeImageToWebp(file)
+      const path = `profile-photos/${user.id}-${crypto.randomUUID()}.webp`
       uploadedPath = path
-      await uploadFile({ bucket: 'business-assets', file, path, policy: UPLOAD_POLICIES.businessAssets, upsert: true })
+      await uploadFile({ bucket: 'business-assets', file: compressedFile, path, policy: UPLOAD_POLICIES.profilePhotos, upsert: true })
       const { data: { publicUrl } } = supabase.storage.from('business-assets').getPublicUrl(path)
       setProfile({ ...profile, profile_image_path: publicUrl })
       await updateProfile.mutateAsync({ id: user.id, data: { profile_image_path: publicUrl } })
@@ -282,7 +283,7 @@ export default function Profile() {
                 <Camera size={10} className="sm:hidden" />
                 <Camera size={12} className="hidden sm:block" />
               </button>
-              <input ref={fileInputRef} type="file" accept={getAcceptedMimeTypes(UPLOAD_POLICIES.businessAssets)} onChange={handleUploadPhoto} className="hidden" />
+               <input ref={fileInputRef} type="file" accept={getAcceptedMimeTypes(UPLOAD_POLICIES.profilePhotos)} onChange={handleUploadPhoto} className="hidden" />
             </div>
             <div>
               <p className="text-sm font-bold text-[#071f52] sm:text-base">{name}</p>

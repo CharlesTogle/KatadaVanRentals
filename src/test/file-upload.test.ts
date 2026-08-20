@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { UPLOAD_POLICIES } from '@/config/constants'
-import { validateFile } from '@/lib/file-upload'
+import { resizeImageToWebp, validateFile } from '@/lib/file-upload'
 import { queueUploadedFileCleanup, removeUploadedFileWithQueue, uploadFile } from '@/services/upload-service'
 import { supabase } from '@/lib/supabase'
 
@@ -8,6 +8,38 @@ vi.mock('@/lib/supabase', () => ({ supabase: { from: vi.fn(), storage: { from: v
 
 const storage = vi.mocked(supabase.storage.from)
 const file = (size: number, type: string) => new File([new Uint8Array(size)], 'upload', { type })
+
+function mockImageAndCanvas({ blobType = 'image/webp', blob = new Blob(['compressed'], { type: blobType }) } = {}) {
+  const createObjectURL = vi.fn().mockReturnValue('blob:profile-photo')
+  const revokeObjectURL = vi.fn()
+  const drawImage = vi.fn()
+  const toBlob = vi.fn((callback: BlobCallback) => callback(blob))
+  const canvas = document.createElement('canvas')
+  const originalCreateElement = document.createElement.bind(document)
+  const createElement = vi.spyOn(document, 'createElement').mockImplementation(((tagName: string) => {
+    return tagName === 'canvas' ? canvas : originalCreateElement(tagName)
+  }) as typeof document.createElement)
+  vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
+  vi.stubGlobal('Image', class {
+    naturalWidth = 1600
+    naturalHeight = 800
+    onload: (() => void) | null = null
+    onerror: (() => void) | null = null
+
+    set src(_: string) {
+      queueMicrotask(() => this.onload?.())
+    }
+  })
+  vi.spyOn(canvas, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D)
+  vi.spyOn(canvas, 'toBlob').mockImplementation(toBlob)
+
+  return { canvas, createElement, createObjectURL, revokeObjectURL, drawImage, toBlob }
+}
+
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
 
 describe('file upload policies', () => {
   it('accepts a 5 MiB PDF customer document', () => {
@@ -30,6 +62,9 @@ describe('file upload policies', () => {
   })
   it('accepts a 5 MiB GIF business asset', () => {
     expect(() => validateFile(file(5 * 1024 * 1024, 'image/gif'), UPLOAD_POLICIES.businessAssets)).not.toThrow()
+  })
+  it('rejects GIF profile photos', () => {
+    expect(() => validateFile(file(1, 'image/gif'), UPLOAD_POLICIES.profilePhotos)).toThrow(/unsupported/i)
   })
   it('rejects a business asset larger than 5 MiB', () => {
     expect(() => validateFile(file(5 * 1024 * 1024 + 1, 'image/png'), UPLOAD_POLICIES.businessAssets)).toThrow(/too large/i)
@@ -75,5 +110,35 @@ describe('file upload policies', () => {
     vi.mocked(supabase.from).mockReturnValue({ insert } as never)
 
     await expect(queueUploadedFileCleanup('customer-documents', 'customer-1/doc.pdf')).resolves.toBeUndefined()
+  })
+})
+
+describe('profile photo conversion', () => {
+  it('resizes to the max dimension, requests WebP, and revokes the object URL', async () => {
+    const { canvas, createObjectURL, revokeObjectURL, drawImage, toBlob } = mockImageAndCanvas()
+
+    const result = await resizeImageToWebp(file(1, 'image/jpeg'))
+
+    expect(canvas.width).toBe(512)
+    expect(canvas.height).toBe(256)
+    expect(drawImage).toHaveBeenCalledWith(expect.any(Image), 0, 0, 512, 256)
+    expect(toBlob).toHaveBeenCalledWith(expect.any(Function), 'image/webp', 0.82)
+    expect(result).toMatchObject({ name: 'upload.webp', type: 'image/webp' })
+    expect(createObjectURL).toHaveBeenCalledOnce()
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:profile-photo')
+  })
+
+  it('rejects a non-WebP encoder result and still revokes the object URL', async () => {
+    const { revokeObjectURL } = mockImageAndCanvas({ blobType: 'image/png' })
+
+    await expect(resizeImageToWebp(file(1, 'image/jpeg'))).rejects.toThrow(/cannot encode.*webp/i)
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:profile-photo')
+  })
+
+  it('rejects compression failures and still revokes the object URL', async () => {
+    const { revokeObjectURL } = mockImageAndCanvas({ blob: null as unknown as Blob })
+
+    await expect(resizeImageToWebp(file(1, 'image/jpeg'))).rejects.toThrow(/compression failed/i)
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:profile-photo')
   })
 })
