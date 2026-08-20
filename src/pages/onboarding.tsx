@@ -7,6 +7,7 @@ import { useCustomerDocuments, useSaveCustomerDocument } from '@/hooks/use-docum
 import { composeProfileAddress, parseProfileAddress } from '@/lib/profile-address'
 import { showError } from '@/lib/errors'
 import { UPLOAD_POLICIES } from '@/config/constants'
+import { getFileExtension, prepareUploadFile } from '@/lib/file-upload'
 import { removeUploadedFileWithQueue, uploadFile } from '@/services/upload-service'
 import { toast } from '@/lib/toast'
 import { logError } from '@/lib/logger'
@@ -164,26 +165,28 @@ export default function Onboarding() {
     const file = event.target.files?.[0]
     if (!file || !activeDocument || !user) return
     setUploading(true)
-    const extension = file.name.split('.').pop() || 'bin'
     const previousPath = documentsByType[activeDocument]?.file_path
-    const path = previousPath ? `${user.id}/${activeDocument}-${crypto.randomUUID()}.${extension}` : `${user.id}/${activeDocument}.${extension}`
 
     let uploaded = false
     let saved = false
+    let path: string | null = null
     try {
-      await uploadFile({ bucket: 'customer-documents', file, path, policy: UPLOAD_POLICIES.customerDocuments, upsert: true })
+      const preparedFile = await prepareUploadFile(file, UPLOAD_POLICIES.customerDocuments)
+      const extension = getFileExtension(preparedFile)
+      path = previousPath ? `${user.id}/${activeDocument}-${crypto.randomUUID()}.${extension}` : `${user.id}/${activeDocument}.${extension}`
+      await uploadFile({ bucket: 'customer-documents', file: preparedFile, path, policy: UPLOAD_POLICIES.customerDocuments, upsert: true })
       uploaded = true
       await saveDocument.mutateAsync({
         customer_id: user.id,
         document_type: activeDocument,
         file_path: path,
         original_filename: file.name,
-        mime_type: file.type || 'application/octet-stream',
-        size_bytes: file.size,
+        mime_type: preparedFile.type || 'application/octet-stream',
+        size_bytes: preparedFile.size,
       })
       saved = true
     } catch (error) {
-      if (uploaded) await removeUploadedFileWithQueue('customer-documents', path).catch((cleanupError) => {
+      if (uploaded && path) await removeUploadedFileWithQueue('customer-documents', path).catch((cleanupError) => {
         logError('documents', 'Failed to remove onboarding document after save failure', cleanupError)
       })
       toast.error(showError(error as Error))

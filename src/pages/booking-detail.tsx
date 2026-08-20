@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/useAuth'
 import { supabase } from '@/lib/supabase'
-import { validateFile } from '@/lib/file-upload'
+import { getFileExtension, prepareUploadFile } from '@/lib/file-upload'
 import { UPLOAD_POLICIES } from '@/config/constants'
 import { queueUploadedFileCleanup, removeUploadedFile, uploadFile } from '@/services/upload-service'
 import { useAcceptOwnPriceAdjustment, useBooking, useCancelOwnBooking } from '@/hooks/use-bookings'
@@ -236,11 +236,11 @@ export default function BookingDetail() {
     setUploadingTypeId(requestedTypeId)
 
     try {
-      const ext = file.name.split('.').pop()
+      const preparedFile = await prepareUploadFile(file, UPLOAD_POLICIES.customerDocuments)
+      const ext = getFileExtension(preparedFile)
       const path = `${user.id}/requested/${booking.id}/${Date.now()}.${ext}`
 
-      validateFile(file, UPLOAD_POLICIES.customerDocuments)
-      await uploadFile({ bucket: 'customer-documents', file, path, policy: UPLOAD_POLICIES.customerDocuments, upsert: true })
+      await uploadFile({ bucket: 'customer-documents', file: preparedFile, path, policy: UPLOAD_POLICIES.customerDocuments, upsert: true })
       try {
         await saveBookingRequestedDocument({
           booking_id: booking.id,
@@ -248,8 +248,8 @@ export default function BookingDetail() {
           requested_type_id: requestedTypeId,
           file_path: path,
           original_filename: file.name,
-          mime_type: file.type || 'application/octet-stream',
-          size_bytes: file.size,
+          mime_type: preparedFile.type || 'application/octet-stream',
+          size_bytes: preparedFile.size,
         })
       } catch (error) {
         await removeUploadedFile('customer-documents', path).catch(async (cleanupError) => {

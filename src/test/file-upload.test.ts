@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { UPLOAD_POLICIES } from '@/config/constants'
-import { resizeImageToWebp, validateFile } from '@/lib/file-upload'
+import { getFileExtension, prepareUploadFile, resizeImageToWebp, validateFile } from '@/lib/file-upload'
 import { queueUploadedFileCleanup, removeUploadedFileWithQueue, uploadFile } from '@/services/upload-service'
 import { supabase } from '@/lib/supabase'
 
@@ -9,7 +9,7 @@ vi.mock('@/lib/supabase', () => ({ supabase: { from: vi.fn(), storage: { from: v
 const storage = vi.mocked(supabase.storage.from)
 const file = (size: number, type: string) => new File([new Uint8Array(size)], 'upload', { type })
 
-function mockImageAndCanvas({ blobType = 'image/webp', blob = new Blob(['compressed'], { type: blobType }) } = {}) {
+function mockImageAndCanvas({ blobType = 'image/webp', blob = new Blob(['compressed'], { type: blobType }), imageWidth = 1600, imageHeight = 800 } = {}) {
   const createObjectURL = vi.fn().mockReturnValue('blob:profile-photo')
   const revokeObjectURL = vi.fn()
   const drawImage = vi.fn()
@@ -21,8 +21,8 @@ function mockImageAndCanvas({ blobType = 'image/webp', blob = new Blob(['compres
   }) as typeof document.createElement)
   vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
   vi.stubGlobal('Image', class {
-    naturalWidth = 1600
-    naturalHeight = 800
+    naturalWidth = imageWidth
+    naturalHeight = imageHeight
     onload: (() => void) | null = null
     onerror: (() => void) | null = null
 
@@ -140,5 +140,48 @@ describe('profile photo conversion', () => {
 
     await expect(resizeImageToWebp(file(1, 'image/jpeg'))).rejects.toThrow(/compression failed/i)
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:profile-photo')
+  })
+})
+
+describe('document upload preparation', () => {
+  it('rejects filenames without extensions', async () => {
+    const input = file(10, 'application/pdf')
+
+    expect(() => getFileExtension(input)).toThrow(/extension/i)
+    await expect(prepareUploadFile(input, UPLOAD_POLICIES.customerDocuments)).rejects.toThrow(/extension/i)
+  })
+
+  it('uses the MIME type when the filename extension disagrees', () => {
+    expect(getFileExtension(new File(['image'], 'receipt.pdf', { type: 'image/jpeg' }))).toBe('jpg')
+  })
+
+  it('leaves PDFs unchanged', async () => {
+    const input = new File([new Uint8Array(10)], 'document.pdf', { type: 'application/pdf' })
+
+    await expect(prepareUploadFile(input, UPLOAD_POLICIES.customerDocuments)).resolves.toBe(input)
+  })
+
+  it('uses a smaller optimized image', async () => {
+    const { canvas, toBlob } = mockImageAndCanvas({
+      blob: new Blob(['small'], { type: 'image/webp' }),
+      imageWidth: 4000,
+      imageHeight: 3000,
+    })
+    const input = new File([new Uint8Array(300 * 1024)], 'upload.jpg', { type: 'image/jpeg' })
+
+    const result = await prepareUploadFile(input, UPLOAD_POLICIES.customerDocuments)
+
+    expect(canvas.width).toBe(2400)
+    expect(canvas.height).toBe(1800)
+    expect(toBlob).toHaveBeenCalledWith(expect.any(Function), 'image/webp', 0.92)
+    expect(result).toMatchObject({ name: 'upload.webp', type: 'image/webp' })
+    expect(result.size).toBeLessThan(input.size)
+  })
+
+  it('keeps the original when optimization is larger', async () => {
+    mockImageAndCanvas({ blob: new Blob([new Uint8Array(300 * 1024 + 1)], { type: 'image/webp' }) })
+    const input = new File([new Uint8Array(300 * 1024)], 'upload.jpg', { type: 'image/jpeg' })
+
+    await expect(prepareUploadFile(input, UPLOAD_POLICIES.customerDocuments)).resolves.toBe(input)
   })
 })

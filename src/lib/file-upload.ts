@@ -40,6 +40,41 @@ export async function resizeImageToWebp(file: File, maxDimension = 512, quality 
   }
 }
 
+export async function prepareUploadFile(
+  file: File,
+  policy: UploadPolicy,
+  maxDimension = 2400,
+  quality = 0.92,
+): Promise<File> {
+  validateFile(file, policy)
+  getFileExtension(file)
+  if (!file.type.startsWith('image/') || file.size <= 256 * 1024) return file
+
+  let compressed: File
+  try {
+    compressed = await resizeImageToWebp(file, maxDimension, quality)
+  } catch {
+    return file
+  }
+  const prepared = compressed.size < file.size ? compressed : file
+  validateFile(prepared, policy)
+  return prepared
+}
+
+export function getFileExtension(file: File): string {
+  const lastDot = file.name.lastIndexOf('.')
+  const hasExtension = lastDot > 0 && lastDot < file.name.length - 1
+  const extensionByMimeType: Record<string, string> = {
+    'application/pdf': 'pdf',
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+  }
+
+  if (!hasExtension) throw new Error('File name must include an extension.')
+  return extensionByMimeType[file.type] || file.name.slice(lastDot + 1).toLowerCase()
+}
+
 export function getAcceptedMimeTypes(policy: UploadPolicy): string {
   return policy.accept
 }

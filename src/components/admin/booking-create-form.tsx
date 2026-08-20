@@ -14,6 +14,7 @@ import { BookingFormSkeleton } from '@/components/booking/booking-form-skeleton'
 import { CountrySelect } from '@/components/ui/country-select'
 import { toast } from '@/lib/toast'
 import { showError } from '@/lib/errors'
+import { getFileExtension, prepareUploadFile } from '@/lib/file-upload'
 import { getBookingPriceBreakdown, isSameBookingLocation, normalizeCustomerRentalType, toBookingRentalModel, type CustomerRentalType } from '@/lib/booking-utils'
 import { saveBookingDateSelection } from '@/lib/booking-date-storage'
 import { calculateToll, getNearestTollPlazas, getRouteQuote } from '@/services/location-service'
@@ -326,8 +327,10 @@ export function BookingCreateForm() {
 
   const uploadReceipt = async (paymentIdempotencyKey: string) => {
     if (!receiptFile) return null
-    const path = `${user?.id || 'admin'}/${paymentIdempotencyKey}`
-    await uploadFile({ bucket: 'payment-receipts', file: receiptFile, path, policy: UPLOAD_POLICIES.paymentReceipts, upsert: true })
+    const preparedFile = await prepareUploadFile(receiptFile, UPLOAD_POLICIES.paymentReceipts)
+    const extension = getFileExtension(preparedFile)
+    const path = `${user?.id || 'admin'}/${paymentIdempotencyKey}.${extension}`
+    await uploadFile({ bucket: 'payment-receipts', file: preparedFile, path, policy: UPLOAD_POLICIES.paymentReceipts, upsert: true })
     return path
   }
 
@@ -409,11 +412,11 @@ export function BookingCreateForm() {
 
     const bookingIdempotencyKey = idempotencyKeys.booking
     const paymentIdempotencyKey = idempotencyKeys.payment
-    const receiptPath = receiptFile ? `${user?.id || 'admin'}/${paymentIdempotencyKey}` : null
+    let receiptPath: string | null = null
 
-    if (receiptPath) {
+    if (receiptFile) {
       try {
-        await uploadReceipt(paymentIdempotencyKey)
+        receiptPath = await uploadReceipt(paymentIdempotencyKey)
       } catch (error) {
         logError('admin-booking', 'Payment receipt upload failed', error, { requestId: getRequestId() })
         setError('Receipt upload failed. Please try again.')

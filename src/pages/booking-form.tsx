@@ -13,6 +13,7 @@ import { PaymentFields } from '@/components/booking/payment-fields'
 import { PriceSummary } from '@/components/booking/price-summary'
 import { BookingFormSkeleton } from '@/components/booking/booking-form-skeleton'
 import { showError } from '@/lib/errors'
+import { getFileExtension, prepareUploadFile } from '@/lib/file-upload'
 import { getBookingPriceBreakdown, getMissingSelfDriveDocuments, hasRequiredSelfDriveDocuments, isSameBookingLocation, normalizeCustomerRentalType, toBookingRentalModel, type CustomerRentalType } from '@/lib/booking-utils'
 import { loadBookingDateSelection, saveBookingDateSelection } from '@/lib/booking-date-storage'
 import { calculateToll, getNearestTollPlazas, getRouteQuote } from '@/services/location-service'
@@ -460,9 +461,11 @@ export default function BookingForm() {
     const bookingNotes = notes || null
     let receiptPath: string | null = null
     if (requiresPayment && receiptFile) {
-      receiptPath = `${user.id}/${paymentIdempotencyKey}`
       try {
-        await uploadFile({ bucket: 'payment-receipts', file: receiptFile, path: receiptPath, policy: UPLOAD_POLICIES.paymentReceipts, upsert: true })
+        const preparedFile = await prepareUploadFile(receiptFile, UPLOAD_POLICIES.paymentReceipts)
+        const extension = getFileExtension(preparedFile)
+        receiptPath = `${user.id}/${paymentIdempotencyKey}.${extension}`
+        await uploadFile({ bucket: 'payment-receipts', file: preparedFile, path: receiptPath, policy: UPLOAD_POLICIES.paymentReceipts, upsert: true })
       } catch (error) {
         logError('booking', 'Payment receipt upload failed', error, { requestId: getRequestId() })
         setError(showError(error))

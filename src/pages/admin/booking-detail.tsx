@@ -12,6 +12,7 @@ import { getBookingExpiryDeadline, getBookingExpiryMessage } from '@/lib/booking
 import { getDisplayBookingNote } from '@/lib/booking-notes'
 import { cn } from '@/lib/utils'
 import { showError } from '@/lib/errors'
+import { getFileExtension, prepareUploadFile } from '@/lib/file-upload'
 import { toast } from '@/lib/toast'
 import { downloadBookingInvoicePdf } from '@/lib/invoice-pdf'
 import { supabase } from '@/lib/supabase'
@@ -356,9 +357,10 @@ export default function BookingDetail() {
   const uploadReceipt = async (file: File | null) => {
     if (!file) return undefined
 
-    const ext = file.name.split('.').pop()
+    const preparedFile = await prepareUploadFile(file, UPLOAD_POLICIES.paymentReceipts)
+    const ext = getFileExtension(preparedFile)
     const path = `${booking.id}/${Date.now()}.${ext}`
-    await uploadFile({ bucket: PAYMENT_RECEIPT_BUCKET, file, path, policy: UPLOAD_POLICIES.paymentReceipts })
+    await uploadFile({ bucket: PAYMENT_RECEIPT_BUCKET, file: preparedFile, path, policy: UPLOAD_POLICIES.paymentReceipts })
 
     return path
   }

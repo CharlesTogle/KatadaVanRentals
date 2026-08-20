@@ -5,7 +5,7 @@ import { useCustomerDocuments, useSaveCustomerDocument, useDeleteCustomerDocumen
 import { useFileViewer } from '@/hooks/use-file-viewer'
 import { getCustomerDocumentSignedUrl } from '@/services/document-service'
 import { showError } from '@/lib/errors'
-import { getAcceptedMimeTypes } from '@/lib/file-upload'
+import { getAcceptedMimeTypes, getFileExtension, prepareUploadFile } from '@/lib/file-upload'
 import { UPLOAD_POLICIES } from '@/config/constants'
 import { ACCEPTED_PROOF_OF_BILLING_DOCUMENTS } from '@/constants/documents'
 import { removeUploadedFileWithQueue, uploadFile } from '@/services/upload-service'
@@ -61,20 +61,21 @@ export default function Documents() {
     if (!file || !activeKey || !user) return
     setUploading((prev) => ({ ...prev, [activeKey]: true }))
 
-    const ext = file.name.split('.').pop()
     const previousPath = docsByKey[activeKey]?.file_path
-    const path = previousPath ? `${user.id}/${activeKey}-${crypto.randomUUID()}.${ext}` : `${user.id}/${activeKey}.${ext}`
     let saved = false
     try {
-      await uploadFile({ bucket: 'customer-documents', file, path, policy: UPLOAD_POLICIES.customerDocuments, upsert: true })
+      const preparedFile = await prepareUploadFile(file, UPLOAD_POLICIES.customerDocuments)
+      const ext = getFileExtension(preparedFile)
+      const path = previousPath ? `${user.id}/${activeKey}-${crypto.randomUUID()}.${ext}` : `${user.id}/${activeKey}.${ext}`
+      await uploadFile({ bucket: 'customer-documents', file: preparedFile, path, policy: UPLOAD_POLICIES.customerDocuments, upsert: true })
       try {
         await saveDocument.mutateAsync({
           customer_id: user.id,
           document_type: activeKey as DocumentType,
           file_path: path,
           original_filename: file.name,
-          mime_type: file.type || 'application/octet-stream',
-          size_bytes: file.size,
+          mime_type: preparedFile.type || 'application/octet-stream',
+          size_bytes: preparedFile.size,
         })
         saved = true
       } catch (error) {
